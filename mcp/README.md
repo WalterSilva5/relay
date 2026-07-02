@@ -1,3 +1,5 @@
+> 🇧🇷 [Versão em português](README.ptbr.md)
+
 # agentic-dev-maestro-mcp
 
 A standalone [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server that
