@@ -161,10 +161,16 @@ class MetricsView(QWidget):
             # Cycle time (same approximation as lead time for now)
             avg_cycle = avg_lead
 
-            # Overdue tasks
+            # Overdue tasks: prazo no passado e dev ainda não concluído
+            # (corte por projeto, como no dashboard)
+            from relay.dimensions import dev_done_ids_by_project
+            dev_por_projeto = dev_done_ids_by_project(
+                s.query(BoardColumn).all()
+            )
+            dev_todas = {cid for ids in dev_por_projeto.values() for cid in ids}
             overdue = sum(
                 1 for task in tasks
-                if task.due_date and task.due_date < now and task not in done_tasks
+                if task.due_date and task.due_date < now and task.column_id not in dev_todas
             )
 
             def fmt_hours(h):
