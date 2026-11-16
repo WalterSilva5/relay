@@ -4249,12 +4249,21 @@ def create_workspace_ep(body: dict):
 
 class AssistantChat(BaseModel):
     messages: list[dict]
+    profile: str = "estrategista"  # estrategista|tutor|revisor
+
+
+@app.get("/api/ai/profiles")
+def list_ai_profiles():
+    """Catálogo de perfis do assistente (sem prompts)."""
+    from relay.ai.profiles import profiles_info
+    return profiles_info()
 
 
 @app.post("/api/assistant/chat")
 def assistant_chat(body: AssistantChat):
     from relay.ai.agent import run_agent
     try:
+        reply = run_agent(body.messages, profile=body.profile)
         return {"reply": reply}
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(e))

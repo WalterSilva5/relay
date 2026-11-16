@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { assistantChat } from '../api'
+import { assistantChat, getAiProfiles } from '../api'
 import { t } from '../i18n'
 
 const SUGGESTIONS = [
@@ -8,17 +8,43 @@ const SUGGESTIONS = [
   'Crie um TODO com os riscos que você identificar',
 ]
 
+const PROFILE_SUGGESTIONS = {
+  tutor: [
+    'Onde estou no meu plano de estudos?',
+    'Travando em um tópico: o que pode estar faltando na base?',
+    'Registre 45 minutos de estudo com confiança 3',
+  ],
+  revisor: [
+    'Revise o board e aponte os maiores riscos',
+    'O que precisa de olho humano agora?',
+  ],
+}
+
 export default function Assistente() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [profiles, setProfiles] = useState([])
+  const [profile, setProfile] = useState('estrategista')
   const scrollRef = useRef(null)
+
+  useEffect(() => {
+    getAiProfiles().then(setProfiles).catch(() => setProfiles([]))
+  }, [])
 
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, loading])
+
+  const pickProfile = (id) => {
+    setProfile(id)
+    setMessages([])
+    setError('')
+  }
+
+  const suggestions = PROFILE_SUGGESTIONS[profile] || SUGGESTIONS
 
   async function send(text) {
     const content = (text ?? input).trim()
@@ -31,7 +57,7 @@ export default function Assistente() {
     setLoading(true)
 
     try {
-      const { reply } = await assistantChat(history)
+      const { reply } = await assistantChat(history, profile)
       setMessages([...history, { role: 'assistant', content: reply }])
     } catch (err) {
       const detail =
@@ -55,9 +81,11 @@ export default function Assistente() {
     <div>
       <div className="page-title">{t('Assistente')}</div>
       <div className="subtitle">
-        {t(
-          'Converse com o assistente interno: ele lê o board, sugere prioridades, solicita revisões, cria TODOs e comenta tarefas.'
-        )}
+        {profiles.length > 0
+          ? t(profiles.find((pf) => pf.id === profile)?.description || '')
+          : t(
+              'Converse com o assistente interno: ele lê o board, sugere prioridades, solicita revisões, cria TODOs e comenta tarefas.'
+            )}
       </div>
 
       {error && <div className="banner">{error}</div>}
@@ -66,7 +94,21 @@ export default function Assistente() {
         className="toolbar"
         style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '12px 0' }}
       >
-        {SUGGESTIONS.map((s) => (
+        {profiles.length > 0 && (
+          <select
+            value={profile}
+            onChange={(e) => pickProfile(e.target.value)}
+            disabled={loading}
+            title={t('Perfil do assistente: cada um tem foco e ferramentas próprias')}
+          >
+            {profiles.map((pf) => (
+              <option key={pf.id} value={pf.id}>
+                {pf.icon ? `${pf.icon} ` : ''}{t(pf.name)} — {t(pf.description)}
+              </option>
+            ))}
+          </select>
+        )}
+        {suggestions.map((s) => (
           <button
             key={s}
             className="ghost"

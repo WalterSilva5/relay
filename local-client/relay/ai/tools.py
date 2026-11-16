@@ -371,6 +371,87 @@ def forget_memory(memory_id: int) -> str:
         s.close()
 
 
+@tool
+def list_study_plans(status: str = "") -> str:
+    """Lista os planos de estudo do workspace (título, categoria, progresso).
+    status opcional: PLANEJADO|ATIVO|CONCLUIDO|ARQUIVADO."""
+    from relay.db.models import StudyPlan, StudyTopic
+    s = get_session()
+    try:
+        q = s.query(StudyPlan)
+        if status:
+            q = q.filter(StudyPlan.status == status.upper())
+        plans = q.order_by(StudyPlan.updated_at.desc()).all()
+        if not plans:
+            return "Nenhum plano de estudo."
+        lines = []
+        for p in plans:
+            tops = [t for t in p.topics if t.status != "PULADO" and t.parent_id is None]
+            done = sum(1 for t in tops if t.status == "CONCLUIDO")
+            lines.append(f"- [{p.id}] {p.title} ({p.category}, {p.status}): {done}/{len(tops)} tópicos")
+        return "\n".join(lines)
+    finally:
+        s.close()
+
+
+@tool
+def get_study_plan(plan_id: int) -> str:
+    """Detalha um plano de estudo: tópicos com status/horas e sessões recentes.
+    Use para orientar o estudo ou diagnosticar onde o estudante travou."""
+    from relay.db.models import StudyPlan
+    s = get_session()
+    try:
+        p = s.query(StudyPlan).filter(StudyPlan.id == plan_id).first()
+        if not p:
+            return f"Plano {plan_id} não encontrado."
+        lines = [f"Plano {p.title} ({p.category}, {p.status}):"]
+        tops = sorted([t for t in p.topics if t.parent_id is None], key=lambda t: t.sort_order)
+        for t in tops:
+            horas = f" ({t.logged_hours or 0}h/{t.estimate_hours}h)" if t.estimate_hours else ""
+            lines.append(f"  - [{t.status}] {t.title}{horas}")
+        sess = sorted(p.sessions, key=lambda x: x.started_at or datetime.min, reverse=True)[:5]
+        for x in sess:
+            conf = f" confiança {x.confidence}/5" if x.confidence else ""
+            lines.append(f"  . sessão {x.topic.title if x.topic else '?'}: {x.duration_min or '?'}min{conf}")
+        return "\n".join(lines)
+    finally:
+        s.close()
+
+
+@tool
+def log_study_session(plan_id: int, topic_title: str, duration_min: int, notes: str = "", confidence: int = 0) -> str:
+    """Registra uma sessão de estudo num tópico (busca por título). confidence
+    1-5 opcional: o quanto o estudante se sente seguro no tópico."""
+    from relay.db.models import StudyPlan, StudySession, StudyTopic
+    s = get_session()
+    try:
+        p = s.query(StudyPlan).filter(StudyPlan.id == plan_id).first()
+        if not p:
+            return f"Plano {plan_id} não encontrado."
+        alvo = (topic_title or "").strip().lower()
+        topic = next((t for t in p.topics if (t.title or "").strip().lower() == alvo), None)
+        if not topic:
+            return f"Tópico '{topic_title}' não encontrado no plano {p.title}."
+        inicio = datetime.utcnow() - timedelta(minutes=max(1, duration_min))
+        sess = StudySession(
+            plan_id=p.id, topic_id=topic.id, started_at=inicio,
+            ended_at=datetime.utcnow(), duration_min=max(1, duration_min),
+            notes=notes or None, confidence=confidence or None,
+        )
+        s.add(sess)
+        topic.logged_hours = (topic.logged_hours or 0.0) + max(1, duration_min) / 60.0
+        if topic.status == "PENDENTE":
+            topic.status = "ESTUDANDO"
+        s.commit()
+        return (f"Sessão registrada: {topic.title} ({duration_min}min"
+                + (f", confiança {confidence}/5" if confidence else "") + ").")
+    except Exception as e:  # noqa: BLE001
+        s.rollback()
+        return f"Erro: {e}"
+    finally:
+        s.close()
+
+
 ALL_TOOLS = [
     list_projects,
     get_board_summary,
@@ -385,4 +466,7 @@ ALL_TOOLS = [
     forget_memory,
     get_project_metrics,
     list_pending_todos,
+    list_study_plans,
+    get_study_plan,
+    log_study_session,
 ]
