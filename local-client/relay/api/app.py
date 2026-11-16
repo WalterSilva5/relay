@@ -2879,7 +2879,7 @@ def project_metrics_dimensions(project_id: int, exclude: str | None = None, s: S
     if fora:
         tasks = [t for t in tasks if t.column_id not in fora]
     dados = aggregate_dimensions(tasks, done_ids, colunas)
-    # totais de primeiro nível: desenvolvimento concluído x totalmente entregue
+    # totais de primeiro nível: desenvolvimento concluído x finalizado
     from relay.dimensions import dev_done_column as _dev_col_api
     _cd = _dev_col_api(colunas)
     _dev_ids = {c.id for c in colunas if _cd is not None and c.order >= _cd.order} or set(done_ids)

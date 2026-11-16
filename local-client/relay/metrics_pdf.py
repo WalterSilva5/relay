@@ -98,7 +98,7 @@ def collect_metrics(session, project, exclude_ids: set[int] | None = None) -> di
     done = sum(1 for t in tasks if t.column_id in done_ids)
     pct = round(done / total * 100) if total else 0
     # dois status de primeiro nível: desenvolvimento concluído (Dev Box ou
-    # depois) x totalmente entregue (coluna de conclusão/aceite)
+    # depois) x finalizado (coluna de conclusão/aceite)
     from relay.dimensions import dev_done_column as _dev_col_fn
     _col_dev_top = _dev_col_fn(cols)
     dev_ids_top = {c.id for c in cols if _col_dev_top is not None and c.order >= _col_dev_top.order} or set(done_ids)
@@ -424,8 +424,8 @@ def _kpi_row(m: dict, st: dict) -> Table:
     dados = [[
         celula(f"{m.get('developedPct', m['pct'])}%", "DESENVOLVIMENTO CONCLUÍDO"),
         celula(f"{m.get('developed', m['done'])}/{m['total']}", "DEV CONCLUÍDOS"),
-        celula(f"{m['pct']}%", "TOTALMENTE ENTREGUE"),
-        celula(f"{m['done']}/{m['total']}", "ENTREGUES"),
+        celula(f"{m['pct']}%", "FINALIZADO"),
+        celula(f"{m['done']}/{m['total']}", "FINALIZADOS"),
         celula(m["abertas"], "EM ABERTO"),
         celula(m["vencidas"], "VENCIDAS"),
         celula(m["paradas"], "PARADAS 14d+"),
@@ -534,7 +534,7 @@ def build_metrics_pdf(session, project, exclude_ids: set[int] | None = None) -> 
     flow.append(Paragraph(f"Métricas do projeto — {project.key} · {project.name}", st["h1"]))
     flow.append(Paragraph(
         f"Gerado em {m['gerado_em'].strftime('%d/%m/%Y %H:%M')} · "
-        f"{m['total']} tarefas no board · dev concluído {m.get('developedPct', m['pct'])}% · entregue {m['pct']}%"
+        f"{m['total']} tarefas no board · dev concluído {m.get('developedPct', m['pct'])}% · finalizado {m['pct']}%"
         + (f" · {m['local']} tarefa(s) local(is) fora das métricas" if m.get("local") else "")
         + (f" · {len(m.get('excluded', []))} estágio(s) fora do cálculo" if m.get("excluded") else ""),
         st["sub"],
@@ -551,7 +551,7 @@ def build_metrics_pdf(session, project, exclude_ids: set[int] | None = None) -> 
                      cor=GREEN if dev_pct == 100 else ACCENT))
     flow.append(Spacer(1, 2 * mm))
     flow.append(Paragraph(
-        f"Totalmente entregue (aceite): {m['done']}/{m['total']} · {m['pct']}%",
+        f"Finalizado (aceite): {m['done']}/{m['total']} · {m['pct']}%",
         st["small"],
     ))
     flow.append(_bar(m["pct"], width=174 * mm, height=9,
