@@ -271,6 +271,10 @@ export const teamReportUrl = (projectId, week, anonymized = false) => {
   return `/api/projects/${projectId}/team/weekly/export?${p.toString()}`
 }
 
+// Reviews semanais manuais (avaliação por pessoa)
+export const getReviews = (projectId, params = {}) =>
+  api.get(`/projects/${projectId}/reviews`, { params }).then((r) => r.data)
+
 // Análise de reunião com o contexto do projeto
 export const analyzeRecording = (id, body = {}) =>
   api.post(`/recordings/${id}/analyze`, body).then((r) => r.data)

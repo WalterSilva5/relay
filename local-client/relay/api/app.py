@@ -2303,6 +2303,192 @@ def delete_member(member_id: int, s: Session = Depends(db)):
 
 
 # ---------------------------------------------------------------------------
+# Reviews semanais manuais (avaliação por pessoa)
+# ---------------------------------------------------------------------------
+
+
+def _get_review(s, project_id: int, review_id: int):
+    from relay.db.models import Review
+    r = s.query(Review).filter(Review.id == review_id,
+                               Review.project_id == project_id).first()
+    if not r:
+        raise HTTPException(404, "Review not found")
+    return r
+
+
+def _review_dict(r) -> dict:
+    return {
+        "id": r.id, "projectId": r.project_id,
+        "personName": r.person_name, "evaluator": r.evaluator or "",
+        "periodStart": r.period_start.isoformat() if r.period_start else None,
+        "periodEnd": r.period_end.isoformat() if r.period_end else None,
+        "techScore": r.tech_score, "softScore": r.soft_score,
+        "summaryOneLine": r.summary_one_line or "",
+        "factsMd": r.facts_md or "", "codeMd": r.code_md or "",
+        "commentMd": r.comment_md or "", "evidenceMd": r.evidence_md or "",
+        "nextWeekMd": r.next_week_md or "",
+        "status": r.status, "sentAt": r.sent_at.isoformat() if r.sent_at else None,
+        "source": r.source,
+        "createdAt": r.created_at.isoformat() if r.created_at else None,
+        "updatedAt": r.updated_at.isoformat() if r.updated_at else None,
+    }
+
+
+def _parse_period(raw: str | None, field: str):
+    from datetime import date as _date
+    if not raw:
+        raise HTTPException(400, f"{field} é obrigatório (AAAA-MM-DD)")
+    try:
+        return _date.fromisoformat(str(raw)[:10])
+    except ValueError:
+        raise HTTPException(400, f"{field} inválido (use AAAA-MM-DD)")
+
+
+@app.post("/api/projects/{project_id}/reviews", status_code=201)
+def create_review(project_id: int, body: dict, s: Session = Depends(db)):
+    """Cria um review em rascunho (source MANUAL por padrão)."""
+    from relay.db.models import Review
+    if not s.query(Project).filter(Project.id == project_id).first():
+        raise HTTPException(404, "Project not found")
+    if not (body.get("personName") or "").strip():
+        raise HTTPException(400, "personName é obrigatório")
+    r = Review(
+        project_id=project_id,
+        person_name=body["personName"].strip(),
+        evaluator=(body.get("evaluator") or "").strip(),
+        period_start=_parse_period(body.get("periodStart"), "periodStart"),
+        period_end=_parse_period(body.get("periodEnd"), "periodEnd"),
+        tech_score=body.get("techScore"), soft_score=body.get("softScore"),
+        summary_one_line=(body.get("summaryOneLine") or "").strip(),
+        facts_md=body.get("factsMd") or "", code_md=body.get("codeMd") or "",
+        comment_md=body.get("commentMd") or "", evidence_md=body.get("evidenceMd") or "",
+        next_week_md=body.get("nextWeekMd") or "",
+        status="DRAFT",
+        source=(body.get("source") or "MANUAL").upper(),
+    )
+    s.add(r)
+    s.commit()
+    s.refresh(r)
+    return _review_dict(r)
+
+
+@app.get("/api/projects/{project_id}/reviews")
+def list_reviews(project_id: int, person: str | None = None,
+                 status: str | None = None, s: Session = Depends(db)):
+    """Lista reviews do projeto (mais recentes primeiro). Filtros: person, status."""
+    from relay.db.models import Review
+    if not s.query(Project).filter(Project.id == project_id).first():
+        raise HTTPException(404, "Project not found")
+    q = s.query(Review).filter(Review.project_id == project_id)
+    if person:
+        q = q.filter(Review.person_name == person)
+    if status:
+        q = q.filter(Review.status == status.upper())
+    out = q.order_by(Review.period_start.desc(), Review.id.desc()).all()
+    return [_review_dict(r) for r in out]
+
+
+@app.get("/api/projects/{project_id}/reviews/{review_id}")
+def get_review(project_id: int, review_id: int, s: Session = Depends(db)):
+    return _review_dict(_get_review(s, project_id, review_id))
+
+
+@app.patch("/api/projects/{project_id}/reviews/{review_id}")
+def update_review(project_id: int, review_id: int, body: dict, s: Session = Depends(db)):
+    """Autosave do rascunho (qualquer campo). Não muda o status sozinho."""
+    from datetime import datetime
+    r = _get_review(s, project_id, review_id)
+    mapa = {
+        "personName": "person_name", "evaluator": "evaluator",
+        "techScore": "tech_score", "softScore": "soft_score",
+        "summaryOneLine": "summary_one_line", "factsMd": "facts_md",
+        "codeMd": "code_md", "commentMd": "comment_md",
+        "evidenceMd": "evidence_md", "nextWeekMd": "next_week_md",
+    }
+    for campo, coluna in mapa.items():
+        if campo in body:
+            v = body[campo]
+            setattr(r, coluna, v.strip() if isinstance(v, str) else v)
+    if "periodStart" in body:
+        r.period_start = _parse_period(body["periodStart"], "periodStart")
+    if "periodEnd" in body:
+        r.period_end = _parse_period(body["periodEnd"], "periodEnd")
+    r.updated_at = datetime.utcnow()
+    s.commit()
+    s.refresh(r)
+    return _review_dict(r)
+
+
+@app.post("/api/projects/{project_id}/reviews/{review_id}/duplicate", status_code=201)
+def duplicate_review(project_id: int, review_id: int, s: Session = Depends(db)):
+    """Duplica da semana anterior: período +7d, notas copiadas, textos zerados."""
+    from datetime import timedelta
+    from relay.db.models import Review
+    origem = _get_review(s, project_id, review_id)
+    r = Review(
+        project_id=project_id, person_name=origem.person_name,
+        evaluator=origem.evaluator,
+        period_start=origem.period_start + timedelta(days=7),
+        period_end=origem.period_end + timedelta(days=7),
+        tech_score=origem.tech_score, soft_score=origem.soft_score,
+        summary_one_line="", facts_md="", code_md="",
+        comment_md="", evidence_md="", next_week_md="",
+        status="DRAFT", source="MANUAL",
+    )
+    s.add(r)
+    s.commit()
+    s.refresh(r)
+    return _review_dict(r)
+
+
+@app.post("/api/projects/{project_id}/reviews/{review_id}/send")
+def send_review(project_id: int, review_id: int, s: Session = Depends(db)):
+    """Marca como enviado (valida as regras que bloqueiam)."""
+    from datetime import datetime
+    from relay.reviews import validate_export
+    r = _get_review(s, project_id, review_id)
+    erros = validate_export(r)
+    if erros:
+        raise HTTPException(400, "; ".join(erros))
+    r.status = "SENT"
+    r.sent_at = datetime.utcnow()
+    r.updated_at = r.sent_at
+    s.commit()
+    s.refresh(r)
+    return _review_dict(r)
+
+
+@app.post("/api/projects/{project_id}/reviews/{review_id}/reopen")
+def reopen_review(project_id: int, review_id: int, s: Session = Depends(db)):
+    """Volta para rascunho (permite corrigir depois de enviado)."""
+    from datetime import datetime
+    r = _get_review(s, project_id, review_id)
+    r.status = "DRAFT"
+    r.sent_at = None
+    r.updated_at = datetime.utcnow()
+    s.commit()
+    s.refresh(r)
+    return _review_dict(r)
+
+
+@app.get("/api/projects/{project_id}/reviews/{review_id}/export.md")
+def export_review_md(project_id: int, review_id: int, s: Session = Depends(db)):
+    """Exporta o .md no formato do vault (`AAAA-MM-DD-review-semanal-<pessoa>.md`)."""
+    from fastapi.responses import Response
+    from relay.reviews import build_markdown, export_filename, validate_export
+    r = _get_review(s, project_id, review_id)
+    erros = validate_export(r)
+    if erros:
+        raise HTTPException(400, "; ".join(erros))
+    return Response(
+        content=build_markdown(r),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{export_filename(r.person_name, r.period_end)}"'},
+    )
+
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Project links (atalhos com título)
 # ---------------------------------------------------------------------------
 
