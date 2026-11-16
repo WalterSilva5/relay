@@ -841,6 +841,11 @@ def _run_light_migrations(engine):
         if "daily_docs_path" not in pcols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE projects ADD COLUMN daily_docs_path VARCHAR(500) DEFAULT ''"))
+    if "study_plans" in tables:
+        spcols = {c["name"] for c in insp.get_columns("study_plans")}
+        if "docs_path" not in spcols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE study_plans ADD COLUMN docs_path VARCHAR(500) DEFAULT ''"))
 
 
 def init_db(db_path=None):
@@ -1174,6 +1179,7 @@ class StudyPlan(Base):
     target_date = Column(DateTime)
     resources = Column(Text)  # JSON string
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="SET NULL"))
+    docs_path = Column(String(500), default="")  # vault (pasta) dos docs de estudo do plano
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

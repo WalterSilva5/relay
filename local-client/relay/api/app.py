@@ -434,6 +434,7 @@ class StudyPlanCreate(BaseModel):
     startDate: Optional[str] = None
     targetDate: Optional[str] = None
     resources: Optional[list] = None
+    docsPath: Optional[str] = None  # vault (pasta) dos docs de estudo do plano
 
 
 class StudyPlanUpdate(BaseModel):
@@ -444,6 +445,7 @@ class StudyPlanUpdate(BaseModel):
     startDate: Optional[str] = None
     targetDate: Optional[str] = None
     resources: Optional[list] = None
+    docsPath: Optional[str] = None
 
 
 class StudyTopicCreate(BaseModel):
@@ -520,11 +522,24 @@ def _plan_dict(p: "StudyPlan", include_topics: bool = False) -> dict:
         "category": p.category, "status": p.status,
         "startDate": p.start_date.isoformat() if p.start_date else None,
         "targetDate": p.target_date.isoformat() if p.target_date else None,
+        "docsPath": getattr(p, "docs_path", "") or "",
         "progress": progress, "doneTopics": done, "totalTopics": total,
         "createdAt": p.created_at.isoformat() if p.created_at else None,
         "updatedAt": p.updated_at.isoformat() if p.updated_at else None,
         **({"topics": [_topic_dict(t) for t in p.topics if t.parent_id is None]} if include_topics else {}),
     }
+
+
+def _require_abs_dir(raw: str, field: str) -> str:
+    """Valida pasta vinculada (vault): precisa ser caminho absoluto."""
+    from pathlib import Path as _Path
+    v = (raw or "").strip()
+    if not v:
+        return ""
+    v = str(_Path(v).expanduser())
+    if not v.startswith("/"):
+        raise HTTPException(400, f"{field} deve ser absoluto")
+    return v
 
 
 def _session_dict(s: "StudySession") -> dict:
@@ -3709,6 +3724,7 @@ def create_study_plan(body: StudyPlanCreate, s: Session = Depends(db)):
         start_date=datetime.fromisoformat(body.startDate) if body.startDate else None,
         target_date=datetime.fromisoformat(body.targetDate) if body.targetDate else None,
         resources=json.dumps(body.resources) if body.resources else None,
+        docs_path=_require_abs_dir(body.docsPath or "", "docsPath"),
     )
     s.add(p)
     s.commit()
@@ -3755,6 +3771,8 @@ def update_study_plan(plan_id: int, body: StudyPlanUpdate, s: Session = Depends(
         p.target_date = datetime.fromisoformat(data["targetDate"]) if data["targetDate"] else None
     if "resources" in data:
         p.resources = json.dumps(data["resources"]) if data["resources"] else None
+    if "docsPath" in data:
+        p.docs_path = _require_abs_dir(data["docsPath"] or "", "docsPath")
     p.updated_at = datetime.utcnow()
     s.commit()
     s.refresh(p)
@@ -4237,17 +4255,16 @@ class AssistantChat(BaseModel):
 def assistant_chat(body: AssistantChat):
     from relay.ai.agent import run_agent
     try:
-        reply = run_agent(body.messages)
         return {"reply": reply}
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(e))
 
 
 class StudyAssistBody(BaseModel):
-    action: str          # explain|exercises|quiz|flashcards|ask|roadmap_questions|suggest_topics
+    action: str          # explain|exercises|quiz|flashcards|ask|roadmap_questions|suggest_topics|diagnose
     topic: str = ""
     plan: str = ""
-    question: str = ""
+    question: str = ""   # dúvida (ask) ou ponto de travamento (diagnose)
     existing: list[str] = []
     context: str = ""    # respostas/contexto do estudante (fluxo de roadmap)
 
@@ -4255,8 +4272,9 @@ class StudyAssistBody(BaseModel):
 @app.post("/api/study/assistant")
 def study_assistant(body: StudyAssistBody):
     """Assistente de estudo sob demanda. Retorna {action, result}: result é
-    markdown (texto), lista de perguntas (roadmap_questions) ou lista de
-    {title, estimate_hours} (suggest_topics)."""
+    markdown (texto), lista de perguntas (roadmap_questions), lista de
+    {title, estimate_hours} (suggest_topics) ou {markdown, prerequisites}
+    (diagnose)."""
     from relay.study.assistant import run_action
     try:
         result = run_action(
@@ -4266,6 +4284,69 @@ def study_assistant(body: StudyAssistBody):
         return {"action": body.action, "result": result}
     except Exception as e:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(e))
+
+
+def _study_docs_dir(s, plan_id: int):
+    """Pasta do vault vinculada ao plano. Erro 400 se não configurada."""
+    from pathlib import Path
+    p = s.query(StudyPlan).filter(StudyPlan.id == plan_id).first()
+    if not p:
+        raise HTTPException(404, "Plano nao encontrado")
+    raiz = (getattr(p, "docs_path", "") or "").strip()
+    if not raiz:
+        raise HTTPException(400, "Plano sem vault vinculado (docsPath)")
+    base = Path(raiz).expanduser()
+    if not base.is_dir():
+        raise HTTPException(400, f"Pasta do vault não existe: {base}")
+    return base
+
+
+class StudyDocSave(BaseModel):
+    title: str      # vira o nome do arquivo
+    content: str    # markdown a persistir
+
+
+def _slug_filename(title: str) -> str:
+    import re
+    import unicodedata
+    sem_acento = unicodedata.normalize("NFKD", title or "").encode("ascii", "ignore").decode()
+    slug = re.sub(r"[^a-z0-9]+", "-", sem_acento.lower()).strip("-") or "nota"
+    return slug[:60]
+
+
+@app.get("/api/study/plans/{plan_id}/docs")
+def list_study_docs(plan_id: int, s: Session = Depends(db)):
+    """Docs .md do vault vinculado ao plano (mais recentes primeiro)."""
+    from datetime import datetime as _dt
+    base = _study_docs_dir(s, plan_id)
+    docs = []
+    for f in sorted(base.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True):
+        try:
+            st = f.stat()
+            docs.append({"name": f.name, "mtime": _dt.fromtimestamp(st.st_mtime).isoformat(),
+                         "size": st.st_size})
+        except OSError:
+            continue
+    return {"planId": plan_id, "path": str(base), "docs": docs}
+
+
+@app.post("/api/study/plans/{plan_id}/save-doc", status_code=201)
+def save_study_doc(plan_id: int, body: StudyDocSave, s: Session = Depends(db)):
+    """Persiste um conteúdo gerado pelo assistente como .md no vault do plano."""
+    from datetime import date as _date
+    base = _study_docs_dir(s, plan_id)
+    if not (body.content or "").strip():
+        raise HTTPException(400, "content vazio")
+    slug = _slug_filename(body.title)
+    nome = f"{_date.today().isoformat()}-{slug}.md"
+    destino = base / nome
+    n = 2
+    while destino.exists():
+        destino = base / f"{_date.today().isoformat()}-{slug}-{n}.md"
+        n += 1
+    titulo = (body.title or "").strip() or slug
+    destino.write_text(f"# {titulo}\n\n{body.content.strip()}\n", encoding="utf-8")
+    return {"planId": plan_id, "file": destino.name, "path": str(destino)}
 
 
 @app.post("/api/study/plans/with-files")

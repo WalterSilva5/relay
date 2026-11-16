@@ -85,6 +85,35 @@ _ROADMAP_QUESTIONS_PROMPT = (
     "{{\"questions\": [\"pergunta 1\", \"pergunta 2\", ...]}}"
 )
 
+_DIAGNOSE_SYSTEM = (
+    "Você é um mentor que diagnostica dificuldade de aprendizado. Sua premissa: "
+    "quando alguém trava num tópico, quase nunca é falta de capacidade — é um "
+    "pré-requisito faltando. Você reconstrói a base a partir do zero, do mais "
+    "básico ao ponto de travamento. Responda SEMPRE apenas com JSON válido, sem "
+    "texto fora do JSON."
+)
+
+_DIAGNOSE_PROMPT = (
+    "O estudante travou no tópico \"{topic}\" (plano \"{plan}\").\n"
+    "Onde ele trava: {question}\n"
+    "{existing_ctx}\n"
+    "Diagnostique quais pré-requisitos estão faltando e monte o caminho de "
+    "reconstrução da base, do mais básico até o ponto de travamento.\n"
+    "Retorne APENAS este JSON:\n"
+    "{{\"markdown\": \"diagnóstico em Markdown, em português do Brasil, com as seções: "
+    "## Onde você travou (reformule a dificuldade em 1-2 frases), "
+    "## Diagnóstico (qual base está faltando e por quê, sem culpar capacidade), "
+    "## Pré-requisitos em ordem (lista numerada do mais básico ao ponto de travamento, "
+    "1 frase sobre cada um), "
+    "## Como validar cada um (1 teste/exercício rápido por pré-requisito), "
+    "## Quando voltar ao tópico (critério objetivo)\", "
+    "\"prerequisites\": [{{\"title\": \"nome curto do pré-requisito\", "
+    "\"estimate_hours\": número inteiro de horas}}]}}\n"
+    "Regras: 2 a 6 pré-requisitos, do mais básico primeiro; títulos curtos; "
+    "seja específico (nada de 'estude mais a base'); não invente tópicos fora "
+    "do caminho até o ponto de travamento."
+)
+
 TEXT_ACTIONS = set(_PROMPTS.keys())
 
 
@@ -158,14 +187,56 @@ def suggest_topics(plan: str, existing: list[str] | None = None, context: str = 
     return topics
 
 
+def diagnose_prerequisites(topic: str, *, plan: str = "", stuck: str = "",
+                           existing: list[str] | None = None) -> dict:
+    """Diagnostica pré-requisitos faltantes a partir do ponto de travamento.
+
+    Premissa (lelouch.dev): travar num tópico quase nunca é falta de
+    capacidade — é lacuna de pré-requisito. Devolve
+    `{markdown, prerequisites}`: o diagnóstico legível e a lista de
+    pré-requisitos em ordem para adicionar ao plano com 1 clique.
+    """
+    existing = existing or []
+    existing_ctx = (
+        "Tópicos que o estudante diz já dominar (não repita como novidade): " + ", ".join(existing)
+        if existing else "Sem informação sobre o que o estudante já domina."
+    )
+    llm = build_chat_model(temperature=0.3)
+    user = _DIAGNOSE_PROMPT.format(
+        topic=topic or "(não informado)", plan=plan or "(sem plano)",
+        question=(stuck or "").strip() or "(não detalhou onde trava)",
+        existing_ctx=existing_ctx,
+    )
+    resp = llm.invoke([("system", _DIAGNOSE_SYSTEM), ("user", user)])
+    parsed = _parse_json_response(getattr(resp, "content", str(resp)))
+    markdown = ""
+    prereqs: list[dict] = []
+    if isinstance(parsed, dict):
+        markdown = str(parsed.get("markdown", "") or "").strip()
+        for item in parsed.get("prerequisites", []) or []:
+            if isinstance(item, dict) and item.get("title"):
+                prereqs.append({
+                    "title": str(item["title"]).strip()[:200],
+                    "estimate_hours": item.get("estimate_hours"),
+                })
+            elif isinstance(item, str) and item.strip():
+                prereqs.append({"title": item.strip()[:200], "estimate_hours": None})
+    if not markdown:
+        # fallback: devolve o texto bruto em vez de falhar
+        markdown = getattr(resp, "content", str(resp)).strip()
+    return {"markdown": markdown, "prerequisites": prereqs}
+
+
 def run_action(action: str, *, topic: str = "", plan: str = "",
                question: str = "", existing: list[str] | None = None, context: str = ""):
-    """Despacha uma ação. Retorna str (texto), list[str] (roadmap_questions) ou
-    list[dict] (suggest_topics)."""
+    """Despacha uma ação. Retorna str (texto), list[str] (roadmap_questions),
+    list[dict] (suggest_topics) ou dict (diagnose: {markdown, prerequisites})."""
     if action == "roadmap_questions":
         return roadmap_questions(plan or topic, existing)
     if action == "suggest_topics":
         return suggest_topics(plan or topic, existing, context)
+    if action == "diagnose":
+        return diagnose_prerequisites(topic or plan, plan=plan, stuck=question, existing=existing)
     return generate_text(action, topic=topic, plan=plan, question=question)
 
 
