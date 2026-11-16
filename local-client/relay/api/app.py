@@ -717,6 +717,7 @@ def _project_dict(p: Project) -> dict:
         "targetDate": p.target_date.isoformat() if getattr(p, "target_date", None) else None,
         "hideAssignee": bool(getattr(p, "hide_assignee", False)),
         "dailyDocsPath": getattr(p, "daily_docs_path", "") or "",
+        "prReviewsPath": getattr(p, "pr_reviews_path", "") or "",
         "links": [_link_dict(l) for l in getattr(p, "links", [])],
         "createdAt": p.created_at.isoformat() if p.created_at else None,
     }
@@ -1063,6 +1064,15 @@ def update_project(project_id: int, body: dict, s: Session = Depends(db)):
                 raise HTTPException(400, "dailyDocsPath deve ser absoluto")
             raw = abs_raw
         p.daily_docs_path = raw
+    if "prReviewsPath" in body or "pr_reviews_path" in body:
+        from pathlib import Path as _Path
+        raw = (body.get("prReviewsPath", body.get("pr_reviews_path")) or "").strip()
+        if raw:
+            abs_raw = str(_Path(raw).expanduser())
+            if not abs_raw.startswith("/"):
+                raise HTTPException(400, "prReviewsPath deve ser absoluto")
+            raw = abs_raw
+        p.pr_reviews_path = raw
     s.commit()
     return _project_dict(p)
 
@@ -2488,6 +2498,273 @@ def export_review_md(project_id: int, review_id: int, s: Session = Depends(db)):
 
 
 # ---------------------------------------------------------------------------
+# Reviews de PR (vinculados ao board/projeto)
+# ---------------------------------------------------------------------------
+
+
+def _get_pr_review(s, project_id: int, review_id: int):
+    from relay.db.models import PrReview
+    r = s.query(PrReview).filter(PrReview.id == review_id,
+                                 PrReview.project_id == project_id).first()
+    if not r:
+        raise HTTPException(404, "PR review not found")
+    return r
+
+
+def _pr_review_dict(r) -> dict:
+    return {
+        "id": r.id, "projectId": r.project_id,
+        "repo": r.repo or "", "prNumber": r.pr_number, "prTitle": r.pr_title or "",
+        "prAuthor": r.pr_author or "", "prUrl": r.pr_url or "",
+        "sourceBranch": r.source_branch or "", "targetBranch": r.target_branch or "",
+        "mergeBase": r.merge_base or "",
+        "reviewDate": r.review_date.isoformat() if r.review_date else None,
+        "verdict": r.verdict or "", "vote": r.vote or "",
+        "commentPublished": r.comment_published or "",
+        "oneSentence": r.one_sentence or "", "flowMd": r.flow_md or "",
+        "implementationMd": r.implementation_md or "", "behaviorMd": r.behavior_md or "",
+        "checkedBase": bool(r.checked_base), "checkedConflicts": bool(r.checked_conflicts),
+        "checkedTests": bool(r.checked_tests), "checkedParity": bool(r.checked_parity),
+        "checkedMulti": bool(r.checked_multi),
+        "testsRun": r.tests_run, "testsFailures": r.tests_failures,
+        "testsSkipped": r.tests_skipped,
+        "findingsMd": r.findings_md or "", "questionsMd": r.questions_md or "",
+        "finalCommentMd": r.final_comment_md or "", "evidenceMd": r.evidence_md or "",
+        "status": r.status, "sentAt": r.sent_at.isoformat() if r.sent_at else None,
+        "createdAt": r.created_at.isoformat() if r.created_at else None,
+        "updatedAt": r.updated_at.isoformat() if r.updated_at else None,
+    }
+
+
+_PR_REVIEW_FIELDS = {
+    "repo": "repo", "prNumber": "pr_number", "prTitle": "pr_title",
+    "prAuthor": "pr_author", "prUrl": "pr_url", "sourceBranch": "source_branch",
+    "targetBranch": "target_branch", "mergeBase": "merge_base",
+    "verdict": "verdict", "vote": "vote", "commentPublished": "comment_published",
+    "oneSentence": "one_sentence", "flowMd": "flow_md",
+    "implementationMd": "implementation_md", "behaviorMd": "behavior_md",
+    "checkedBase": "checked_base", "checkedConflicts": "checked_conflicts",
+    "checkedTests": "checked_tests", "checkedParity": "checked_parity",
+    "checkedMulti": "checked_multi", "testsRun": "tests_run",
+    "testsFailures": "tests_failures", "testsSkipped": "tests_skipped",
+    "findingsMd": "findings_md", "questionsMd": "questions_md",
+    "finalCommentMd": "final_comment_md", "evidenceMd": "evidence_md",
+}
+
+
+def _apply_pr_review_body(r, body: dict):
+    from datetime import date as _date
+    for campo, coluna in _PR_REVIEW_FIELDS.items():
+        if campo in body:
+            v = body[campo]
+            setattr(r, coluna, v.strip() if isinstance(v, str) else v)
+    if "reviewDate" in body:
+        raw = (body["reviewDate"] or "").strip()
+        if raw:
+            try:
+                r.review_date = _date.fromisoformat(raw[:10])
+            except ValueError:
+                raise HTTPException(400, "reviewDate inválida (use AAAA-MM-DD)")
+        else:
+            r.review_date = None
+    if r.verdict and r.verdict not in ("APROVAR", "APROVAR_COM_SUGESTOES", "AGUARDANDO_AUTOR", "REJEITAR"):
+        raise HTTPException(400, f"verdict inválido: {r.verdict}")
+
+
+@app.post("/api/projects/{project_id}/pr-reviews", status_code=201)
+def create_pr_review(project_id: int, body: dict, s: Session = Depends(db)):
+    """Cria um review de PR em rascunho (vinculado ao board/projeto)."""
+    from datetime import date as _date
+    from relay.db.models import PrReview
+    if not s.query(Project).filter(Project.id == project_id).first():
+        raise HTTPException(404, "Project not found")
+    r = PrReview(project_id=project_id, status="DRAFT",
+                 review_date=_date.today())
+    _apply_pr_review_body(r, body)
+    s.add(r)
+    s.commit()
+    s.refresh(r)
+    return _pr_review_dict(r)
+
+
+@app.get("/api/projects/{project_id}/pr-reviews")
+def list_pr_reviews(project_id: int, repo: str | None = None,
+                    author: str | None = None, status: str | None = None,
+                    verdict: str | None = None, s: Session = Depends(db)):
+    """Lista reviews de PR (mais recentes primeiro). Filtros: repo, author, status, verdict."""
+    from relay.db.models import PrReview
+    if not s.query(Project).filter(Project.id == project_id).first():
+        raise HTTPException(404, "Project not found")
+    q = s.query(PrReview).filter(PrReview.project_id == project_id)
+    if repo:
+        q = q.filter(PrReview.repo == repo)
+    if author:
+        q = q.filter(PrReview.pr_author == author)
+    if status:
+        q = q.filter(PrReview.status == status.upper())
+    if verdict:
+        q = q.filter(PrReview.verdict == verdict.upper())
+    out = q.order_by(PrReview.review_date.desc(), PrReview.id.desc()).all()
+    return [_pr_review_dict(r) for r in out]
+
+
+@app.get("/api/projects/{project_id}/pr-reviews/diff")
+def pr_review_diff(project_id: int, repo_path: str, base: str, branch: str,
+                   s: Session = Depends(db)):
+    """Referência local: `git diff --stat base...branch` + commits (somente leitura).
+
+    `repo_path` precisa ser um caminho absoluto existente. Sem shell, com timeout.
+    """
+    import re as _re
+    import subprocess
+    from pathlib import Path
+    if not s.query(Project).filter(Project.id == project_id).first():
+        raise HTTPException(404, "Project not found")
+    raiz = Path((repo_path or "").strip()).expanduser()
+    if not str(raiz).startswith("/") or not (raiz / ".git").is_dir():
+        raise HTTPException(400, "repo_path deve ser um repo git local (caminho absoluto)")
+    for ref in (base, branch):
+        if not _re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._/\-]{0,200}", (ref or "").strip()):
+            raise HTTPException(400, f"ref inválida: {ref}")
+    try:
+        stat = subprocess.run(
+            ["git", "-C", str(raiz), "diff", "--stat", f"{base.strip()}...{branch.strip()}"],
+            capture_output=True, text=True, timeout=20,
+        )
+        log = subprocess.run(
+            ["git", "-C", str(raiz), "log", "--oneline", f"{base.strip()}..{branch.strip()}"],
+            capture_output=True, text=True, timeout=20,
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(400, "git demorou demais (timeout)")
+    if stat.returncode != 0:
+        raise HTTPException(400, (stat.stderr or "git diff falhou").strip()[:300])
+    return {
+        "stat": (stat.stdout or "").strip(),
+        "commits": (log.stdout or "").strip(),
+        "base": base.strip(),
+        "branch": branch.strip(),
+    }
+
+
+@app.get("/api/projects/{project_id}/pr-reviews/{review_id}")
+def get_pr_review(project_id: int, review_id: int, s: Session = Depends(db)):
+    return _pr_review_dict(_get_pr_review(s, project_id, review_id))
+
+
+@app.patch("/api/projects/{project_id}/pr-reviews/{review_id}")
+def update_pr_review(project_id: int, review_id: int, body: dict, s: Session = Depends(db)):
+    """Autosave do rascunho (qualquer campo). Não muda o status sozinho."""
+    from datetime import datetime
+    r = _get_pr_review(s, project_id, review_id)
+    _apply_pr_review_body(r, body)
+    r.updated_at = datetime.utcnow()
+    s.commit()
+    s.refresh(r)
+    return _pr_review_dict(r)
+
+
+@app.post("/api/projects/{project_id}/pr-reviews/{review_id}/duplicate", status_code=201)
+def duplicate_pr_review(project_id: int, review_id: int, s: Session = Depends(db)):
+    """Duplica a revisão anterior do mesmo PR (re-revisão): copia o conteúdo,
+    zera veredito/voto e volta a DRAFT."""
+    from relay.db.models import PrReview
+    origem = _get_pr_review(s, project_id, review_id)
+    r = PrReview(
+        project_id=project_id, repo=origem.repo, pr_number=origem.pr_number,
+        pr_title=origem.pr_title, pr_author=origem.pr_author, pr_url=origem.pr_url,
+        source_branch=origem.source_branch, target_branch=origem.target_branch,
+        merge_base=origem.merge_base, review_date=origem.review_date,
+        verdict="", vote="", comment_published="",
+        one_sentence=origem.one_sentence, flow_md=origem.flow_md,
+        implementation_md=origem.implementation_md, behavior_md=origem.behavior_md,
+        checked_base=origem.checked_base, checked_conflicts=origem.checked_conflicts,
+        checked_tests=origem.checked_tests, checked_parity=origem.checked_parity,
+        checked_multi=origem.checked_multi, tests_run=origem.tests_run,
+        tests_failures=origem.tests_failures, tests_skipped=origem.tests_skipped,
+        findings_md=origem.findings_md, questions_md=origem.questions_md,
+        final_comment_md=origem.final_comment_md, evidence_md=origem.evidence_md,
+        status="DRAFT",
+    )
+    s.add(r)
+    s.commit()
+    s.refresh(r)
+    return _pr_review_dict(r)
+
+
+@app.post("/api/projects/{project_id}/pr-reviews/{review_id}/send")
+def send_pr_review(project_id: int, review_id: int, s: Session = Depends(db)):
+    """Marca como enviado (valida as regras que bloqueiam)."""
+    from datetime import datetime
+    from relay.pr_reviews import validate_export
+    r = _get_pr_review(s, project_id, review_id)
+    erros = validate_export(r)
+    if erros:
+        raise HTTPException(400, "; ".join(erros))
+    r.status = "SENT"
+    r.sent_at = datetime.utcnow()
+    r.updated_at = r.sent_at
+    s.commit()
+    s.refresh(r)
+    return _pr_review_dict(r)
+
+
+@app.post("/api/projects/{project_id}/pr-reviews/{review_id}/reopen")
+def reopen_pr_review(project_id: int, review_id: int, s: Session = Depends(db)):
+    """Volta para rascunho."""
+    from datetime import datetime
+    r = _get_pr_review(s, project_id, review_id)
+    r.status = "DRAFT"
+    r.sent_at = None
+    r.updated_at = datetime.utcnow()
+    s.commit()
+    s.refresh(r)
+    return _pr_review_dict(r)
+
+
+def _pr_reviews_destino(s, project_id: int):
+    """Pasta de destino configurada no projeto (obrigatória no export)."""
+    from pathlib import Path
+    p = s.query(Project).filter(Project.id == project_id).first()
+    if not p:
+        raise HTTPException(404, "Project not found")
+    base = (getattr(p, "pr_reviews_path", "") or "").strip()
+    if not base:
+        raise HTTPException(400, "Projeto sem pasta de destino (prReviewsPath)")
+    dest = Path(base).expanduser()
+    if not dest.is_dir():
+        raise HTTPException(400, f"Pasta de destino não existe: {dest}")
+    return dest
+
+
+@app.get("/api/projects/{project_id}/pr-reviews/{review_id}/export.md")
+def export_pr_review_md(project_id: int, review_id: int, s: Session = Depends(db)):
+    """Exporta o .md no formato do template (`NN-review-pr-<id>-<slug>.md`).
+
+    Numera a partir dos arquivos existentes na pasta de destino e grava o
+    arquivo lá (export explícito, sem sincronização automática)."""
+    from fastapi.responses import Response
+    from relay.pr_reviews import (
+        build_markdown,
+        export_filename,
+        next_number,
+        validate_export,
+    )
+    r = _get_pr_review(s, project_id, review_id)
+    erros = validate_export(r)
+    if erros:
+        raise HTTPException(400, "; ".join(erros))
+    dest = _pr_reviews_destino(s, project_id)
+    nome = export_filename(next_number(dest), r.pr_number, r.pr_title)
+    (dest / nome).write_text(build_markdown(r), encoding="utf-8")
+    return Response(
+        content=build_markdown(r),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{nome}"'},
+    )
+
+
+
 # ---------------------------------------------------------------------------
 # Project links (atalhos com título)
 # ---------------------------------------------------------------------------

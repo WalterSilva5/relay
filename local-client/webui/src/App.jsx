@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard.jsx'
 import MeuDia from './pages/MeuDia.jsx'
 import Estudos from './pages/Estudos.jsx'
 import Reviews from './pages/Reviews.jsx'
+import PrReviews from './pages/PrReviews.jsx'
 import Projects from './pages/Projects.jsx'
 import Board from './pages/Board.jsx'
 import Assistente from './pages/Assistente.jsx'
@@ -47,6 +48,7 @@ function Sidebar({ onNavigate, onCollapse }) {
     ['/time', t('Time'), '👥'],
     ['/reunioes', t('Reuniões'), '🎙️'],
     ['/reviews', t('Reviews'), '📋'],
+    ['/reviews-pr', t('Reviews de PR'), '🔎'],
     ['/assistente', t('Assistente'), '💬'],
     ['/todos', t('TODOs'), '✅'],
     ['/ferramentas', t('Ferramentas'), '🧰'],
@@ -176,6 +178,7 @@ export default function App() {
           <Route path="/time" element={<Time />} />
           <Route path="/reunioes" element={<Reunioes />} />
           <Route path="/reviews" element={<Reviews />} />
+          <Route path="/reviews-pr" element={<PrReviews />} />
           <Route path="/todos" element={<Todos />} />
           <Route path="/labels" element={<Labels />} />
           <Route path="/biblioteca" element={<Biblioteca />} />

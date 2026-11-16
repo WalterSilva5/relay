@@ -165,6 +165,7 @@ class Project(Base):
     target_date = Column(DateTime)  # previsão de entrega do projeto (contagem regressiva)
     hide_assignee = Column(Boolean, default=True)  # oculta "Por responsável" (métricas e PDF)
     daily_docs_path = Column(String(500), default="")  # raiz dos docs de daily no vault (avanço ontem→hoje)
+    pr_reviews_path = Column(String(500), default="")  # pasta destino dos reviews de PR (NN-review-pr-<id>-<slug>.md)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     columns = relationship("BoardColumn", back_populates="project", cascade="all,delete-orphan", order_by="BoardColumn.order")
@@ -841,6 +842,9 @@ def _run_light_migrations(engine):
         if "daily_docs_path" not in pcols:
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE projects ADD COLUMN daily_docs_path VARCHAR(500) DEFAULT ''"))
+        if "pr_reviews_path" not in pcols:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE projects ADD COLUMN pr_reviews_path VARCHAR(500) DEFAULT ''"))
     if "study_plans" in tables:
         spcols = {c["name"] for c in insp.get_columns("study_plans")}
         if "docs_path" not in spcols:
@@ -1258,6 +1262,53 @@ class Review(Base):
     status = Column(String(10), default="DRAFT")  # DRAFT|SENT
     sent_at = Column(DateTime)
     source = Column(String(10), default="MANUAL")  # MANUAL|AI_DRAFT
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ---- Review de PR (avaliação de pull request, vinculada ao board/projeto) ----
+
+class PrReview(Base):
+    """Review de PR no formato do template (lideranca/reviews/TEMPLATE-review-pr.md).
+
+    Vinculado ao projeto (board). Os `checked_*` + `tests_*` montam a seção 5
+    (O que eu conferi); `findings_md` é a tabela severidade|arquivo:linha|
+    problema|sugestão; `verdict` segue as 4 caixas da seção 8 do template.
+    """
+    __tablename__ = "pr_reviews"
+
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    repo = Column(String(200), default="")
+    pr_number = Column(Integer)
+    pr_title = Column(String(300), default="")
+    pr_author = Column(String(100), default="")
+    pr_url = Column(String(500), default="")
+    source_branch = Column(String(300), default="")
+    target_branch = Column(String(300), default="")
+    merge_base = Column(String(100), default="")
+    review_date = Column(Date)
+    verdict = Column(String(30), default="")  # APROVAR|APROVAR_COM_SUGESTOES|AGUARDANDO_AUTOR|REJEITAR
+    vote = Column(String(50), default="")
+    comment_published = Column(String(50), default="")
+    one_sentence = Column(String(200), default="")
+    flow_md = Column(Text, default="")
+    implementation_md = Column(Text, default="")
+    behavior_md = Column(Text, default="")
+    checked_base = Column(Boolean, default=False)
+    checked_conflicts = Column(Boolean, default=False)
+    checked_tests = Column(Boolean, default=False)
+    checked_parity = Column(Boolean, default=False)
+    checked_multi = Column(Boolean, default=False)
+    tests_run = Column(Integer)
+    tests_failures = Column(Integer)
+    tests_skipped = Column(Integer)
+    findings_md = Column(Text, default="")
+    questions_md = Column(Text, default="")
+    final_comment_md = Column(Text, default="")
+    evidence_md = Column(Text, default="")
+    status = Column(String(10), default="DRAFT")  # DRAFT|SENT
+    sent_at = Column(DateTime)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
