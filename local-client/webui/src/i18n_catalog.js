@@ -330,7 +330,7 @@ export const CATALOG = {
   "Tudo em dia": "All good",
   "Progresso geral": "Overall progress",
   "Desenvolvimento concluído": "Development complete",
-  "Totalmente entregue": "Fully delivered",
+  "Finalizado": "Done",
   "Desmarcar estágios em “Posição no fluxo” tira os cards do cálculo dos dois percentuais.": "Unchecking stages under “Flow position” removes those cards from both percentages.",
   "Alertas": "Alerts",
   "Prazos": "Deadlines",

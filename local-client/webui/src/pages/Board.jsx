@@ -401,7 +401,7 @@ export default function Board() {
   }).length
   const metricSummary = []
   if (devPct < 100) metricSummary.push(`${t('dev')} ${devPct}%`)
-  if (pct < 100) metricSummary.push(`${t('entregue')} ${pct}%`)
+  if (pct < 100) metricSummary.push(`${t('finalizado')} ${pct}%`)
   if (wipAlerts.length) metricSummary.push(`⚠ WIP ${wipAlerts.length}`)
   if (vencidos.length) metricSummary.push(`⏰ ${vencidos.length} vencida(s)`)
   if (parados.length) metricSummary.push(`• ${parados.length} parada(s)`)
@@ -553,7 +553,7 @@ export default function Board() {
                 <span style={{ fontSize: 12, fontWeight: 600, minWidth: 90, textAlign: 'right' }}>{devPct}% ({developedTasks}/{tasksMetric.length})</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }} title={t('Cards na coluna de conclusão (aceite)')}>
-                <span className="muted" style={{ fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', minWidth: 150 }}>{t('Totalmente entregue')}</span>
+                <span className="muted" style={{ fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', minWidth: 150 }}>{t('Finalizado')}</span>
                 <div style={{ flex: 1, height: 14, background: 'var(--border-light)', borderRadius: 6, overflow: 'hidden', display: 'flex' }}>
                   <div style={{ width: `${pct}%`, background: pct === 100 ? '#16a34a' : '#f59e0b', transition: 'width .3s' }} />
                 </div>
@@ -877,7 +877,7 @@ export default function Board() {
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{t('Paradas 14d+')}</span><span style={{ fontWeight: 700, color: parados.length?'#d97706':'var(--text)' }}>{parados.length}</span></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{t('Sem responsável')}</span><span style={{ fontWeight: 700 }}>{unassignedTot} ({unassignedPct}%)</span></div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{t('Desenvolvimento concluído')}</span><span style={{ fontWeight: 700, color: '#4f46e5' }}>{developedTasks}/{tasksMetric.length} ({devPct}%)</span></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{t('Totalmente entregue')}</span><span style={{ fontWeight: 700, color: 'var(--accent)' }}>{doneTasks}/{tasksMetric.length} ({pct}%)</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span className="muted">{t('Finalizado')}</span><span style={{ fontWeight: 700, color: 'var(--accent)' }}>{doneTasks}/{tasksMetric.length} ({pct}%)</span></div>
                   {localTasks > 0 && (
                     <div className="muted" style={{ fontSize: 10, marginTop: 2 }} title={t('Lembretes locais não entram no progresso, mas contam no alerta de prazo')}>
                       {localTasks} {t('local(is) fora do progresso')}
@@ -902,7 +902,7 @@ export default function Board() {
                 <span className="muted" style={{ fontSize: 11, minWidth: 90, textAlign: 'right' }}>{developedTasks}/{tasksMetric.length} · {devPct}%</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 11, minWidth: 150 }}>{t('Totalmente entregue')}</span>
+                <span style={{ fontSize: 11, minWidth: 150 }}>{t('Finalizado')}</span>
                 <div style={{ height: 14, flex: 1, background: 'var(--border-light)', borderRadius: 7, overflow: 'hidden', display: 'flex' }}><div style={{ width: `${pct}%`, background: pct===100?'#16a34a':'#f59e0b' }} /></div>
                 <span className="muted" style={{ fontSize: 11, minWidth: 90, textAlign: 'right' }}>{doneTasks}/{tasksMetric.length} · {pct}%</span>
               </div>

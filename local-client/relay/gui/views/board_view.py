@@ -1851,7 +1851,7 @@ class BoardMetricsAccordion(QFrame):
             barra.setFixedHeight(16)
             barra.setStyleSheet(f"QProgressBar {{ background: {t.bg_badge}; }} QProgressBar::chunk {{ background: {t.accent if dev_pct==100 else '#4f46e5'}; }}")
             prog_row.addWidget(barra, 1)
-            entr_lbl = QLabel(_t("Totalmente entregue"))
+            entr_lbl = QLabel(_t("Finalizado"))
             entr_lbl.setToolTip(_t("Cards na coluna de conclusão (aceite)"))
             entr_lbl.setStyleSheet(f"color: {t.text_muted}; font-size: 11px; font-weight: 600; border: none;")
             prog_row.addWidget(entr_lbl)

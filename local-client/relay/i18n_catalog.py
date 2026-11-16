@@ -1066,5 +1066,5 @@ CATALOG = {
   "{n} fora do cálculo · limpar": "{n} out of calculation · clear",
   "Desenvolvimento concluído (Dev Box ou depois)": "Development complete (Dev Box or later)",
   "Desenvolvimento concluído": "Development complete",
-  "Totalmente entregue": "Fully delivered",
+  "Finalizado": "Done",
 }
