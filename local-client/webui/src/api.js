@@ -128,7 +128,9 @@ export const saveDailySummary = (projectId, date) =>
 export const getActivity = (limit = 15) => api.get('/activity', { params: { limit } }).then((r) => r.data)
 
 // Assistente
-export const assistantChat = (messages) => api.post('/assistant/chat', { messages }).then((r) => r.data)
+export const assistantChat = (messages, profile) =>
+  api.post('/assistant/chat', { messages, ...(profile ? { profile } : {}) }).then((r) => r.data)
+export const getAiProfiles = () => api.get('/ai/profiles').then((r) => r.data)
 
 // Configurações
 export const getSettings = () => api.get('/settings').then((r) => r.data)

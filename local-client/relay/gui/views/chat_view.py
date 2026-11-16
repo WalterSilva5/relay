@@ -27,14 +27,15 @@ class AgentWorker(QThread):
     finished_ok = Signal(str)
     failed = Signal(str)
 
-    def __init__(self, history):
+    def __init__(self, history, profile=None):
         super().__init__()
         self._history = history
+        self._profile = profile or "estrategista"
 
     def run(self):
         try:
             from relay.ai.agent import run_agent
-            reply = run_agent(self._history)
+            reply = run_agent(self._history, profile=self._profile)
             self.finished_ok.emit(reply or t("(sem resposta)"))
         except Exception as e:  # noqa: BLE001
             self.failed.emit(str(e))
@@ -117,6 +118,14 @@ class ChatView(QWidget):
         # Input
         input_row = QHBoxLayout()
         input_row.setSpacing(8)
+        from PySide6.QtWidgets import QComboBox
+        from relay.ai.profiles import profiles_info
+        self.profile_combo = QComboBox()
+        for pf in profiles_info():
+            self.profile_combo.addItem(f"{pf.get('icon', '')} {t(pf['name'])}".strip(), pf["id"])
+        self.profile_combo.setToolTip(t("Perfil do assistente: cada um tem foco e ferramentas próprias"))
+        self.profile_combo.currentIndexChanged.connect(self._on_profile_changed)
+        input_row.addWidget(self.profile_combo)
         self.input = QLineEdit()
         self.input.setPlaceholderText(t("Pergunte algo ou peça uma ação..."))
         self.input.returnPressed.connect(self._send)
@@ -187,6 +196,14 @@ class ChatView(QWidget):
         bar = self._scroll.verticalScrollBar()
         bar.setValue(bar.maximum())
 
+    def _on_profile_changed(self, _idx: int = 0):
+        # Trocar de perfil começa uma conversa nova (contextos diferentes).
+        self._history = []
+        while self.msgs_layout.count() > 1:
+            item = self.msgs_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
     def _send(self):
         text = self.input.text().strip()
         if not text or (self._worker and self._worker.isRunning()):
@@ -200,7 +217,8 @@ class ChatView(QWidget):
         self._add_bubble("assistant", t("Pensando..."))
         self._thinking_container = self.msgs_layout.itemAt(self.msgs_layout.count() - 2).widget()
 
-        self._worker = AgentWorker(list(self._history))
+        profile = self.profile_combo.currentData() or "estrategista"
+        self._worker = AgentWorker(list(self._history), profile=profile)
         self._worker.finished_ok.connect(self._on_reply)
         self._worker.failed.connect(self._on_error)
         self._worker.start()
