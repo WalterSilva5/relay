@@ -275,6 +275,40 @@ export const teamReportUrl = (projectId, week, anonymized = false) => {
 export const getReviews = (projectId, params = {}) =>
   api.get(`/projects/${projectId}/reviews`, { params }).then((r) => r.data)
 
+// Reviews de PR (vinculados ao board/projeto)
+export const getPrReviews = (projectId, params = {}) =>
+  api.get(`/projects/${projectId}/pr-reviews`, { params }).then((r) => r.data)
+export const createPrReview = (projectId, body) =>
+  api.post(`/projects/${projectId}/pr-reviews`, body).then((r) => r.data)
+export const getPrReview = (projectId, id) =>
+  api.get(`/projects/${projectId}/pr-reviews/${id}`).then((r) => r.data)
+export const updatePrReview = (projectId, id, body) =>
+  api.patch(`/projects/${projectId}/pr-reviews/${id}`, body).then((r) => r.data)
+export const duplicatePrReview = (projectId, id) =>
+  api.post(`/projects/${projectId}/pr-reviews/${id}/duplicate`).then((r) => r.data)
+export const sendPrReview = (projectId, id) =>
+  api.post(`/projects/${projectId}/pr-reviews/${id}/send`).then((r) => r.data)
+export const reopenPrReview = (projectId, id) =>
+  api.post(`/projects/${projectId}/pr-reviews/${id}/reopen`).then((r) => r.data)
+export const prReviewExportUrl = (projectId, id) =>
+  `/api/projects/${projectId}/pr-reviews/${id}/export.md`
+export const getPrDiff = (projectId, params) =>
+  api.get(`/projects/${projectId}/pr-reviews/diff`, { params }).then((r) => r.data)
+export const createReview = (projectId, body) =>
+  api.post(`/projects/${projectId}/reviews`, body).then((r) => r.data)
+export const getReview = (projectId, id) =>
+  api.get(`/projects/${projectId}/reviews/${id}`).then((r) => r.data)
+export const updateReview = (projectId, id, body) =>
+  api.patch(`/projects/${projectId}/reviews/${id}`, body).then((r) => r.data)
+export const duplicateReview = (projectId, id) =>
+  api.post(`/projects/${projectId}/reviews/${id}/duplicate`).then((r) => r.data)
+export const sendReview = (projectId, id) =>
+  api.post(`/projects/${projectId}/reviews/${id}/send`).then((r) => r.data)
+export const reopenReview = (projectId, id) =>
+  api.post(`/projects/${projectId}/reviews/${id}/reopen`).then((r) => r.data)
+export const reviewExportUrl = (projectId, id) =>
+  `/api/projects/${projectId}/reviews/${id}/export.md`
+
 // Análise de reunião com o contexto do projeto
 export const analyzeRecording = (id, body = {}) =>
   api.post(`/recordings/${id}/analyze`, body).then((r) => r.data)
