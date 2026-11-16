@@ -384,7 +384,7 @@ export default function Board() {
   const wipAlerts = mCols.filter((c) => c.wipLimit && c.wipLimit > 0 && c.tasks.length > c.wipLimit)
   const today0 = new Date(); today0.setHours(0,0,0,0)
   // alertas de prazo/fluxo contam TODAS as tarefas (a local é lembrete de entrega)
-  const vencidos = mTasksAll.filter((tk) => tk.dueDate && new Date(tk.dueDate) < today0 && !doneColIds.has(tk.columnId))
+  const vencidos = mTasksAll.filter((tk) => tk.dueDate && new Date(tk.dueDate) < today0 && !devColIds.has(tk.columnId))
   const limiteParado = Date.now() - 14 * 24 * 60 * 60 * 1000
   const parados = mTasksAll.filter((tk) => !doneColIds.has(tk.columnId) && tk.updatedAt && new Date(tk.updatedAt).getTime() < limiteParado)
   const alertasLocais = new Set([...vencidos, ...parados].filter((tk) => tk.isLocal).map((tk) => tk.id)).size
@@ -1320,8 +1320,8 @@ export default function Board() {
                   </div>
                 )}
                 {task.dueDate && (
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 11, color: task.dueDate && new Date(task.dueDate) < today0 && !doneColIds.has(task.columnId) ? 'var(--danger)' : 'var(--muted)' }}>
-                    <span style={{ fontWeight: task.dueDate && new Date(task.dueDate) < today0 && !doneColIds.has(task.columnId) ? 700 : 400 }}>📅 {new Date(task.dueDate).toLocaleDateString()}</span>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 11, color: task.dueDate && new Date(task.dueDate) < today0 && !devColIds.has(task.columnId) ? 'var(--danger)' : 'var(--muted)' }}>
+                    <span style={{ fontWeight: task.dueDate && new Date(task.dueDate) < today0 && !devColIds.has(task.columnId) ? 700 : 400 }}>📅 {new Date(task.dueDate).toLocaleDateString()}</span>
                   </div>
                 )}
                 <div className="row" style={{ marginTop: 6 }} onClick={(e) => e.stopPropagation()}>
@@ -1415,7 +1415,7 @@ export default function Board() {
                   const done=q.filter((tk)=>doneColIds.has(tk.columnId)).length
                   const developed=q.filter((tk)=>devColIds.has(tk.columnId)).length
                   const pct=tot?Math.round(developed/tot*100):0
-                  const overdue=q.filter((tk)=>tk.dueDate && new Date(tk.dueDate)<today0 && !doneColIds.has(tk.columnId)).length
+                  const overdue=q.filter((tk)=>tk.dueDate && new Date(tk.dueDate)<today0 && !devColIds.has(tk.columnId)).length
                   return {tot, done, developed, pct, overdue}
                 })()
                 return (

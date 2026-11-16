@@ -150,6 +150,42 @@ def dev_done_column(columns):
     return None
 
 
+def dev_done_ids(columns) -> set:
+    """Ids das colunas a partir do desenvolvimento concluído (Dev Box ou depois).
+
+    Ponto de verdade do corte "dev entregue": sem Dev Box no fluxo, cai na
+    coluna de conclusão.
+    """
+    coluna_dev = dev_done_column(columns)
+    if coluna_dev is None:
+        return {c.id for c in columns or [] if c.is_done}
+    return {c.id for c in columns if c.order >= coluna_dev.order}
+
+
+def dev_done_ids_by_project(columns) -> dict:
+    """`dev_done_ids` por projeto — para telas que agregam vários projetos."""
+    por_projeto: dict = {}
+    for c in columns or []:
+        por_projeto.setdefault(c.project_id, []).append(c)
+    return {pid: dev_done_ids(cols) for pid, cols in por_projeto.items()}
+
+
+def is_overdue(task, dev_ids, hoje=None) -> bool:
+    """Vencida = prazo no passado E desenvolvimento ainda não concluído.
+
+    A partir de Dev Box (inclusive) o card deixa de ser "vencido", porque o
+    compromisso de desenvolvimento foi cumprido — mesmo que o aceite (Done)
+    ainda esteja pendente.
+    """
+    from datetime import date as _date
+    hoje = hoje or _date.today()
+    venc = getattr(task, "due_date", None)
+    if venc is None:
+        return False
+    dia = venc.date() if hasattr(venc, "date") else venc
+    return dia < hoje and task.column_id not in dev_ids
+
+
 def aggregate_dimensions(tasks, done_ids, columns=None) -> dict:
     """Agrupa as tarefas por dimensão, usando apenas cartões existentes.
 

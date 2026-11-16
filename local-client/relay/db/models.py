@@ -417,9 +417,11 @@ def member_stats(session, project_id: int) -> list[dict]:
         all_tasks = base.all()
         done = sum(1 for t in all_tasks if t.column_id in done_ids)
         developed = sum(1 for t in all_tasks if t.column_id in dev_ids)
+        # vencida = prazo no passado e dev ainda não concluído (Dev Box em
+        # diante já cumpriu o compromisso de desenvolvimento)
         overdue = sum(1 for t in all_tasks
                       if t.due_date is not None and t.due_date < datetime.now()
-                      and t.column_id not in done_ids)
+                      and t.column_id not in dev_ids)
         stats.append({"member": m, "total": total, "done": done,
                       "pct": round(done / total * 100) if total else 0,
                       "developed": developed,

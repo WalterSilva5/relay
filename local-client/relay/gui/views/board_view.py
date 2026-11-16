@@ -1801,7 +1801,9 @@ class BoardMetricsAccordion(QFrame):
 
             # alertas de prazo/fluxo contam TODAS as tarefas (a local é lembrete de entrega)
             hoje = date.today()
-            vencidos = [tk for tk in tasks_all if tk.due_date and tk.due_date.date() < hoje and tk.column_id not in done_col_ids]
+            # vencida = prazo no passado e dev ainda não concluído: a partir
+            # de Dev Box (inclusive) o compromisso de dev foi cumprido
+            vencidos = [tk for tk in tasks_all if tk.due_date and tk.due_date.date() < hoje and tk.column_id not in _dev_ids]
             # parados (sem atualização há 14d, não concluídos)
             from datetime import timedelta
             limite_parado = datetime.utcnow() - timedelta(days=14)

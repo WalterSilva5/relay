@@ -244,6 +244,12 @@ class DashboardView(QWidget):
         done_cols = {
             c.id for c in s.query(BoardColumn).filter(BoardColumn.is_done.is_(True)).all()
         }
+        # corte de dev por projeto: a partir de Dev Box o compromisso de
+        # desenvolvimento foi cumprido e o card deixa de ser "vencido"
+        from relay.dimensions import dev_done_ids_by_project
+        _todas_cols = s.query(BoardColumn).all()
+        _dev_por_projeto = dev_done_ids_by_project(_todas_cols)
+        dev_cols = {cid for ids in _dev_por_projeto.values() for cid in ids}
         seven_days_ago = datetime.utcnow() - timedelta(days=7)
         done_recent = [
             t for t in active_tasks
@@ -254,7 +260,7 @@ class DashboardView(QWidget):
         today = datetime.utcnow().date()
         overdue = [
             t for t in active_tasks
-            if t.due_date and (t.due_date.date() if hasattr(t.due_date, 'date') else t.due_date) < today and t.column_id not in done_cols
+            if t.due_date and (t.due_date.date() if hasattr(t.due_date, 'date') else t.due_date) < today and t.column_id not in dev_cols
         ]
         self._summary_cards["overdue"]["value"].setText(str(len(overdue)))
 
@@ -268,16 +274,17 @@ class DashboardView(QWidget):
     def _refresh_overdue(self, s):
         self._clear_layout(self._overdue_list)
 
-        done_cols = {
-            c.id for c in s.query(BoardColumn).filter(BoardColumn.is_done.is_(True)).all()
-        }
+        # mesmo corte do resumo: por projeto, a partir do dev concluído
+        from relay.dimensions import dev_done_ids_by_project
+        _dev_por_projeto = dev_done_ids_by_project(s.query(BoardColumn).all())
+        dev_cols = {cid for ids in _dev_por_projeto.values() for cid in ids}
         today = datetime.utcnow().date()
         overdue_tasks = (
             s.query(Task)
             .filter(
                 Task.deleted_at.is_(None),
                 Task.due_date < today,
-                Task.column_id.notin_(done_cols) if done_cols else True,
+                Task.column_id.notin_(dev_cols) if dev_cols else True,
             )
             .order_by(Task.due_date.asc())
             .all()

@@ -106,7 +106,8 @@ def collect_metrics(session, project, exclude_ids: set[int] | None = None) -> di
     developed_pct = round(developed / total * 100) if total else 0
 
     hoje = date.today()
-    vencidas = [t for t in todas if t.due_date and t.due_date.date() < hoje and t.column_id not in done_ids]
+    # vencida = prazo no passado e dev ainda não concluído (mesma regra da tela)
+    vencidas = [t for t in todas if t.due_date and t.due_date.date() < hoje and t.column_id not in dev_ids_top]
     limite = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     limite = limite.fromordinal(limite.toordinal() - 14)
     paradas = [t for t in todas if t.column_id not in done_ids and t.updated_at and t.updated_at < limite]

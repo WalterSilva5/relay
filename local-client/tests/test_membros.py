@@ -116,6 +116,44 @@ def test_dev_box_conta_como_desenvolvido_por_responsavel(temp_db):
         s.close()
 
 
+def test_vencida_considera_fim_do_desenvolvimento(temp_db):
+    """Vencida = prazo no passado E dev ainda não concluído.
+
+    Card em Dev Box (ou depois) com dueDate vencido não conta como vencido;
+    card antes do Dev Box continua vencido.
+    """
+    from datetime import datetime, timedelta
+    s = get_session()
+    try:
+        p = Project(name="Venc", key="VNC")
+        s.add(p)
+        s.flush()
+        cols = {}
+        for nome, ordem, done in [
+            ("To do", 0, False), ("Doing", 3, False),
+            ("Dev Review", 5, False), ("Dev Box", 6, False),
+            ("In Test", 7, False), ("Done", 8, True),
+        ]:
+            c = BoardColumn(project_id=p.id, name=nome, order=ordem, is_done=done)
+            s.add(c)
+            s.flush()
+            cols[nome] = c
+        get_or_create_member(s, p.id, "Dev")
+        venc = datetime.now() - timedelta(days=1)
+        s.add(Task(project_id=p.id, column_id=cols["Dev Box"].id, number=1,
+                   title="dev pronto vencido", assignee="Dev", due_date=venc))
+        s.add(Task(project_id=p.id, column_id=cols["Doing"].id, number=2,
+                   title="doing vencido", assignee="Dev", due_date=venc))
+        s.add(Task(project_id=p.id, column_id=cols["In Test"].id, number=3,
+                   title="em teste vencido", assignee="Dev", due_date=venc))
+        s.commit()
+        stats = {st["member"].name: st for st in member_stats(s, p.id)}
+        assert stats["Dev"]["total"] == 3
+        assert stats["Dev"]["overdue"] == 1
+    finally:
+        s.close()
+
+
 def test_filtro_inclui_membros_sem_card(qapp, temp_db):
     from relay.gui.views.board_view import BoardView
     pid = _projeto()
