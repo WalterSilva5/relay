@@ -3,6 +3,7 @@ import { NavLink, Route, Routes, Navigate } from 'react-router-dom'
 import Dashboard from './pages/Dashboard.jsx'
 import MeuDia from './pages/MeuDia.jsx'
 import Estudos from './pages/Estudos.jsx'
+import Reviews from './pages/Reviews.jsx'
 import Projects from './pages/Projects.jsx'
 import Board from './pages/Board.jsx'
 import Assistente from './pages/Assistente.jsx'
@@ -45,6 +46,7 @@ function Sidebar({ onNavigate, onCollapse }) {
     ['/goals', t('Goals'), '🎯'],
     ['/time', t('Time'), '👥'],
     ['/reunioes', t('Reuniões'), '🎙️'],
+    ['/reviews', t('Reviews'), '📋'],
     ['/assistente', t('Assistente'), '💬'],
     ['/todos', t('TODOs'), '✅'],
     ['/ferramentas', t('Ferramentas'), '🧰'],
@@ -173,6 +175,7 @@ export default function App() {
           <Route path="/metricas" element={<Metricas />} />
           <Route path="/time" element={<Time />} />
           <Route path="/reunioes" element={<Reunioes />} />
+          <Route path="/reviews" element={<Reviews />} />
           <Route path="/todos" element={<Todos />} />
           <Route path="/labels" element={<Labels />} />
           <Route path="/biblioteca" element={<Biblioteca />} />

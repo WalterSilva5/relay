@@ -1228,6 +1228,40 @@ class StudySession(Base):
     topic = relationship("StudyTopic", back_populates="sessions")
 
 
+# ---- Review semanal manual (avaliação por pessoa) ----
+
+class Review(Base):
+    """Avaliação semanal escrita à mão (espelho do markdown em lideranca/avaliacao/).
+
+    facts_md guarda a tabela "o que | PR ou card | evidência"; comment_md são os
+    3 blocos (entrega / reconhecimento-ou-atenção / próximos passos) separados
+    por linha em branco; evidence_md é interno (não vai ao formulário, mas vai
+    ao arquivo). `evaluator` e `next_week_md` completam o cabeçalho exigido
+    pelo formato do vault (Avaliador, Próxima semana).
+    """
+    __tablename__ = "reviews"
+
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    person_name = Column(String(100), nullable=False)
+    period_start = Column(Date, nullable=False)
+    period_end = Column(Date, nullable=False)
+    evaluator = Column(String(100), default="")
+    tech_score = Column(Integer)
+    soft_score = Column(Integer)
+    summary_one_line = Column(String(200), default="")
+    facts_md = Column(Text, default="")
+    code_md = Column(Text, default="")
+    comment_md = Column(Text, default="")
+    evidence_md = Column(Text, default="")
+    next_week_md = Column(Text, default="")
+    status = Column(String(10), default="DRAFT")  # DRAFT|SENT
+    sent_at = Column(DateTime)
+    source = Column(String(10), default="MANUAL")  # MANUAL|AI_DRAFT
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Snippet(Base):
     """Trecho de código reutilizável ou prompt de IA (biblioteca do workspace)."""
     __tablename__ = "snippets"
