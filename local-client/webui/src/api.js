@@ -86,10 +86,13 @@ export const snoozeTodo = (id, minutes = 10) =>
 export const getStudyPlans = () => api.get('/study/plans').then((r) => r.data)
 export const createStudyPlan = (body) => api.post('/study/plans', body).then((r) => r.data)
 export const getStudyPlan = (id) => api.get(`/study/plans/${id}`).then((r) => r.data)
+export const updateStudyPlan = (id, body) => api.patch(`/study/plans/${id}`, body).then((r) => r.data)
 export const getTopics = (planId) => api.get(`/study/plans/${planId}/topics`).then((r) => r.data)
 export const addTopic = (planId, body) => api.post(`/study/plans/${planId}/topics`, body).then((r) => r.data)
 export const updateTopic = (id, body) => api.patch(`/study/topics/${id}`, body).then((r) => r.data)
 export const studyAssistant = (body) => api.post('/study/assistant', body).then((r) => r.data)
+export const getStudyDocs = (planId) => api.get(`/study/plans/${planId}/docs`).then((r) => r.data)
+export const saveStudyDoc = (planId, body) => api.post(`/study/plans/${planId}/save-doc`, body).then((r) => r.data)
 export const createStudyPlanWithFiles = ({ title, category, description = '', files = [] }) => {
   const fd = new FormData()
   fd.append('title', title)

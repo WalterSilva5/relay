@@ -3,14 +3,18 @@ import {
   getStudyPlans,
   createStudyPlan,
   createStudyPlanWithFiles,
+  updateStudyPlan,
   getTopics,
   addTopic,
   updateTopic,
   studyAssistant,
+  getStudyDocs,
+  saveStudyDoc,
 } from '../api'
 import { t } from '../i18n'
 
 const TEXT_ACTIONS = ['explain', 'exercises', 'quiz', 'flashcards']
+const TOPIC_REQUIRED = [...TEXT_ACTIONS, 'diagnose']
 
 const CATEGORIES = ['LINGUAGEM', 'FRAMEWORK', 'CERTIFICACAO', 'CONCEITO', 'CURSO', 'LIVRO']
 const STATUSES = ['PENDENTE', 'ESTUDANDO', 'REVISAO', 'CONCLUIDO', 'PULADO']
@@ -37,6 +41,7 @@ export default function Estudos() {
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState(CATEGORIES[0])
   const [description, setDescription] = useState('')
+  const [vaultNew, setVaultNew] = useState('')
   const [error, setError] = useState('')
 
   const [expandedId, setExpandedId] = useState(null)
@@ -59,6 +64,14 @@ export default function Estudos() {
   const [roadmapQuestions, setRoadmapQuestions] = useState(null) // null | string[]
   const [roadmapAnswers, setRoadmapAnswers] = useState({})
   const [roadmapExtra, setRoadmapExtra] = useState('')
+
+  // Vault de docs do plano (pasta vinculada) + salvar geração no vault
+  const [vaultPath, setVaultPath] = useState('')
+  const [vaultSaving, setVaultSaving] = useState(false)
+  const [planDocs, setPlanDocs] = useState([])
+  const [savingDoc, setSavingDoc] = useState(false)
+  const [savedDoc, setSavedDoc] = useState('')
+  const [suggestedKind, setSuggestedKind] = useState('topics') // topics | prereqs
 
   const load = () =>
     getStudyPlans()
@@ -96,12 +109,17 @@ export default function Estudos() {
           description: description.trim(),
           files: attachedFiles,
         })
+        // vault vincula na sequência (with-files não recebe docsPath)
+        if (vaultNew.trim()) {
+          plan = await updateStudyPlan(plan.id, { docsPath: vaultNew.trim() })
+        }
       } else {
-        plan = await createStudyPlan({ title: title.trim(), category, description: description.trim() || null })
+        plan = await createStudyPlan({ title: title.trim(), category, description: description.trim() || null, docsPath: vaultNew.trim() || null })
       }
       setTitle('')
       setCategory(CATEGORIES[0])
       setDescription('')
+      setVaultNew('')
       setAttachedFiles([])
       await load()
       if (plan?.id) {
@@ -124,6 +142,30 @@ export default function Estudos() {
     setRoadmapQuestions(null)
     setRoadmapAnswers({})
     setRoadmapExtra('')
+    setSavedDoc('')
+    setSuggestedKind('topics')
+  }
+
+  const loadDocs = (plan) => {
+    if (!plan?.docsPath) { setPlanDocs([]); return }
+    getStudyDocs(plan.id)
+      .then((d) => setPlanDocs(d.docs || []))
+      .catch(() => setPlanDocs([]))
+  }
+
+  const saveVaultPath = async (plan) => {
+    if (vaultSaving) return
+    setVaultSaving(true)
+    setError('')
+    try {
+      const updated = await updateStudyPlan(plan.id, { docsPath: vaultPath.trim() || null })
+      setPlans((prev) => prev.map((x) => (x.id === plan.id ? { ...x, docsPath: updated.docsPath } : x)))
+      loadDocs({ ...plan, docsPath: updated.docsPath })
+    } catch (e) {
+      setError(e.response?.data?.detail || String(e.message || e))
+    } finally {
+      setVaultSaving(false)
+    }
   }
 
   const onToggle = (planId) => {
@@ -131,16 +173,20 @@ export default function Estudos() {
     if (expandedId === planId) {
       setExpandedId(null)
       setTopics([])
+      setPlanDocs([])
       return
     }
     setExpandedId(planId)
     setTopics([])
+    const plan = plans.find((x) => x.id === planId)
+    setVaultPath(plan?.docsPath || '')
     loadTopics(planId)
+    if (plan) loadDocs(plan)
   }
 
   const runAssist = async (action, plan) => {
     if (assistBusy) return
-    if (TEXT_ACTIONS.includes(action) && !assistTopic) {
+    if (TOPIC_REQUIRED.includes(action) && !assistTopic) {
       setAssistOutput(t('Selecione um tópico específico para esta ação.'))
       return
     }
@@ -148,6 +194,7 @@ export default function Estudos() {
     setAssistBusy(true)
     setAssistSuggested([])
     setAssistOutput('')
+    setSavedDoc('')
     try {
       const { result } = await studyAssistant({
         action,
@@ -156,8 +203,16 @@ export default function Estudos() {
         question: assistAsk.trim(),
         existing: topics.map((tp) => tp.title),
       })
-      if (action === 'suggest_topics') setAssistSuggested(result || [])
-      else setAssistOutput(result || '')
+      if (action === 'suggest_topics') {
+        setAssistSuggested(result || [])
+        setSuggestedKind('topics')
+      } else if (action === 'diagnose' && result && typeof result === 'object') {
+        setAssistOutput(result.markdown || '')
+        setAssistSuggested((result.prerequisites || []).map((x) => ({
+          title: x.title, estimate_hours: x.estimate_hours ?? null,
+        })))
+        setSuggestedKind('prereqs')
+      } else setAssistOutput(result || '')
     } catch (e) {
       setAssistOutput(e.response?.data?.detail || String(e.message || e))
     } finally {
@@ -240,6 +295,28 @@ export default function Estudos() {
     load()
   }
 
+  const saveOutputDoc = async (plan, actionLabel) => {
+    if (savingDoc || !assistOutput.trim()) return
+    if (!plan.docsPath) {
+      setAssistOutput((assistOutput ? assistOutput + '\n\n' : '') + t('Vincule o vault do plano para salvar (campo acima).'))
+      return
+    }
+    setSavingDoc(true)
+    try {
+      const r = await saveStudyDoc(plan.id, {
+        title: `${actionLabel} - ${assistTopic || plan.title}`,
+        content: assistOutput,
+      })
+      setSavedDoc(r.file || '')
+      loadDocs({ ...plan })
+    } catch (e) {
+      setSavedDoc('')
+      setAssistOutput((assistOutput ? assistOutput + '\n\n' : '') + (e.response?.data?.detail || String(e.message || e)))
+    } finally {
+      setSavingDoc(false)
+    }
+  }
+
   const onAddTopic = async (planId) => {
     if (!topicTitle.trim()) return
     try {
@@ -288,6 +365,12 @@ export default function Estudos() {
           placeholder={t("Descrição (opcional)")}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+        />
+        <input
+          placeholder={t("Vault dos docs (pasta, opcional)")}
+          value={vaultNew}
+          onChange={(e) => setVaultNew(e.target.value)}
+          title={t("Pasta onde os docs gerados pelo assistente serão salvos")}
         />
         <input
           ref={fileRef}
@@ -425,12 +508,22 @@ export default function Estudos() {
                     {t("Flashcards")}
                   </button>
                   <button
+                    disabled={assistBusy}
+                    onClick={() => runAssist('diagnose', p)}
+                    title={t("Travou? Descobre qual pré-requisito está faltando e monta a base.")}
+                  >
+                    {t("🧭 Diagnosticar base")}
+                  </button>
+                  <button
                     className="ghost"
                     disabled={assistBusy}
                     onClick={() => startRoadmap(p)}
                   >
                     {t("Montar roadmap")}
                   </button>
+                </div>
+                <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
+                  {t("Para o diagnóstico, selecione o tópico e descreva onde você trava no campo de dúvida abaixo.")}
                 </div>
 
                 {roadmapQuestions && (
@@ -468,7 +561,7 @@ export default function Estudos() {
 
                 <div className="toolbar" style={{ marginTop: 8 }}>
                   <input
-                    placeholder={t("Tirar dúvida sobre o tópico...")}
+                    placeholder={t("Tirar dúvida sobre o tópico... (ou descreva onde trava p/ diagnóstico)")}
                     value={assistAsk}
                     onChange={(e) => setAssistAsk(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && runAssist('ask', p)}
@@ -483,7 +576,7 @@ export default function Estudos() {
                 {assistSuggested.length > 0 && (
                   <div className="card" style={{ marginTop: 8 }}>
                     <div style={{ marginBottom: 6 }}>
-                      <strong>{t("Tópicos sugeridos")}</strong>
+                      <strong>{suggestedKind === 'prereqs' ? t("Pré-requisitos sugeridos") : t("Tópicos sugeridos")}</strong>
                     </div>
                     {assistSuggested.map((tp, i) => (
                       <div key={i} className="row">
@@ -500,13 +593,61 @@ export default function Estudos() {
                 )}
 
                 {assistOutput && !assistBusy && (
-                  <div
-                    className="card"
-                    style={{ marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}
-                  >
-                    {assistOutput}
-                  </div>
+                  <>
+                    <div
+                      className="card"
+                      style={{ marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}
+                    >
+                      {assistOutput}
+                    </div>
+                    <div className="row" style={{ gap: 6, marginTop: 8 }}>
+                      <button
+                        className="ghost"
+                        disabled={savingDoc || !p.docsPath}
+                        title={p.docsPath ? t('Salva o texto acima como .md no vault do plano') : t('Vincule o vault do plano para salvar')}
+                        onClick={() => saveOutputDoc({ ...p }, t('Estudo'))}
+                      >
+                        {savingDoc ? '…' : `💾 ${t('Salvar no vault')}`}
+                      </button>
+                      {savedDoc && <span className="muted" style={{ fontSize: 11 }}>✓ {savedDoc}</span>}
+                      {!p.docsPath && (
+                        <span className="muted" style={{ fontSize: 11 }}>{t('Vincule o vault abaixo para salvar.')}</span>
+                      )}
+                    </div>
+                  </>
                 )}
+
+                {/* Vault de docs do plano */}
+                <div className="card" style={{ marginTop: 8 }}>
+                  <strong>{t("Vault de estudos")}</strong>
+                  <div className="muted" style={{ margin: '4px 0 8px', fontSize: 12 }}>
+                    {t("Pasta onde os docs gerados são salvos (.md).")}
+                  </div>
+                  <div className="toolbar">
+                    <input
+                      placeholder="/home/usuario/.../estudos"
+                      value={vaultPath}
+                      onChange={(e) => setVaultPath(e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                    <button className="ghost" disabled={vaultSaving} onClick={() => saveVaultPath(p)}>
+                      {vaultSaving ? '…' : t('Vincular')}
+                    </button>
+                  </div>
+                  {p.docsPath && (
+                    <div className="muted" style={{ marginTop: 4, fontSize: 11 }}>
+                      {t('Atual')}: {p.docsPath}
+                    </div>
+                  )}
+                  {planDocs.length > 0 && (
+                    <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+                      {planDocs.slice(0, 8).map((d) => (
+                        <div key={d.name}>📄 {d.name}</div>
+                      ))}
+                      {planDocs.length > 8 && <div>+{planDocs.length - 8}…</div>}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
