@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { englishStart, englishMessage, apiError } from '../api'
+import { englishTranscribe } from '../api-english'
 import { t } from '../i18n'
 
 const LEVELS = [
@@ -17,6 +18,11 @@ export default function Ingles() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
+  const [recording, setRecording] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+  const [audioBlob, setAudioBlob] = useState(null)
+  const recorderRef = useRef(null)
+  const chunksRef = useRef([])
 
   const started = history.length > 0
 
@@ -68,11 +74,61 @@ export default function Ingles() {
     }
   }
 
+  const toggleRecord = async () => {
+    if (recording) {
+      recorderRef.current?.stop()
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const rec = new MediaRecorder(stream)
+      chunksRef.current = []
+      rec.ondataavailable = (e) => {
+        if (e.data?.size) chunksRef.current.push(e.data)
+      }
+      rec.onstop = () => {
+        stream.getTracks().forEach((tr) => tr.stop())
+        setRecording(false)
+        if (chunksRef.current.length) {
+          setAudioBlob(new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' }))
+          setStatus(t('Áudio pronto — clique em Transcrever para colar o texto.'))
+        }
+      }
+      recorderRef.current = rec
+      rec.start()
+      setAudioBlob(null)
+      setRecording(true)
+      setStatus(t('Gravando... clique novamente para parar.'))
+    } catch (e) {
+      setStatus(t('Microfone indisponível: ') + (e?.message || e))
+    }
+  }
+
+  const sendAudio = async () => {
+    if (!audioBlob || transcribing) return
+    setTranscribing(true)
+    setStatus(t('Transcrevendo...'))
+    try {
+      const res = await englishTranscribe(audioBlob)
+      const text = (res.text || '').trim()
+      if (!text) {
+        setStatus(t('Não entendi o áudio. Tente de novo.'))
+        return
+      }
+      setInput(text)
+      setAudioBlob(null)
+      setStatus('')
+    } catch (e) {
+      setStatus(apiError(e))
+    } finally {
+      setTranscribing(false)
+    }
+  }
+
   return (
     <div>
       <h1 className="page-title">{t('Praticar Inglês')}</h1>
-      <p className="subtitle">{t('Converse em inglês com a IA no seu nível. Escreva e receba correções e vocabulário.')}</p>
-      <p className="muted">{t('Entrada por voz disponível só no app desktop.')}</p>
+      <p className="subtitle">{t('Converse em inglês com a IA no seu nível. Fale ou escreva e receba correções e vocabulário.')}</p>
 
       <div className="toolbar" style={{ marginBottom: 10, alignItems: 'center' }}>
         <label className="muted">{t('Nível:')}</label>
@@ -116,6 +172,16 @@ export default function Ingles() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && send()}
         />
+        <button
+          onClick={toggleRecord}
+          disabled={!started || busy || transcribing}
+          title={t('Gravar voz')}
+        >{recording ? '⏹' : '🎤'}</button>
+        <button
+          onClick={sendAudio}
+          disabled={!started || busy || transcribing || !audioBlob}
+          title={t('Enviar áudio para transcrever')}
+        >{transcribing ? '…' : t('Transcrever')}</button>
         <button onClick={send} disabled={!started || busy}>{t('Enviar')}</button>
         {status && <span className="muted">{status}</span>}
       </div>

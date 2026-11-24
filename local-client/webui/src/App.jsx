@@ -5,6 +5,7 @@ import MeuDia from './pages/MeuDia.jsx'
 import Estudos from './pages/Estudos.jsx'
 import Reviews from './pages/Reviews.jsx'
 import PrReviews from './pages/PrReviews.jsx'
+import TechLinks from './pages/TechLinks.jsx'
 import Projects from './pages/Projects.jsx'
 import Board from './pages/Board.jsx'
 import Assistente from './pages/Assistente.jsx'
@@ -187,6 +188,7 @@ export default function App() {
           <Route path="/reunioes" element={<Reunioes />} />
           <Route path="/reviews" element={<Reviews />} />
           <Route path="/reviews-pr" element={<PrReviews />} />
+          <Route path="/techlinks" element={<TechLinks />} />
           <Route path="/todos" element={<Todos />} />
           <Route path="/labels" element={<Labels />} />
           <Route path="/biblioteca" element={<Biblioteca />} />
