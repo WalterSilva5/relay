@@ -19,24 +19,34 @@
   "build": {
     "appId": "dev.relay.desktop",
     "productName": "Relay",
-    "files": ["main.js", "preload.js", "package.json"],
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
     "extraResources": [
       {
         "from": "../local-client/dist-sidecar/",
         "to": "sidecar/",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Office",
       "maintainer": "Relay <dev@relay.local>",
-      "icon": "../../build/icon.png",
+      "icon": "assets/icon.png",
       "desktop": {
         "entry": {
           "StartupWMClass": "Relay"
         }
-      }
+      },
+      "syncDesktopName": true
     },
     "publish": [
       {
@@ -46,5 +56,8 @@
         "releaseType": "release"
       }
     ]
-  }
+  },
+  "homepage": "https://github.com/WalterSilva5/relay",
+  "author": "Relay",
+  "desktopName": "Relay"
 }

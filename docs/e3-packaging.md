@@ -208,4 +208,22 @@ ps aux | grep relay-server                            # 1 processo com o app abe
 # 5. Comportamentos: Ctrl+Shift+R com app em background, tray, 2ª instância
 #    (foca a 1ª), sem mic → erro 400 amigável, auto-update logado em
 #    ~/.config/Relay/sidecar.log, e ciclo N → N+1 com feed (ver checklist acima).
+
+## Build final headless — 24/11/2026 (executado, sem display)
+
+Pendências do item 2 resolvidas:
+- Ícone: copiado `local-client/webui/public/icon-512.png` → `electron/assets/icon.png`
+  e apontado `build.icon` para `assets/icon.png` (o path anterior `../../build/icon.png`
+  não existia no repo).
+- `homepage` adicionada ao `package.json` (exigida pelo target `deb`).
+- `linux.syncDesktopName: true` + `desktopName: "Relay"` (associação janela↔taskbar,
+  alinha com o `StartupWMClass` existente; warning zerado).
+
+Artefatos (`electron/dist/`, build 24/11, sem display — NÃO testados visualmente):
+- `Relay-0.1.0.AppImage` (290 MB) — sidecar embutido confirmado por extração
+- `relay-desktop_0.1.0_amd64.deb` (265 MB) — contém `relay-server`, `webui-dist`,
+  ícone 512 e `Relay.desktop`; verificado via `ar`+`tar -tf`
+- `latest-linux.yml` gerado (base do auto-update; feed real = publicar release + `GH_TOKEN`)
+
+O que continua exigindo máquina com display: item 4 e 5 acima, na íntegra.
 ```
