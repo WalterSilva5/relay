@@ -29,11 +29,14 @@ def _restore_utf8_locale():
 def main():
     port = 9777
     initial_view = None
+    headless = False
     for i, arg in enumerate(sys.argv[1:], 1):
         if arg in ("--port", "-p") and i < len(sys.argv) - 1:
             port = int(sys.argv[i + 1])
         if arg == "--view" and i < len(sys.argv) - 1:
             initial_view = sys.argv[i + 1]
+        if arg in ("--headless", "--no-gui"):
+            headless = True
 
     from relay.i18n import init_language
     init_language()
@@ -42,6 +45,19 @@ def main():
     db_path = get_workspace_db_path(ws_id)
     init_db(db_path)
     start_api(port)
+
+    if headless:
+        # Modo headless (E3): só API+web, sem QApplication — para o sidecar
+        # do Electron e máquinas sem display. Equivale a `python -m relay.webmain`.
+        import time
+
+        print(f"Relay API+web em http://127.0.0.1:{port}/ (headless, sem GUI)")
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            pass
+        return
 
     from PySide6.QtWidgets import QApplication
     from relay.gui.main_window import MainWindow

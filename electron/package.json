@@ -1,0 +1,48 @@
+{
+  "name": "relay-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Relay — shell Electron (tray, hotkeys, auto-update) sobre a web UI + sidecar Python",
+  "main": "main.js",
+  "scripts": {
+    "dev": "electron .",
+    "dist": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.0"
+  },
+  "build": {
+    "appId": "dev.relay.desktop",
+    "productName": "Relay",
+    "files": ["main.js", "preload.js", "package.json"],
+    "extraResources": [
+      {
+        "from": "../local-client/dist-sidecar/",
+        "to": "sidecar/",
+        "filter": ["**/*"]
+      }
+    ],
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Office",
+      "maintainer": "Relay <dev@relay.local>",
+      "icon": "../../build/icon.png",
+      "desktop": {
+        "StartupWMClass": "Relay"
+      }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "CHANGEME",
+        "repo": "relay",
+        "releaseType": "release"
+      }
+    ]
+  }
+}
