@@ -6399,12 +6399,18 @@ def recording_audio(rec_id: int, s: Session = Depends(db)):
 # senão os GETs novos caem no catch-all `/{full_path:path}` e dão 404)
 # ---------------------------------------------------------------------------
 from relay.api import ext_board as _ext_board
+from relay.api import ext_english as _ext_english
 from relay.api import ext_flows as _ext_flows
 from relay.api import ext_insights as _ext_insights
+from relay.api import ext_misc as _ext_misc
+from relay.api import ext_techlinks as _ext_techlinks
 
 app.include_router(_ext_board.router)
+app.include_router(_ext_english.router)
 app.include_router(_ext_flows.router)
 app.include_router(_ext_insights.router)
+app.include_router(_ext_misc.router)
+app.include_router(_ext_techlinks.router)
 
 
 @app.get("/api/search")
