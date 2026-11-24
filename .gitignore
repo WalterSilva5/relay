@@ -49,3 +49,5 @@ local-client/webui/dist/
 
 # Build do sidecar Electron (binário local, 100MB+)
 local-client/dist-sidecar/
+# Workdir do PyInstaller (gerado pelo build-sidecar.sh)
+local-client/build-sidecar/
