@@ -312,3 +312,22 @@ export const reviewExportUrl = (projectId, id) =>
 // Análise de reunião com o contexto do projeto
 export const analyzeRecording = (id, body = {}) =>
   api.post(`/recordings/${id}/analyze`, body).then((r) => r.data)
+
+// Memória agentic
+export const getMemoryEntries = (params = {}) => api.get('/memory', { params }).then((r) => r.data)
+export const getMemoryEntry = (id) => api.get(`/memory/${id}`).then((r) => r.data)
+export const createMemoryEntry = (body) => api.post('/memory', body).then((r) => r.data)
+export const updateMemoryEntry = (id, body) => api.patch(`/memory/${id}`, body).then((r) => r.data)
+export const deleteMemoryEntry = (id) => api.delete(`/memory/${id}`).then((r) => r.data)
+export const searchMemory = (body) => api.post('/memory/search', body).then((r) => r.data)
+export const askMemory = (body) => api.post('/memory/ask', body).then((r) => r.data)
+export const getMemoryStats = () => api.get('/memory/stats').then((r) => r.data)
+export const getMemoryKinds = () => api.get('/memory/kinds').then((r) => r.data)
+
+// Praticar inglês (conversação com IA)
+export const englishStart = (body) => api.post('/english/start', body).then((r) => r.data)
+export const englishMessage = (body) => api.post('/english/message', body).then((r) => r.data)
+
+// Skills para agentes (catálogo somente leitura; instalação é no app desktop)
+export const getSkills = () => api.get('/skills').then((r) => r.data)
+export const getSkill = (id) => api.get(`/skills/${id}`).then((r) => r.data)

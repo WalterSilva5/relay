@@ -19,6 +19,10 @@ import ApiTester from './pages/ApiTester.jsx'
 import Base from './pages/Base.jsx'
 import Ferramentas from './pages/Ferramentas.jsx'
 import Traducao from './pages/Traducao.jsx'
+import Memoria from './pages/Memoria.jsx'
+import Ingles from './pages/Ingles.jsx'
+import Skills from './pages/Skills.jsx'
+import Guia from './pages/Guia.jsx'
 import Configuracoes from './pages/Configuracoes.jsx'
 import WorkspaceSelector from './components/WorkspaceSelector.jsx'
 import ProjectSelector from './components/ProjectSelector.jsx'
@@ -52,6 +56,10 @@ function Sidebar({ onNavigate, onCollapse }) {
     ['/assistente', t('Assistente'), '💬'],
     ['/todos', t('TODOs'), '✅'],
     ['/ferramentas', t('Ferramentas'), '🧰'],
+    ['/memoria', t('Memória agentic'), '🧬'],
+    ['/ingles', t('Praticar Inglês'), '🗣️'],
+    ['/skills', t('Skills'), '🧩'],
+    ['/guia', t('Instruções'), '📖'],
     ['/configuracoes', t('Configurações'), '⚙️'],
     // deep link do app desktop: mesma lista, sem seção própria
     ['relay://vault', t('Senhas'), '🔒', t('Cofre KeePass no desktop')],
@@ -185,6 +193,10 @@ export default function App() {
           <Route path="/api-tester" element={<ApiTester />} />
           <Route path="/base" element={<Base />} />
           <Route path="/ferramentas" element={<Ferramentas />} />
+          <Route path="/memoria" element={<Memoria />} />
+          <Route path="/ingles" element={<Ingles />} />
+          <Route path="/skills" element={<Skills />} />
+          <Route path="/guia" element={<Guia />} />
           <Route path="/traducao" element={<Traducao />} />
           <Route path="/configuracoes" element={<Configuracoes />} />
           <Route path="*" element={<div className="muted">{t('Página não encontrada')}</div>} />
