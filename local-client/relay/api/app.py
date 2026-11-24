@@ -6177,6 +6177,45 @@ def list_recordings(
     return [_recording_base(r) for r in linhas]
 
 
+@app.get("/api/recordings/live/status")
+def live_recording_status():
+    """Estado da gravação ao vivo (para o shell Electron/globalShortcut)."""
+    from relay.transcricoes.live_control import live_recorder
+    return live_recorder.status()
+
+
+class LiveRecordingStart(BaseModel):
+    mic: bool = True
+    monitor: bool = True
+    title: str = ""
+
+
+@app.post("/api/recordings/live/start", status_code=201)
+def live_recording_start(body: LiveRecordingStart):
+    """Inicia gravação ao vivo (409 se já houver uma em andamento)."""
+    from relay.transcricoes.live_control import (
+        AlreadyRecording,
+        NoAudioAvailable,
+        live_recorder,
+    )
+    try:
+        return live_recorder.start(mic=body.mic, monitor=body.monitor, title=body.title)
+    except AlreadyRecording as e:
+        raise HTTPException(409, str(e))
+    except (NoAudioAvailable, RuntimeError, ValueError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/recordings/live/stop")
+def live_recording_stop():
+    """Para a gravação, salva o WAV e cria o Recording. Retorna o resumo."""
+    from relay.transcricoes.live_control import NotRecording, live_recorder
+    try:
+        return live_recorder.stop()
+    except NotRecording as e:
+        raise HTTPException(409, str(e))
+
+
 @app.get("/api/recordings/{rec_id}")
 def get_recording(rec_id: int, s: Session = Depends(db)):
     r = s.get(Recording, rec_id)
@@ -6353,6 +6392,63 @@ def recording_audio(rec_id: int, s: Session = Depends(db)):
     if not caminho.exists():
         raise HTTPException(404, "Audio file not found")
     return FileResponse(str(caminho), media_type="audio/wav", filename=caminho.name)
+
+
+# ---------------------------------------------------------------------------
+# Paridade Electron: routers extras (montados ANTES do fallback do SPA,
+# senão os GETs novos caem no catch-all `/{full_path:path}` e dão 404)
+# ---------------------------------------------------------------------------
+from relay.api import ext_board as _ext_board
+from relay.api import ext_flows as _ext_flows
+from relay.api import ext_insights as _ext_insights
+
+app.include_router(_ext_board.router)
+app.include_router(_ext_flows.router)
+app.include_router(_ext_insights.router)
+
+
+@app.get("/api/search")
+def global_search(q: str, limit: int = 20, s: Session = Depends(db)):
+    """Busca global (tarefas, TODOs, projetos, gravações) para a barra do shell.
+
+    Cobre a busca do `main_window` (código/título da tarefa incluídos).
+    """
+    from sqlalchemy import func, or_
+    termo = f"%{(q or '').strip()}%"
+    if not (q or "").strip():
+        return {"q": "", "tasks": [], "todos": [], "projects": [], "recordings": []}
+    n = max(1, min(limit, 50))
+    condicoes = [Task.title.ilike(termo)]
+    if (q or "").strip().isdigit():
+        condicoes.append(Task.number == int((q or "").strip()))
+    tasks = (
+        s.query(Task, Project.key)
+        .join(Project, Task.project_id == Project.id)
+        .filter(Task.deleted_at.is_(None), or_(*condicoes))
+        .order_by(Task.updated_at.desc()).limit(n).all()
+    )
+    todos = (
+        s.query(Todo).filter(Todo.text.ilike(termo))
+        .order_by(Todo.done, Todo.sort_order).limit(n).all()
+    )
+    projects = (
+        s.query(Project).filter(or_(Project.name.ilike(termo), Project.key.ilike(termo)))
+        .order_by(Project.name).limit(n).all()
+    )
+    recordings = (
+        s.query(Recording).filter(or_(Recording.title.ilike(termo),
+                                      Recording.topic.ilike(termo),
+                                      Recording.transcript.ilike(termo)))
+        .order_by(Recording.created_at.desc()).limit(n).all()
+    )
+    return {
+        "q": q,
+        "tasks": [{"id": t.id, "code": f"{key}-{t.number}", "title": t.title,
+                   "projectId": t.project_id} for t, key in tasks],
+        "todos": [{"id": t.id, "text": t.text, "done": bool(t.done)} for t in todos],
+        "projects": [{"id": p.id, "key": p.key, "name": p.name} for p in projects],
+        "recordings": [{"id": r.id, "title": r.title, "topic": r.topic} for r in recordings],
+    }
 
 
 # ---------------------------------------------------------------------------
