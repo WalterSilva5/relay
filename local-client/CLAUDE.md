@@ -4,6 +4,8 @@
 
 Cliente desktop local do Relay. Organiza tarefas e facilita o ciclo de desenvolvimento com GUI (PySide6/Qt) e API REST embutida (FastAPI) para agentes de IA.
 
+> Direção (ADR-0001): a UI oficial migra para o React `webui` no shell Electron; a GUI PySide6 (`gui/`) é o caminho legado (congela após a paridade por view).
+
 ## Stack
 
 - **Python 3.10+**

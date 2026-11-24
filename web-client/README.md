@@ -2,6 +2,11 @@
 
 # Web Client — Relay
 
+> **⚠️ CONGELADO (2026-11-24, [ADR-0001](../../docs/adr/0001-electron-unificacao.md)):**
+> este cliente NestJS + Angular não recebe mais features nem correções —
+> a UI oficial passa a ser o React `local-client/webui` no shell Electron,
+> com o Python (FastAPI + SQLite) como sidecar. Não usar para desenvolvimento novo.
+
 Relay web client. NestJS 8 backend + Angular 20 frontend, running via Docker.
 
 ## Stack

@@ -52,8 +52,17 @@ como sidecar** (o Electron sobe o FastAPI no boot e fala HTTP com ele):
 - `web-client/` (NestJS+Angular): congelado agora; fora do CI assim que o
   Electron empacotar (E3).
 
-## Riscos assumidos
+## Decisões complementares
 
+- (a) O vault KeePass **permanece desktop-only por segurança**: a
+  senha-mestra nunca trafega por HTTP — sem endpoint de cofre na API.
+- (b) A instalação de skills no projeto do usuário **permanece manual
+  (copiar/baixar)** pelo mesmo motivo: escrita fora do workspace do
+  Relay não passa pela API.
+- (c) Realtime-audio via WebSocket **adiado**: o start/stop por hotkey
+  via HTTP cobre a v1.
+
+## Riscos assumidos
 1. Bundle PyInstaller+torch pode passar de 500MB — mitigar excluindo CUDA e
    baixando modelos sob demanda.
 2. Wayland: hotkeys/captura dependem de portal/permissão — spike E1 valida

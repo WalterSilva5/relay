@@ -270,7 +270,7 @@ relay/
 │   ├── pyproject.toml         # Python dependencies
 │   └── docs/screenshots/      # Screenshots
 │
-├── web-client/                # Web client (NestJS + Angular) — in development
+├── web-client/                # Web client (NestJS + Angular) — CONGELADO (ver ADR-0001; UI oficial: local-client/webui no Electron)
 ├── mcp/                       # MCP server for integration
 ├── docs/                      # Architecture documentation
 ├── CLAUDE.md                  # Guide for AI agents
