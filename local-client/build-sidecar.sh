@@ -29,6 +29,13 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$HERE"
 
+# Garante o .venv local no PATH (pyinstaller + python do venv).
+# Sem isso, `command -v pyinstaller` e `python3 -c "import relay..."`
+# usam o Python do sistema e o build falha mesmo com tudo instalado.
+if [ -d "$HERE/.venv/bin" ]; then
+  export PATH="$HERE/.venv/bin:$PATH"
+fi
+
 OUT_DIR="$HERE/dist-sidecar"
 BIN_NAME="relay-server"
 

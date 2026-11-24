@@ -46,3 +46,6 @@ reuniao-*.md
 # Web UI (build)
 local-client/webui/node_modules/
 local-client/webui/dist/
+
+# Build do sidecar Electron (binário local, 100MB+)
+local-client/dist-sidecar/

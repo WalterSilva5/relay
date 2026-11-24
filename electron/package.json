@@ -33,7 +33,9 @@
       "maintainer": "Relay <dev@relay.local>",
       "icon": "../../build/icon.png",
       "desktop": {
-        "StartupWMClass": "Relay"
+        "entry": {
+          "StartupWMClass": "Relay"
+        }
       }
     },
     "publish": [
