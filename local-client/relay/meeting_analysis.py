@@ -32,6 +32,32 @@ Regras:
 - Se a transcrição não disser algo, não complete por conta própria; use o contexto para apontar risco.
 - Português do Brasil, frases curtas."""
 
+# Workshop/aula: não é sobre um projeto, então não gera tarefas — gera
+# entendimento (dicas, sugestões de aplicação, referências e perguntas).
+_SYSTEM_WORKSHOP = """Você é copiloto de reunião. Recebe a TRANSCRIÇÃO de uma reunião que NÃO é
+sobre um projeto (workshop, kickoff, aula, estudo) e devolve o entendimento
+consolidado, sem atribuir tarefas a ninguém.
+
+Devolva JSON válido:
+{
+  "tips": ["aprendizado ou ponto-chave, objetivo"],
+  "plan": ["sugestão de aplicação prática no dia a dia"],
+  "action_items": [],
+  "decisions": ["decisão/conclusão do grupo"],
+  "questions": [{"question": "pergunta em aberto", "answer": "", "resolved": false}]
+}
+
+Regras:
+- action_items deve ser SEMPRE vazio: aqui não existe board nem responsável.
+- Foque no que foi ensinado/discutido: conceitos, critérios, armadilhas, boas práticas.
+- Sugira como aplicar o conteúdo, sem inventar fatos que não estão na transcrição.
+- Português do Brasil, frases curtas."""
+
+_USER_WORKSHOP = """TRANSCRIÇÃO:
+{transcript}
+
+Responda somente com o JSON."""
+
 _USER = """CONTEXTO DO PROJETO:
 {context}
 
@@ -49,13 +75,18 @@ def _limpar(texto: str, limite: int = MAX_TRANSCRIPT) -> str:
     return " ".join((texto or "").split())[:limite]
 
 
-def _via_llm(titulo: str, transcricao: str, contexto: str) -> dict:
+def _via_llm(titulo: str, transcricao: str, contexto: str, workshop: bool = False) -> dict:
     from relay.ai.llm import invoke_json
 
+    if workshop:
+        system, user = _SYSTEM_WORKSHOP, _USER_WORKSHOP.format(transcript=_limpar(transcricao))
+    else:
+        system = _SYSTEM
+        user = _USER.format(context=contexto or "(sem contexto de projeto)",
+                            transcript=_limpar(transcricao))
+
     dados = invoke_json(
-        [("system", _SYSTEM),
-         ("user", _USER.format(context=contexto or "(sem contexto de projeto)",
-                              transcript=_limpar(transcricao)))],
+        [("system", system), ("user", user)],
         temperature=0.2,
         timeout=90,
     )
@@ -127,18 +158,25 @@ def _heuristica(contexto: str) -> dict:
 
 
 def analyze_meeting(*, title: str = "", transcript: str = "", context: str = "",
+                    workshop: bool = False,
                     use_ai: bool = True) -> dict:
     """Analisa a reunião; devolve itens + de onde vieram (llm|heuristic)."""
     if use_ai:
         try:
-            dados = _via_llm(title, transcript, context)
+            dados = _via_llm(title, transcript, context, workshop=workshop)
             if any(dados.values()):
+                # workshop nunca gera tarefa (não há projeto/board por trás)
+                if workshop:
+                    dados["actionItems"] = []
                 dados["engine"] = "llm"
+                dados["mode"] = "workshop" if workshop else "project"
                 return dados
         except Exception:  # noqa: BLE001
             pass
-    dados = _heuristica(context)
+    dados = _heuristica("" if workshop else context)
+    dados["actionItems"] = []
     dados["engine"] = "heuristic"
+    dados["mode"] = "workshop" if workshop else "project"
     return dados
 
 

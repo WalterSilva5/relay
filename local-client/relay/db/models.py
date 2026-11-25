@@ -675,6 +675,9 @@ class Recording(Base):
 
     id = Column(Integer, primary_key=True)
     kind = Column(String(20), default="meeting")  # meeting | study
+    # Projeto-alvo da reunião (contexto). NULL = reunião sem projeto
+    # (workshop, kickoff, estudo): analisa só a transcrição, sem gerar tarefas.
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="SET NULL"))
     title = Column(String(255), default="")
     topic = Column(String(255), default="")
     transcript = Column(Text, default="")
@@ -754,6 +757,8 @@ def _run_light_migrations(engine):
             radds.append("ALTER TABLE recordings ADD COLUMN archived_at DATETIME")
         if "live_state_json" not in rcols:
             radds.append("ALTER TABLE recordings ADD COLUMN live_state_json TEXT")
+        if "project_id" not in rcols:
+            radds.append("ALTER TABLE recordings ADD COLUMN project_id INTEGER REFERENCES projects(id)")
         if radds:
             with engine.begin() as conn:
                 for stmt in radds:

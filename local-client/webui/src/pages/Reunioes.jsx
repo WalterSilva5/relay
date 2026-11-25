@@ -3,7 +3,8 @@ import Swal from 'sweetalert2'
 import {
   listRecordings, getRecording, updateRecording, deleteRecording,
   archiveRecording, recordingExportUrl, recordingAudioUrl,
-  analyzeRecording, getWorkspaces,
+  analyzeRecording, getWorkspaces, getProjects,
+  getLiveStatus, startLiveRecording, stopLiveRecording,
 } from '../api.js'
 import { getActiveProjectId } from '../components/ProjectSelector.jsx'
 import { t, tf } from '../i18n'
@@ -74,6 +75,7 @@ export default function Reunioes() {
   const [projeto, setProjeto] = useState(null)
   const [analise, setAnalise] = useState(null)
   const [analisando, setAnalisando] = useState(false)
+  const [gravando, setGravando] = useState(null)
 
   const carregar = async () => {
     try {
@@ -122,6 +124,67 @@ export default function Reunioes() {
       } catch { /* sem projeto ativo: analisa só a transcrição */ }
     })()
   }, [])
+
+  // ---- iniciar reunião: pergunta o contexto antes de gravar ----
+  const iniciarReuniao = async () => {
+    const passo1 = await Swal.fire({
+      title: t('Adicionar um projeto como contexto?'),
+      html: t('O contexto do projeto (board, atrasos, dailies) deixa a análise mais concreta. Para workshop, kickoff ou aula, escolha <b>sem projeto</b> — aí a análise vira aprendizado e sugestões, sem gerar tarefas.'),
+      showDenyButton: true,
+      confirmButtonText: t('Sim, escolher projeto'),
+      denyButtonText: t('Não, é workshop'),
+      denyButtonColor: '#6d7486',
+      cancelButtonColor: '#9aa1b1',
+      cancelButtonText: t('Cancelar'),
+      showCancelButton: true,
+    })
+    if (passo1.isDismissed) return
+    let projectId = null
+    if (passo1.isConfirmed) {
+      let projetos = []
+      try { projetos = await getProjects() } catch { projetos = [] }
+      if (!projetos.length) {
+        await Swal.fire({ icon: 'info', title: t('Nenhum projeto'), text: t('Crie um projeto ou escolha "sem projeto".') })
+        return
+      }
+      const opcoes = projetos.map((pj) => `<option value="${pj.id}">${pj.key} · ${pj.name}</option>`).join('')
+      const passo2 = await Swal.fire({
+        title: t('Projeto-alvo da reunião'),
+        html: `<select id="swal-proj" class="swal2-select" style="width:100%">${opcoes}</select>`,
+        confirmButtonText: t('Iniciar gravação'),
+        showCancelButton: true,
+        cancelButtonText: t('Cancelar'),
+        didOpen: () => {
+          const el = document.getElementById('swal-proj')
+          if (el && projeto?.id) el.value = String(projeto.id)
+        },
+        preConfirm: () => document.getElementById('swal-proj')?.value,
+      })
+      if (!passo2.isConfirmed || !passo2.value) return
+      projectId = Number(passo2.value)
+    }
+    try {
+      const r = await startLiveRecording({ projectId, contextMode: projectId ? 'project' : 'workshop' })
+      setGravando(r)
+      setMsg(projectId
+        ? tf('Gravando com contexto do projeto #{id}.', { id: projectId })
+        : t('Gravando sem projeto (workshop): a análise não vai gerar tarefas.'))
+    } catch (e) {
+      setErro(textoErro(e))
+    }
+  }
+
+  const pararReuniao = async () => {
+    try {
+      const r = await stopLiveRecording()
+      setGravando(null)
+      await carregar()
+      setMsg(tf('Gravação salva ({s}s). Analise para extrair os pontos.', { s: r.durationSec ?? '?' }))
+      if (r.recordingId) abrir(r.recordingId)
+    } catch (e) {
+      setErro(textoErro(e))
+    }
+  }
 
   const analisar = async () => {
     if (!sel) return
@@ -273,8 +336,30 @@ export default function Reunioes() {
 
   return (
     <div>
-      <h1 className="page-title">{t('Reuniões')}</h1>
-      <p className="subtitle">{t('Gravações do app desktop: o mesmo conteúdo para gerenciar, visualizar, editar e exportar.')}</p>
+      <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <div>
+          <h1 className="page-title">{t('Reuniões')}</h1>
+          <p className="subtitle">{t('Grave, transcreva e analise reuniões — com ou sem um projeto como contexto.')}</p>
+        </div>
+        {gravando?.recording ? (
+          <button className="danger" onClick={pararReuniao}>
+            {t('Parar gravação')}
+            {gravando.contextMode === 'project'
+              ? ` · ${t('projeto')} #${gravando.projectId}`
+              : ` · ${t('workshop')}`}
+          </button>
+        ) : (
+          <button onClick={iniciarReuniao}>{t('Iniciar reunião')}</button>
+        )}
+      </div>
+      {gravando?.recording && (
+        <div className="banner" style={{ background: 'var(--success-soft)', color: 'var(--success)', borderColor: 'var(--success)' }}>
+          <b>{t('● Gravando')}</b> — {gravando.mic || '?'} + {gravando.monitor || '?'} ·{' '}
+          {gravando.contextMode === 'project'
+            ? tf('contexto do projeto #{id}', { id: gravando.projectId })
+            : t('sem projeto (workshop): não gera tarefas')}
+        </div>
+      )}
       {erro && <div className="banner">{erro}</div>}
       {msg && <div className="muted" style={{ marginBottom: 8 }}>{msg}</div>}
       {Seletor}
@@ -349,12 +434,48 @@ export default function Reunioes() {
               <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <button className="ghost row" onClick={analisar} disabled={analisando}>
                   <Icon name="sparkles" size={14} />
-                  {analisando ? t('Analisando...') : t('Analisar com contexto')}
+                  {analisando ? t('Analisando...') : t('Analisar reunião')}
                 </button>
+                <span className={`chip ${detalhe?.projectId ? 'accent' : 'warn'}`}>
+                  {detalhe?.projectId
+                    ? tf('contexto: projeto #{id}', { id: detalhe.projectId })
+                    : t('workshop · sem projeto')}
+                </span>
+                <button
+                  className="ghost sm"
+                  onClick={async () => {
+                    let projetos = []
+                    try { projetos = await getProjects() } catch { projetos = [] }
+                    const opcoes = [`<option value="">${t('Sem projeto (workshop)')}</option>`]
+                      .concat(projetos.map((pj) => `<option value="${pj.id}">${pj.key} · ${pj.name}</option>`))
+                      .join('')
+                    const r = await Swal.fire({
+                      title: t('Contexto da reunião'),
+                      html: `<select id="swal-ctx" class="swal2-select" style="width:100%">${opcoes}</select>`,
+                      showCancelButton: true,
+                      confirmButtonText: t('Salvar'),
+                      cancelButtonText: t('Cancelar'),
+                      didOpen: () => {
+                        const el = document.getElementById('swal-ctx')
+                        if (el) el.value = detalhe?.projectId ? String(detalhe.projectId) : ''
+                      },
+                      preConfirm: () => document.getElementById('swal-ctx')?.value ?? '',
+                    })
+                    if (!r.isConfirmed) return
+                    const novo = r.value ? Number(r.value) : null
+                    try {
+                      await updateRecording(sel, { projectId: novo })
+                      await abrir(sel)
+                      setMsg(novo
+                        ? tf('Contexto: projeto #{id}. Analise de novo para usar o board.', { id: novo })
+                        : t('Contexto removido: a análise agora não gera tarefas.'))
+                    } catch (e) { setErro(textoErro(e)) }
+                  }}
+                >{t('Trocar contexto')}</button>
                 <span className="muted" style={{ fontSize: 11 }}>
-                  {projeto
-                    ? t('Usa o board, atrasos e dailies do projeto atual.')
-                    : t('Sem projeto ativo: analisa só a transcrição.')}
+                  {detalhe?.projectId
+                    ? t('Usa o board, atrasos e dailies do projeto escolhido na gravação.')
+                    : t('Sem projeto: a análise traz aprendizado e sugestões, sem gerar tarefas.')}
                 </span>
               </div>
 
@@ -388,6 +509,18 @@ export default function Reunioes() {
                       </div>
                     )
                   ))}
+                  <div className="row" style={{ gap: 6, marginBottom: 6 }}>
+                    <span className={`chip ${analise.mode === 'workshop' || analise.usedProjectContext === false ? 'warn' : 'accent'}`}>
+                      {analise.mode === 'workshop' || analise.usedProjectContext === false
+                        ? t('workshop · sem projeto')
+                        : tf('contexto: projeto #{id}', { id: analise.projectId })}
+                    </span>
+                    {analise.mode === 'workshop' && (
+                      <span className="muted" style={{ fontSize: 11 }}>
+                        {t('Workshop: a análise traz aprendizado e sugestões, sem tarefas.')}
+                      </span>
+                    )}
+                  </div>
                   {(analise.actionItems || []).length > 0 && (
                     <div style={{ marginTop: 8 }}>
                       <div className="section-title" style={{ margin: '0 0 2px' }}>{t('Ações')}</div>

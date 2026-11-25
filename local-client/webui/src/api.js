@@ -310,6 +310,12 @@ export const reviewExportUrl = (projectId, id) =>
   `/api/projects/${projectId}/reviews/${id}/export.md`
 
 // Análise de reunião com o contexto do projeto
+// Gravação ao vivo (hotkey/tray ou botão) — com escolha de contexto
+export const getLiveStatus = () => api.get('/recordings/live/status').then((r) => r.data)
+export const startLiveRecording = (body = {}) =>
+  api.post('/recordings/live/start', body).then((r) => r.data)
+export const stopLiveRecording = () => api.post('/recordings/live/stop', {}).then((r) => r.data)
+
 export const analyzeRecording = (id, body = {}) =>
   api.post(`/recordings/${id}/analyze`, body).then((r) => r.data)
 

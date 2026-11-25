@@ -69,7 +69,8 @@ def isolated_ws(tmp_path, monkeypatch, fake_audio):
 
 
 def test_status_inicial_parado():
-    assert LiveRecorder().status() == {"recording": False, "startedAt": None, "title": ""}
+    assert LiveRecorder().status() == {"recording": False, "startedAt": None, "title": "",
+                                       "projectId": None, "contextMode": None}
 
 
 def test_start_sem_audio_da_erro():

@@ -34,6 +34,8 @@ class LiveRecorder:
         self._session = None
         self._started_at: datetime | None = None
         self._title = ""
+        self._project_id: int | None = None
+        self._context_mode = "project"  # project | workshop
 
     def status(self) -> dict:
         with self._lock:
@@ -42,9 +44,12 @@ class LiveRecorder:
                 "recording": recording,
                 "startedAt": self._started_at.isoformat() if recording and self._started_at else None,
                 "title": self._title if recording else "",
+                "projectId": self._project_id if recording else None,
+                "contextMode": self._context_mode if recording else None,
             }
 
-    def start(self, *, mic: bool = True, monitor: bool = True, title: str = "") -> dict:
+    def start(self, *, mic: bool = True, monitor: bool = True, title: str = "",
+              project_id: int | None = None, context_mode: str = "") -> dict:
         from relay.transcricoes.audio import (
             RecordingSession,
             default_mic,
@@ -66,11 +71,18 @@ class LiveRecorder:
             self._session = session
             self._started_at = datetime.utcnow()
             self._title = (title or "").strip()
+            # workshop = reunião sem projeto-alvo; sem projeto, o padrão é workshop
+            modo = (context_mode or "").strip().lower()
+            self._context_mode = "project" if (modo == "project" and project_id) else (
+                "workshop" if (modo == "workshop" or not project_id) else (modo or "workshop"))
+            self._project_id = project_id if self._context_mode == "project" else None
             return {
                 "recording": True,
                 "startedAt": self._started_at.isoformat(),
                 "mic": mic_src.description if mic_src else None,
                 "monitor": mon_src.description if mon_src else None,
+                "projectId": self._project_id,
+                "contextMode": self._context_mode,
             }
 
     def stop(self) -> dict:
@@ -82,9 +94,12 @@ class LiveRecorder:
             session = self._session
             started_at = self._started_at
             title = self._title
+            project_id = self._project_id
             self._session = None
             self._started_at = None
             self._title = ""
+            self._project_id = None
+            self._context_mode = "project"
         if session is None or not session.is_recording:
             raise NotRecording("Nenhuma gravação em andamento")
         ws = get_active_workspace_id()
@@ -100,6 +115,7 @@ class LiveRecorder:
                 title=title or f"Gravação {started_at.strftime('%d/%m %H:%M')}" if started_at else "Gravação",
                 duration=duration,
                 audio_path=str(path),
+                project_id=project_id,
             )
             s.add(row)
             s.commit()

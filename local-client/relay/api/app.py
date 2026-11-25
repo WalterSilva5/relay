@@ -6102,6 +6102,7 @@ def download_backup(nome: str):
 
 class RecordingUpdate(BaseModel):
     title: Optional[str] = None
+    projectId: Optional[int] = None   # projeto-alvo do contexto (None = workshop)
     topic: Optional[str] = None
     transcript: Optional[str] = None
     markdown: Optional[str] = None
@@ -6117,6 +6118,7 @@ class ArchiveRecordingBody(BaseModel):
 
 class AnalyzeRecordingBody(BaseModel):
     projectId: Optional[int] = None
+    mode: str = ""          # "project" | "workshop" (vazio = usa o da gravação)
     save: bool = False
 
 
@@ -6126,6 +6128,8 @@ def _recording_base(r: Recording) -> dict:
     audio = (r.audio_path or "").strip()
     return {
         "id": r.id,
+        "projectId": getattr(r, "project_id", None),
+        "contextMode": "project" if getattr(r, "project_id", None) else "workshop",
         "kind": r.kind or "meeting",
         "title": r.title or "",
         "topic": r.topic or "",
@@ -6208,6 +6212,8 @@ class LiveRecordingStart(BaseModel):
     mic: bool = True
     monitor: bool = True
     title: str = ""
+    projectId: Optional[int] = None      # projeto-alvo do contexto
+    contextMode: str = ""                # "project" | "workshop" (vazio = deduz)
 
 
 @app.post("/api/recordings/live/start", status_code=201)
@@ -6219,7 +6225,10 @@ def live_recording_start(body: LiveRecordingStart):
         live_recorder,
     )
     try:
-        return live_recorder.start(mic=body.mic, monitor=body.monitor, title=body.title)
+        return live_recorder.start(
+            mic=body.mic, monitor=body.monitor, title=body.title,
+            project_id=body.projectId, context_mode=body.contextMode,
+        )
     except AlreadyRecording as e:
         raise HTTPException(409, str(e))
     except (NoAudioAvailable, RuntimeError, ValueError) as e:
@@ -6261,6 +6270,11 @@ def update_recording(rec_id: int, body: RecordingUpdate, s: Session = Depends(db
             setattr(r, model_field, dados[api_field])
     if "tags" in dados:
         r.tags = _json.dumps(dados["tags"] or [], ensure_ascii=False)
+    if "projectId" in dados:
+        novo = dados["projectId"]
+        if novo is not None and not s.query(Project).filter(Project.id == novo).first():
+            raise HTTPException(404, "Project not found")
+        r.project_id = novo
     if "liveState" in dados:
         r.live_state_json = _json.dumps(dados["liveState"] or {}, ensure_ascii=False)
     s.commit()
@@ -6351,10 +6365,11 @@ def analyze_recording(
     body = body or AnalyzeRecordingBody()
     projeto = body.projectId if body.projectId is not None else projectId
     salvar = bool(body.save or save)
-
     r = s.get(Recording, rec_id)
     if not r:
         raise HTTPException(404, "Recording not found")
+    if projeto is None:
+        projeto = getattr(r, "project_id", None)
 
     contexto = ""
     if projeto:
@@ -6362,11 +6377,15 @@ def analyze_recording(
             raise HTTPException(404, "Project not found")
         contexto = project_context(s, projeto)
 
+    # workshop = sem projeto-alvo: devolve aprendizado/sugestões, nunca tarefas
+    modo = (body.mode or "").strip().lower()
+    workshop = modo == "workshop" if modo else not projeto
     usa_ia = bool(get_active_ai_provider())
     resultado = analyze_meeting(
         title=r.title or "",
         transcript=r.transcript or "",
         context=contexto,
+        workshop=workshop,
         use_ai=usa_ia,
     )
 
@@ -6385,6 +6404,7 @@ def analyze_recording(
     return {
         "recordingId": r.id,
         "projectId": projeto,
+        "mode": "workshop" if workshop else "project",
         "usedProjectContext": bool(contexto),
         "aiAvailable": usa_ia,
         "engine": resultado.get("engine", "heuristic"),

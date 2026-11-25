@@ -52,7 +52,7 @@ def test_heuristica_sem_contexto_nao_quebra():
 
 
 def test_analise_usa_ia_quando_disponivel(monkeypatch):
-    def falso(titulo, transcricao, contexto):
+    def falso(titulo, transcricao, contexto, workshop=False):
         return {"tips": ["dica da IA"], "plan": ["passo"], "actionItems": [],
                 "decisions": ["decidido"], "questions": []}
 
