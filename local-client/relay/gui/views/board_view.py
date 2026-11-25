@@ -1629,9 +1629,13 @@ def _goal_progress(goal, s) -> tuple[int, int]:
         q = q.filter(Task.epics.any(Epic.id == goal.epic_id))
     if goal.sprint_id:
         q = q.filter(Task.sprint_id == goal.sprint_id)
-    total = q.count()
-    done = q.join(BoardColumn, Task.column_id == BoardColumn.id).filter(
-        BoardColumn.is_done == True).count()  # noqa: E712
+    tasks = q.all()
+    # entregue = Done + In Test/Verified/Accepted (mesma regra do % Finalizado)
+    from relay.dimensions import delivered_ids
+    cols = {t.column.id: t.column for t in tasks if t.column}.values()
+    entregues = delivered_ids(list(cols), {c.id for c in cols if c.is_done})
+    total = len(tasks)
+    done = sum(1 for t in tasks if t.column_id in entregues)
     return done, total
 
 
@@ -2093,13 +2097,18 @@ class BoardMetricsAccordion(QFrame):
             # Por épico
             mod_box = self._section_box(_t("Por épico"), t)
             epics_all = s.query(Epic).filter(Epic.project_id == self.project_id).order_by(Epic.name).all()
+            from relay.dimensions import delivered_ids as _entregues_ep
+            _cols_ep = s.query(BoardColumn).filter(BoardColumn.project_id == self.project_id).all()
+            _entregues_ep_ids = _entregues_ep(
+                _cols_ep, {c.id for c in _cols_ep if c.is_done})
             epic_data = []
             for ep in epics_all:
                 q = s.query(Task).filter(Task.project_id == self.project_id, Task.deleted_at == None, Task.archived_at == None, Task.epics.any(Epic.id == ep.id))
-                tot = q.count()
+                tasks_ep = q.all()
+                tot = len(tasks_ep)
                 if tot == 0:
                     continue
-                done_e = q.join(BoardColumn, Task.column_id == BoardColumn.id).filter(BoardColumn.is_done == True).count()
+                done_e = sum(1 for t in tasks_ep if t.column_id in _entregues_ep_ids)
                 pct_e = int(done_e / tot * 100) if tot else 0
                 epic_data.append((ep, done_e, tot, pct_e))
             epic_data.sort(key=lambda x: x[3])

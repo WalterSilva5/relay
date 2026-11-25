@@ -13,6 +13,7 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
 // Em dev: ELECTRON_URL=http://localhost:3000 (vite) — senão o FastAPI serve o build.
 const RENDER_URL = process.env.ELECTRON_URL || BASE_URL;
 const HOTKEY = 'CommandOrControl+Shift+R';
+const ROUTE_RE = /^\/[a-z0-9/-]*$/;
 
 let win = null;
 let tray = null;
@@ -25,6 +26,25 @@ function log(...args) {
   // eslint-disable-next-line no-console
   console.log(line);
   try { fs.appendFileSync(logFile, `${new Date().toISOString()} ${line}\n`); } catch { /* noop */ }
+}
+
+// Rota inicial opcional: o launcher (electron/relay-electron.sh) e os links
+// relay:// passam `--route=/reviews`. Fora do padrão, a rota é ignorada.
+function parseRoute(argv = process.argv) {
+  const arg = argv.find((a) => typeof a === 'string' && a.startsWith('--route='));
+  if (!arg) return '';
+  let route = arg.slice('--route='.length).trim().toLowerCase();
+  if (!route) return '';
+  if (!route.startsWith('/')) route = `/${route}`;
+  route = route.replace(/\/{2,}/g, '/');
+  if (route.length > 1) route = route.replace(/\/+$/, '');
+  if (route === '/' || !ROUTE_RE.test(route)) return '';
+  return route;
+}
+
+function urlFor(route) {
+  if (!route) return RENDER_URL;
+  return `${RENDER_URL.replace(/\/+$/, '')}${route}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -185,6 +205,7 @@ async function toggleRecording() {
 // Janela + tray
 // ---------------------------------------------------------------------------
 function createWindow() {
+  const route = parseRoute();
   win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -194,7 +215,8 @@ function createWindow() {
       contextIsolation: true,
     },
   });
-  win.loadURL(RENDER_URL);
+  if (route) log('rota inicial:', route);
+  win.loadURL(urlFor(route));
   if (process.env.ELECTRON_DEV) win.webContents.openDevTools({ mode: 'detach' });
   win.on('close', (e) => {
     if (!quitting) {
@@ -294,7 +316,17 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
+  app.on('second-instance', (_event, argv) => {
+    if (!win) return;
+    // Um relay:// com o app já aberto vira navegação na janela existente.
+    const route = parseRoute(argv);
+    if (route) {
+      log('rota via 2ª instância:', route);
+      win.loadURL(urlFor(route));
+    }
+    win.show();
+    win.focus();
+  });
 
   app.whenReady().then(async () => {
     if (process.env.RELAY_AUTOSTART === '1') {

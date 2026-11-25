@@ -4,6 +4,54 @@ Shell fino sobre a web UI React + sidecar Python. O Electron **não**
 reimplementa nada: janela, tray, hotkey global e ciclo de vida; todo o
 produto continua no FastAPI (`local-client/`).
 
+## Como iniciar (caminho padrão)
+
+O launcher oficial é `electron/relay-electron.sh`. Ele resolve o binário nesta
+ordem e repassa a rota inicial, se houver:
+
+1. `$RELAY_ELECTRON_BIN` (override explícito)
+2. `electron/dist/linux-unpacked/relay-desktop` (build local)
+3. `electron/dist/Relay-*.AppImage` — só se estiver executável (`chmod +x`)
+4. `electron/node_modules/.bin/electron .` (dev, com aviso)
+5. `npx electron .` (dev, com aviso)
+
+Sem nenhum binário, o script cai no app antigo (PySide com display, web sem
+display) e registra o motivo em `~/.config/Relay/launcher.log` — o usuário não
+fica sem app.
+
+```bash
+cd electron
+./relay-electron.sh                  # janela normal
+./relay-electron.sh reviews          # abre em /reviews
+./relay-electron.sh --route=/board   # idem
+./relay-electron.sh --check          # só resolve e imprime o binário
+```
+
+Para instalar no menu do usuário e registrar `relay://`:
+
+```bash
+./install-desktop.sh
+# remove depois com: ./install-desktop.sh --uninstall
+```
+
+Links `relay://` são traduzidos por `local-client/relay-open.sh`:
+
+| link | destino |
+|---|---|
+| `relay://reunioes` | `/reunioes` |
+| `relay://board/12` | `/board/12` |
+| `relay://reviews` | `/reviews` |
+| `relay://vault` (ou `senhas`) | `/configuracoes` + aviso (cofre ainda não tem tela web) |
+
+Com o app já aberto, o link vira navegação na janela existente
+(`second-instance` no `main.js`).
+
+**Reverter para o caminho antigo:** rode `local-client/run.sh` (PySide) ou
+`local-client/relay-web.sh` (navegador) diretamente e, se instalou os atalhos,
+`electron/install-desktop.sh --uninstall` (as entradas antigas ficam em
+`~/.local/share/relay-desktop-backup/`). Nada no código precisa mudar — o
+Electron não substitui os scripts antigos, só passa a ser o padrão.
+
 ## Rodar em dev
 
 ```bash

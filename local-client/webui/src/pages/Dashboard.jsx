@@ -39,7 +39,7 @@ export default function Dashboard() {
   const s = metrics?.summary || {}
   const cards = [
     { lbl: t('Tarefas'), val: s.totalTasks ?? '—' },
-    { lbl: t('Concluídas'), val: s.doneTasks ?? '—' },
+    { lbl: t('Entregues'), val: (s.deliveredTasks ?? s.doneTasks) ?? '—' },
     { lbl: t('Lead time (h)'), val: s.avgLeadTimeHours != null ? Math.round(s.avgLeadTimeHours) : '—' },
     { lbl: t('Cycle time (h)'), val: s.avgCycleTimeHours != null ? Math.round(s.avgCycleTimeHours) : '—' },
   ]

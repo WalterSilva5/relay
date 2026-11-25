@@ -243,22 +243,25 @@ def search_knowledge_base(query: str) -> str:
 
 @tool
 def get_project_metrics() -> str:
-    """Métricas rápidas do workspace por projeto: total de tarefas, concluídas e
-    ativas. Use para relatórios, priorização e visão geral do progresso."""
+    """Métricas rápidas do workspace por projeto: total de tarefas, entregues e
+    em aberto. Use para relatórios, priorização e visão geral do progresso."""
     s = get_session()
     try:
         projects = s.query(Project).all()
         if not projects:
             return "Nenhum projeto."
+        from relay.dimensions import delivered_ids
         out = []
         for p in projects:
             tasks = s.query(Task).filter(
                 Task.project_id == p.id, Task.deleted_at.is_(None)).all()
-            done_cols = {c.id for c in s.query(BoardColumn).filter(
-                BoardColumn.project_id == p.id, BoardColumn.is_done.is_(True)).all()}
-            done = sum(1 for t in tasks if t.column_id in done_cols)
-            out.append(f"{p.key} — {p.name}: {len(tasks)} tarefas, {done} concluídas, "
-                       f"{len(tasks) - done} ativas")
+            cols = s.query(BoardColumn).filter(
+                BoardColumn.project_id == p.id).all()
+            # entregue = Done + In Test/Verified/Accepted (regra do % Finalizado)
+            entregues = delivered_ids(cols, {c.id for c in cols if c.is_done})
+            done = sum(1 for t in tasks if t.column_id in entregues)
+            out.append(f"{p.key} — {p.name}: {len(tasks)} tarefas, {done} entregues, "
+                       f"{len(tasks) - done} em aberto")
         return "\n".join(out)
     finally:
         s.close()

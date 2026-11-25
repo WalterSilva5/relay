@@ -1,8 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=Relay (Web)
-Comment=Abre o Relay na versão web (mesmos dados do app desktop)
-Exec=/home/wsi/repositorios/github/relay/local-client/relay-web.sh
-Icon=relay
+Name=Relay
+Comment=Relay Desktop (Electron) — mesma base do app web
+Exec=/home/wsi/repositorios/github/relay/electron/relay-electron.sh
+Path=/home/wsi/repositorios/github/relay
+Icon=/home/wsi/repositorios/github/relay/electron/assets/icon.png
 Terminal=false
 Categories=Development;
+StartupWMClass=Relay

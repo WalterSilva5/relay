@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections import Counter
 from datetime import date, datetime, time, timedelta
 
-from relay.dimensions import MODULES
+from relay.dimensions import MODULES, delivered_ids
 from relay.stages import primary_group
 from relay.timeutil import data_local, limites_utc
 
@@ -102,6 +102,10 @@ def compute_weekly(session, project, ref: date | None = None) -> dict:
     )
     por_coluna = {c.id: c for c in cols}
     done_ids = {c.id for c in cols if c.is_done}
+    # Progresso/entrega usa a mesma regra do % Finalizado: Done + teste/aceite.
+    # `done_ids` continua sendo a conclusão formal para as métricas de fluxo
+    # (o que foi concluído na semana, via `done_at`).
+    entregues_ids = delivered_ids(cols, done_ids)
     primeira_ordem = cols[0].order if cols else 0
 
     tasks = (
@@ -159,7 +163,7 @@ def compute_weekly(session, project, ref: date | None = None) -> dict:
     membros = []
     for nome in nomes:
         meus = [t for t in tasks if (t.assignee or "") == nome]
-        abertos = [t for t in meus if t.column_id not in done_ids]
+        abertos = [t for t in meus if t.column_id not in entregues_ids]
         entregues = []
         sem_data = 0
         for t in meus:
@@ -193,7 +197,7 @@ def compute_weekly(session, project, ref: date | None = None) -> dict:
         membros.append({
             "name": nome,
             "assigned": len(meus),
-            "doneTotal": sum(1 for t in meus if t.column_id in done_ids),
+            "doneTotal": sum(1 for t in meus if t.column_id in entregues_ids),
             "legacyDone": sem_data,
             "delivered": entregues,
             "deliveredCount": len(entregues),
@@ -222,12 +226,12 @@ def compute_weekly(session, project, ref: date | None = None) -> dict:
     entregues_semana = [e for m in membros for e in m["delivered"]]
     sem_data_total = sum(m["legacyDone"] for m in membros)
     por_modulo = Counter(e["module"] or "sem módulo" for e in entregues_semana)
-    abertos = [t for t in tasks if t.column_id not in done_ids]
+    abertos = [t for t in tasks if t.column_id not in entregues_ids]
 
     resumo = {
         "cards": len(tasks),
-        "done": sum(1 for t in tasks if t.column_id in done_ids),
-        "pct": round(sum(1 for t in tasks if t.column_id in done_ids) / len(tasks) * 100) if tasks else 0,
+        "done": sum(1 for t in tasks if t.column_id in entregues_ids),
+        "pct": round(sum(1 for t in tasks if t.column_id in entregues_ids) / len(tasks) * 100) if tasks else 0,
         "doneInWeek": len(entregues_semana),
         "legacyDone": sem_data_total,
         "open": len(abertos),
@@ -366,7 +370,7 @@ def render_markdown(dados: dict, anonimizado: bool = False) -> str:
     # ---------- 3. carga ----------
     out.append("## 3. Distribuição de carga (fim do período)")
     out.append("")
-    out.append("| Membro | Cards | Em aberto | Backlog | Concluídos | Atrasados |")
+    out.append("| Membro | Cards | Em aberto | Backlog | Entregues | Atrasados |")
     out.append("|---|---:|---:|---:|---:|---:|")
     for i, m in enumerate(dados["members"]):
         out.append(

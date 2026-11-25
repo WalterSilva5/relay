@@ -3,6 +3,27 @@
 Runbook de release: web UI → sidecar Python → Electron → publicar → auto-update.
 Alvo suportado nesta etapa: **Linux (AppImage + deb)**. Windows/macOS ficam para depois.
 
+## Início no dia a dia (Electron é o padrão)
+
+O caminho oficial de abertura é `electron/relay-electron.sh`. Ordem de resolução
+do binário: `$RELAY_ELECTRON_BIN` → `electron/dist/linux-unpacked/relay-desktop`
+→ `electron/dist/Relay-*.AppImage` (executável) → `electron/node_modules/.bin/electron .`
+(dev) → `npx electron .` (dev). Sem nenhum deles, cai no launcher antigo
+(PySide com display, web sem display) com aviso em `~/.config/Relay/launcher.log`.
+
+```bash
+cd electron
+./relay-electron.sh --check     # imprime só o binário resolvido (sem abrir)
+./relay-electron.sh reviews     # --route=/reviews
+./install-desktop.sh            # atalhos do menu + handler relay://
+```
+
+`relay://reunioes` → `/reunioes`; `relay://vault` → `/configuracoes` com aviso
+(ainda não há tela web de cofre). Com o app aberto, o link navega na janela
+existente. **Reverter:** rode `local-client/run.sh` ou `local-client/relay-web.sh`
+e, se instalou atalhos, `electron/install-desktop.sh --uninstall` — os scripts
+antigos continuam no repo.
+
 ## Pipeline de release (ordem)
 
 ### 1. Build da web UI

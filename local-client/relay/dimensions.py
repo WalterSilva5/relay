@@ -193,6 +193,17 @@ def delivered_ids(columns, done_ids) -> set:
     return entregues
 
 
+def delivered_ids_by_project(columns) -> dict:
+    """`delivered_ids` por projeto — para telas que agregam vários projetos."""
+    por_projeto: dict = {}
+    for c in columns or []:
+        por_projeto.setdefault(c.project_id, []).append(c)
+    return {
+        pid: delivered_ids(cols, {c.id for c in cols if c.is_done})
+        for pid, cols in por_projeto.items()
+    }
+
+
 def is_overdue(task, dev_ids, hoje=None) -> bool:
     """Vencida = prazo no passado E desenvolvimento ainda não concluído.
 

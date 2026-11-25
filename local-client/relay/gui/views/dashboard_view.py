@@ -421,10 +421,12 @@ class DashboardView(QWidget):
             )
 
             total = len(tasks)
-            done_count = sum(
-                1 for t in tasks
-                if any(c.id == t.column_id and c.is_done for c in columns)
+            # progresso do card = entregue (Done + In Test/Verified/Accepted)
+            from relay.dimensions import delivered_ids
+            entregues_ids = delivered_ids(
+                columns, {c.id for c in columns if c.is_done}
             )
+            done_count = sum(1 for t in tasks if t.column_id in entregues_ids)
 
             progress_row = QHBoxLayout()
             progress_row.setSpacing(8)

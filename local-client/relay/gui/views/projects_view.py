@@ -91,7 +91,7 @@ class ProjectCard(QFrame):
         stats_row = QHBoxLayout()
         stats_row.setSpacing(8)
 
-        stats_lbl = QLabel(_t("{done}/{total} tarefas concluídas").format(done=done, total=total))
+        stats_lbl = QLabel(_t("{done}/{total} tarefas entregues").format(done=done, total=total))
         stats_lbl.setStyleSheet(f"color: {t.text_muted}; font-size: 11px; border: none;")
         stats_row.addWidget(stats_lbl)
 
@@ -283,19 +283,15 @@ class ProjectsView(QWidget):
                 return
 
             for p in projects:
-                total = s.query(Task).filter(
+                tasks_proj = s.query(Task).filter(
                     Task.project_id == p.id, Task.deleted_at == None  # noqa: E711
-                ).count()
-                done = (
-                    s.query(Task)
-                    .join(BoardColumn)
-                    .filter(
-                        Task.project_id == p.id,
-                        Task.deleted_at == None,  # noqa: E711
-                        BoardColumn.is_done == True,  # noqa: E712
-                    )
-                    .count()
-                )
+                ).all()
+                total = len(tasks_proj)
+                # progresso do card = entregue (Done + In Test/Verified/Accepted)
+                from relay.dimensions import delivered_ids
+                cols = s.query(BoardColumn).filter(BoardColumn.project_id == p.id).all()
+                entregues = delivered_ids(cols, {c.id for c in cols if c.is_done})
+                done = sum(1 for t in tasks_proj if t.column_id in entregues)
 
                 card = ProjectCard(
                     project_id=p.id,

@@ -1,80 +1,85 @@
-> 🇧🇷 [Versão em português](PLANO_FERRAMENTAS.ptbr.md)
+> 🇬🇧 [English version](PLANO_FERRAMENTAS.en.md)
 
-# Implementation Plan — OpenCode Tools for Relay
+# Plano de Implementação — Ferramentas OpenCode para Relay
 
-## Goal
-Create a set of custom opencode tools that let AI agents interact with the Relay platform (tasks, board, comments, documents) without leaving the terminal.
+## Objetivo
+Criar um conjunto de ferramentas customizadas do opencode que permitam aos agentes de IA interagir com a plataforma Relay (tasks, board, comentários, documentos) sem sair do terminal.
 
 ---
 
 ## Checklist
 
 ### 1. Custom Tools (`.opencode/tools/relay.ts`)
-| # | Tool | Description | Status |
+| # | Ferramenta | Descrição | Status |
 |---|-----------|-----------|--------|
-| 1.1 | `relay_listProjects` | Lists all projects | ✅ |
-| 1.2 | `relay_board` | Queries the board (columns + tasks) | ✅ |
-| 1.3 | `relay_getTask` | Details of a task | ✅ |
-| 1.4 | `relay_listTasks` | Lists tasks with filters | ✅ |
-| 1.5 | `relay_createTask` | Creates a task | ✅ |
-| 1.6 | `relay_updateTask` | Edits task fields | ✅ |
-| 1.7 | `relay_moveTask` | Moves a task between columns | ✅ |
-| 1.8 | `relay_deleteTask` | Deletes a task | ✅ |
-| 1.9 | `relay_addSubtask` | Adds a subtask (title only) | ✅ |
-| 1.10 | `relay_addComment` | Posts a comment (code review, commits) | ✅ |
-| 1.11 | `relay_getFlow` | Exports the task flow (mermaid) | ✅ |
-| 1.12 | `relay_createDocument` | Creates a document (spec, plan, ADR) | ✅ |
+| 1.1 | `relay_listProjects` | Lista todos os projetos | ✅ |
+| 1.2 | `relay_board` | Consulta o board (colunas + tarefas) | ✅ |
+| 1.3 | `relay_getTask` | Detalhes de uma tarefa | ✅ |
+| 1.4 | `relay_listTasks` | Lista tarefas com filtros | ✅ |
+| 1.5 | `relay_createTask` | Cria tarefa | ✅ |
+| 1.6 | `relay_updateTask` | Edita campos da tarefa | ✅ |
+| 1.7 | `relay_moveTask` | Move tarefa entre colunas | ✅ |
+| 1.8 | `relay_deleteTask` | Exclui tarefa | ✅ |
+| 1.9 | `relay_addSubtask` | Adiciona subtarefa (só título) | ✅ |
+| 1.10 | `relay_addComment` | Posta comentário (code review, commits) | ✅ |
+| 1.11 | `relay_getFlow` | Exporta fluxo da tarefa (mermaid) | ✅ |
+| 1.12 | `relay_createDocument` | Cria documento (spec, plan, ADR) | ✅ |
+| 1.13 | `relay_searchMemory` | Busca a memória agentic do workspace | ✅ |
+| 1.14 | `relay_remember` | Grava uma memória (fato/decisão/contexto) | ✅ |
+| 1.15 | `relay_listMemory` | Lista memórias do workspace | ✅ |
+| 1.16 | `relay_ingestMemory` | Ingere task/comentário/documento na memória | ✅ |
 
 ### 2. Custom Commands (`.opencode/commands/`)
-| # | Command | Description | Status |
+| # | Comando | Descrição | Status |
 |---|---------|-----------|--------|
-| 2.1 | `/review` | Opens a prompt to do a code review of a task | ✅ |
-| 2.2 | `/decompose` | Opens a prompt to decompose a task into subtasks | ✅ |
+| 2.1 | `/review` | Abre prompt para fazer code review de uma tarefa | ✅ |
+| 2.2 | `/decompose` | Abre prompt para decompor tarefa em subtarefas | ✅ |
 
 ### 3. Skill (`.opencode/skills/relay-platform/`)
-| # | Skill | Description | Status |
+| # | Skill | Descrição | Status |
 |---|-------|-----------|--------|
-| 3.1 | SKILL.md | Instructs agents to use the platform automatically | ✅ |
+| 3.1 | SKILL.md | Instrui agentes a usarem a plataforma automaticamente | ✅ |
 
-### 4. Configuration
-| # | Item | Description | Status |
+### 4. Configuração
+| # | Item | Descrição | Status |
 |---|------|-----------|--------|
-| 4.1 | Environment variables | `RELAY_API_URL` and `RELAY_API_KEY` | ✅ |
-| 4.2 | opencode.json | Project configuration | ✅ |
+| 4.1 | Variáveis de ambiente | `RELAY_API_URL` e `RELAY_API_KEY` | ✅ |
+| 4.2 | opencode.jsonc | Configuração do projeto | ✅ |
 
 ---
 
-## How to Use
+## Como Usar
 
-### Environment Variables
-Configure them in your `opencode.jsonc` or export them in the terminal:
+### Variáveis de Ambiente
+Configure no seu `opencode.jsonc` ou exporte no terminal. A API local do Relay roda na porta **9777** (o fallback do código é `http://localhost:5000/api`, porta do web-client congelado):
+
 ```bash
-export RELAY_API_URL=http://localhost:5000/api
-export RELAY_API_KEY=adm_4752211dbdabb2214960a05d3991dc2961973a4270cd1243
+export RELAY_API_URL=http://127.0.0.1:9777/api
+export RELAY_API_KEY=            # opcional — a API local não exige autenticação
 ```
 
-### Usage Examples
+### Exemplos de Uso
 ```bash
-# In the terminal with opencode:
-"list the projects using relay_listProjects"
-"show the board for the RELAY project"
-"create a task in the RELAY backlog called 'Implement X'"
-"add a code review comment on RELAY-10"
-"decompose RELAY-42 into subtasks using /decompose"
+# No terminal com opencode:
+"liste os projetos usando relay_listProjects"
+"mostre o board do projeto RELAY"
+"crie uma tarefa no backlog do RELAY chamada 'Implementar X'"
+"adicione um comentário de code review na RELAY-10"
+"decomponha a RELAY-42 em subtarefas usando /decompose"
 ```
 
 ---
 
-## File Structure
+## Estrutura de Arquivos
 
 ```
 .opencode/
 ├── tools/
-│   └── relay.ts           # 12 custom tools
+│   └── relay.ts           # 16 ferramentas customizadas
 ├── commands/
 │   ├── review.md            # /review - code review
-│   └── decompose.md         # /decompose - decompose tasks
+│   └── decompose.md         # /decompose - decompor tarefas
 └── skills/
     └── relay-platform/
-        └── SKILL.md         # Platform usage skill
+        └── SKILL.md         # Skill de uso da plataforma
 ```

@@ -136,13 +136,23 @@ class MetricsView(QWidget):
                 self.content_layout.addWidget(empty_w, 1)
                 return
 
-            done_tasks = []
-            for task in tasks:
-                col = s.query(BoardColumn).get(task.column_id)
-                if col and col.is_done:
-                    done_tasks.append(task)
+            cols = s.query(BoardColumn).all()
+            cols_por_id = {c.id: c for c in cols}
+            # fluxo (lead time/throughput): conclusão formal (Done)
+            done_tasks = [
+                task for task in tasks
+                if cols_por_id.get(task.column_id) and cols_por_id[task.column_id].is_done
+            ]
+            # progresso (total "concluídas", por tipo/prioridade/projeto):
+            # entregue = Done + In Test/Verified/Accepted (mesma regra do board)
+            from relay.dimensions import delivered_ids_by_project
+            entregues_por_projeto = delivered_ids_by_project(cols)
+            entregues_ids = {
+                cid for ids in entregues_por_projeto.values() for cid in ids
+            }
+            delivered_task_ids = {t.id for t in tasks if t.column_id in entregues_ids}
 
-            done = len(done_tasks)
+            done = len(delivered_task_ids)
             last_7d = sum(
                 1 for task in done_tasks if task.updated_at and task.updated_at >= seven_ago
             )
@@ -164,9 +174,7 @@ class MetricsView(QWidget):
             # Overdue tasks: prazo no passado e dev ainda não concluído
             # (corte por projeto, como no dashboard)
             from relay.dimensions import dev_done_ids_by_project
-            dev_por_projeto = dev_done_ids_by_project(
-                s.query(BoardColumn).all()
-            )
+            dev_por_projeto = dev_done_ids_by_project(cols)
             dev_todas = {cid for ids in dev_por_projeto.values() for cid in ids}
             overdue = sum(
                 1 for task in tasks
@@ -195,7 +203,7 @@ class MetricsView(QWidget):
             cards_row = QHBoxLayout(cards_widget)
             cards_row.setContentsMargins(0, 0, 0, 0)
             cards_row.setSpacing(8)
-            cards_row.addWidget(MetricCard(_t("Total de Tarefas"), total, _t("{done} concluídas").format(done=done)))
+            cards_row.addWidget(MetricCard(_t("Total de Tarefas"), total, _t("{done} entregues").format(done=done)))
             cards_row.addWidget(MetricCard(_t("Últimos 7 dias"), last_7d, _t("tarefas concluídas")))
             cards_row.addWidget(
                 MetricCard(_t("Lead Time Médio"), fmt_hours(avg_lead), _t("criação -> conclusão"))
@@ -301,7 +309,7 @@ class MetricsView(QWidget):
                 if tp not in by_type:
                     by_type[tp] = {"total": 0, "done": 0}
                 by_type[tp]["total"] += 1
-                if task in done_tasks:
+                if task.id in delivered_task_ids:
                     by_type[tp]["done"] += 1
 
             for tp, data in by_type.items():
@@ -341,7 +349,7 @@ class MetricsView(QWidget):
                 if pr not in by_priority:
                     by_priority[pr] = {"total": 0, "done": 0}
                 by_priority[pr]["total"] += 1
-                if task in done_tasks:
+                if task.id in delivered_task_ids:
                     by_priority[pr]["done"] += 1
 
             # Display in defined order
@@ -383,7 +391,7 @@ class MetricsView(QWidget):
             projects = s.query(Project).order_by(Project.name).all()
             for p in projects:
                 ptasks = [task for task in tasks if task.project_id == p.id]
-                pdone = [task for task in ptasks if task in done_tasks]
+                pdone = [task for task in ptasks if task.id in delivered_task_ids]
                 ptotal = len(ptasks)
                 pct = int(len(pdone) / ptotal * 100) if ptotal else 0
 

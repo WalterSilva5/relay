@@ -45,7 +45,7 @@ def project_context(session, project_id: int, limits: dict | None = None) -> str
         ProjectDailyEntry,
         Task,
     )
-    from relay.dimensions import aggregate_dimensions
+    from relay.dimensions import aggregate_dimensions, delivered_ids
 
     projeto = session.query(Project).filter(Project.id == project_id).first()
     if projeto is None:
@@ -60,6 +60,8 @@ def project_context(session, project_id: int, limits: dict | None = None) -> str
     )
     por_id = {c.id: c for c in cols}
     done_ids = {c.id for c in cols if c.is_done}
+    # "concluído" no contexto segue a regra do % Finalizado (Done + teste/aceite)
+    entregues_ids = delivered_ids(cols, done_ids)
     primeira = cols[0].order if cols else 0
 
     tasks = (
@@ -75,7 +77,7 @@ def project_context(session, project_id: int, limits: dict | None = None) -> str
     if not tasks and not cols:
         return ""
 
-    abertos = [t for t in tasks if t.column_id not in done_ids]
+    abertos = [t for t in tasks if t.column_id not in entregues_ids]
     concluidos = len(tasks) - len(abertos)
     pct = round(concluidos / len(tasks) * 100) if tasks else 0
 

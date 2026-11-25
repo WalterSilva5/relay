@@ -68,7 +68,24 @@ fi
 echo ""
 echo "=== Instalação concluída ==="
 echo ""
-echo "Para executar:"
+
+# Atalhos do menu: o app oficial agora é o Electron (electron/relay-electron.sh).
+DESKTOP_INSTALLER="../electron/install-desktop.sh"
+if [ -x "$DESKTOP_INSTALLER" ]; then
+    echo "Instalando atalhos do Relay Desktop (Electron)..."
+    "$DESKTOP_INSTALLER" || echo "  atalhos: falhou — rode $DESKTOP_INSTALLER manualmente"
+    echo ""
+else
+    echo "Atalhos do Electron não encontrados em $DESKTOP_INSTALLER (pulando)."
+    echo ""
+fi
+
+echo "Para executar (padrão: Electron):"
+echo "  ../electron/relay-electron.sh"
+echo "  # ou pelo menu do sistema: Relay"
+echo ""
+echo "Fallback legado (PySide6):"
 echo "  ./run.sh"
-echo "  # ou"
-echo "  source .venv/bin/activate && python -m relay"
+echo "Web no navegador (API + web UI):"
+echo "  ./relay-web.sh"
+

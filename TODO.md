@@ -1,92 +1,94 @@
-> 🇧🇷 [Versão em português](TODO.ptbr.md)
+> 🇬🇧 [English version](TODO.en.md)
 
-# Next steps — Relay
+# Próximos passos — Relay
 
-Living backlog of upcoming work. Items at the top have priority. Effort in
-person-days (pd) is an estimate; staffing/scheduling is up to leadership.
-
----
-
-## ✅ Done
-
-### 1. Improve the TODOs module (scheduling + in-app reminders) — MAIN ✅
-
-TODOs are now schedulable with periodic in-app reminders (desktop + web).
-
-- [x] `Todo`: added `due_at`, `priority`, `notes`, `snoozed_until` (additive
-  light migration in `_run_light_migrations`).
-- [x] API: create/update with `dueAt`/`priority`/`notes`; `GET /api/todos/pending`
-  (overdue & not snoozed); `POST /api/todos/{id}/snooze`. Scheduling uses local time.
-- [x] UI (desktop + web): date/time picker + priority per TODO; overdue is
-  highlighted in red.
-- [x] In-app notifications (in-app only): a periodic reminder (every 1 min) with
-  a **count**, and **View / Snooze 10min / Dismiss** actions. Desktop via a
-  `QTimer` + bottom banner; web via a polling toast in the app shell.
-- [x] Snooze silences the reminder for 10 min; dismiss hides until the next cycle.
-- [x] Pending badge (⏰N) on the nav item (desktop: Dashboard item; web: TODOs item).
-- [x] Inline editing of priority, recurrence and due date on each row
-  (set/clear schedule included).
-- [x] Recurring TODOs (daily/weekly/monthly): completing a recurring TODO
-  reschedules it to the next future occurrence instead of marking it done.
+Backlog vivo das próximas tarefas. Itens no topo têm prioridade. Esforço em
+homem-dia (hd) é estimativa; staffing/cronograma fica a critério da liderança.
 
 ---
 
-## 🟡 Backlog — new modules (help developers day-to-day)
+## ✅ Concluído
 
-Ideas that fit the architecture (reuse the AI provider, board/API, per-workspace
-SQLite, DevLog/comments, MCP).
+### 1. Melhorar o módulo de TODOs (agendamento + lembretes na interface) — PRINCIPAL ✅
 
-- [x] **Password manager (KeePass-compatible)** (~4–5 pd) — a **global**
-  credentials/secrets vault (one for the whole app, **not per workspace**; kept
-  outside the per-workspace databases, e.g. a single `.kdbx` in the config dir).
-  Reads and writes the **`.kdbx`** format (KeePass 2.x, via `pykeepass`),
-  unlocked by a **master password** and/or key file. Interoperates with existing
-  KeePass vaults; search, organization by groups and **copy-to-clipboard with
-  auto-clear**. Always **local and encrypted**; the master password is never
-  persisted (vault locks on inactivity). Extra security care since it handles
-  credentials.
-- [x] **Git/PR cockpit** (~4–6 pd) — current branch, ahead/behind, uncommitted
-  changes (staged/unstaged/untracked), recent commits and open PRs (`git`/`gh`,
-  read-only). API `/api/git/status`; "Git" tab in the Library (desktop + web).
-- [x] **Time tracking + Pomodoro per task** (~2–3 pd) — a stopwatch (+ manual
-  entry) logs time optionally against a task; weekly total and per-task
-  breakdown. API `/api/timelogs`; "Time" tab in the Library (desktop + web).
-- [x] **Snippets & prompt library** (~2 pd) — reusable code snippets and AI
-  prompts, searchable by text/tags/language. Desktop **Library** view + web
-  `/biblioteca`; API `/api/snippets`. Kind SNIPPET|PROMPT, copy-to-clipboard,
-  use counter.
-- [x] **Knowledge base (second brain)** (~4 pd) — notes/wiki (reuses `Document`
-  type=KB) with `[[title]]` backlinks and AI Q&A over your notes (RAG-lite:
-  keyword retrieval + cited answer). API `/api/kb/notes`, `/api/kb/ask`;
-  dedicated "Knowledge" screen (desktop + web `/base`).
-- [x] **Bug intake/triage** (~2 pd) — quick capture (paste a stack trace) → AI
-  classifies severity/type/title (+ probable cause and steps) → becomes a BUG
-  task. API `/api/bugs/triage`; "Bug triage" tab in the Library (desktop + web).
-- [x] **Sprint retrospective** (~2 pd) — per sprint, AI generates "what went
-  well/badly/actions" (stored on the sprint); actions become CHORE tasks. API
-  `/api/sprints/{id}/retrospective` (+ `/actions`); "Retrospective" button in the
-  Sprint Planning tab (web) and the Sprint manager dialog (desktop).
-- [x] **API tester (mini-Postman)** (~3 pd) — build/run/save HTTP requests and
-  keep an execution history. API `/api/http-requests` (+ `/run`, `/history`);
-  dedicated screen on desktop and web (`/api-tester`).
-- [x] **Proactive digest (automatic standup)** (~3 pd) — AI "done/doing/blockers"
-  + summary from board state, recent activity and Daily Notes. API `/api/digest`;
-  "Digest (standup)" card on the Dashboard (desktop + web).
-- [x] **Import TODO/FIXME from code** (~1–2 pd) — scan a folder for
-  `TODO/FIXME/HACK/XXX` and import selected ones as tasks linked to the file.
-  API `/api/code/scan-todos` + `/api/code/import-todos`; "Import from code" tab
-  in the Library (desktop + web).
-- [x] **Code review assistant** (~3 pd) — point at a repo + base (branch/ref) →
-  AI reviews the git diff (summary, issues by severity, suggestions), optionally
-  posted as a `CODE_REVIEW` comment on a task. API `/api/code/review`;
-  "Code review" tab in the Library (desktop + web).
-- [x] **Project runbooks/commands** (~2 pd) — setup/deploy/command cards with
-  one-click copy. Desktop **Library** "Runbooks" tab + web `/biblioteca`; API
-  `/api/runbooks` (category, use counter).
+TODOs agora são agendáveis com lembretes periódicos na interface (desktop + web).
+
+- [x] `Todo`: adicionados `due_at`, `priority`, `notes`, `snoozed_until`
+  (migração leve aditiva em `_run_light_migrations`).
+- [x] API: criar/editar com `dueAt`/`priority`/`notes`; `GET /api/todos/pending`
+  (vencidos e não adiados); `POST /api/todos/{id}/snooze`. Agendamento em hora local.
+- [x] UI (desktop + web): seletor de data/hora + prioridade por TODO; vencido
+  destacado em vermelho.
+- [x] Notificações na interface (só in-app): lembrete periódico (a cada 1 min)
+  com **contador** e ações **Ver / Adiar 10min / Dispensar**. Desktop via
+  `QTimer` + banner inferior; web via toast com polling no shell do app.
+- [x] Adiar silencia por 10 min; dispensar esconde até o próximo ciclo.
+- [x] Badge de pendentes (⏰N) no menu (desktop: item Dashboard; web: item TODOs).
+- [x] Edição inline de prioridade, recorrência e prazo em cada linha
+  (incluindo definir/remover agendamento).
+- [x] TODOs recorrentes (diária/semanal/mensal): concluir um recorrente
+  reagenda para a próxima ocorrência futura em vez de marcar como concluído.
 
 ---
 
-## 📝 Conventions
-- Docs in English (`*.md`) with a PT version in `*.ptbr.md`.
-- Schema migrations are additive and idempotent (see `_run_light_migrations`).
-- New modules should also be exposed via the API/MCP when it makes sense.
+## 🟡 Backlog — novos módulos (ajudar o dia a dia do dev)
+
+Ideias que encaixam na arquitetura (reusam provedor de IA, board/API, SQLite por
+workspace, DevLog/comentários, MCP).
+
+- [x] **Gerenciador de senhas (compatível com KeePass)** (~4–5 hd) — cofre de
+  credenciais/segredos **global** (um único para o app, **não por workspace**;
+  fica fora dos bancos de workspace, ex.: um `.kdbx` no diretório de config).
+  Lê e grava o formato **`.kdbx`** (KeePass 2.x, via `pykeepass`), destravado por
+  **senha-mestra** e/ou key file. Interopera com vaults KeePass existentes;
+  busca, organização por grupos e **copiar para a área de transferência com
+  auto-limpeza**. Sempre **local e criptografado**; a senha-mestra nunca é
+  persistida (cofre trava por inatividade). Cuidado extra de segurança por lidar
+  com credenciais.
+- [x] **Cockpit de Git/PR** (~4–6 hd) — branch atual, ahead/behind, mudanças não
+  commitadas (staged/unstaged/untracked), commits recentes e PRs abertos
+  (`git`/`gh`, somente leitura). API `/api/git/status`; aba "Git" na Biblioteca
+  (desktop + web).
+- [x] **Time tracking + Pomodoro por tarefa** (~2–3 hd) — cronômetro (+ registro
+  manual) grava tempo opcionalmente sobre uma tarefa; total semanal e por tarefa.
+  API `/api/timelogs`; aba "Tempo" na Biblioteca (desktop + web).
+- [x] **Biblioteca de snippets & prompts** (~2 hd) — snippets de código e prompts
+  de IA reutilizáveis, buscáveis por texto/tags/linguagem. View desktop
+  **Biblioteca** + web `/biblioteca`; API `/api/snippets`. Tipo SNIPPET|PROMPT,
+  copiar para área de transferência, contador de uso.
+- [x] **Base de conhecimento (2º cérebro)** (~4 hd) — notas/wiki (reusa `Document`
+  type=KB) com backlinks `[[título]]` e Q&A da IA sobre as notas (RAG-lite:
+  recuperação por palavras-chave + resposta com citações). API `/api/kb/notes`,
+  `/api/kb/ask`; tela dedicada "Base" (desktop + web `/base`).
+- [x] **Intake/triagem de bugs** (~2 hd) — captura rápida (colar stacktrace) →
+  IA classifica severidade/tipo/título (+ causa provável e passos) → vira tarefa
+  BUG. API `/api/bugs/triage`; aba "Triagem de bugs" na Biblioteca (desktop + web).
+- [x] **Retrospectiva de sprint** (~2 hd) — por sprint, a IA gera "o que foi
+  bem/mal/ações" (guardada na sprint); ações viram tarefas CHORE. API
+  `/api/sprints/{id}/retrospective` (+ `/actions`); botão "Retrospectiva" na aba
+  Planejamento de Sprints (web) e no diálogo de sprints (desktop).
+- [x] **Testador de API (mini-Postman)** (~3 hd) — monta/executa/salva requisições
+  HTTP e guarda histórico de execução. API `/api/http-requests` (+ `/run`,
+  `/history`); tela dedicada no desktop e web (`/api-tester`).
+- [x] **Digest proativo (standup automático)** (~3 hd) — IA gera "feito/fazendo/
+  bloqueios" + resumo a partir do estado do board, atividade recente e notas do
+  Meu Dia. API `/api/digest`; card "Digest (standup)" no Dashboard (desktop + web).
+- [x] **Importar TODO/FIXME do código** (~1–2 hd) — varre uma pasta por
+  `TODO/FIXME/HACK/XXX` e importa os selecionados como tarefas ligadas ao arquivo.
+  API `/api/code/scan-todos` + `/api/code/import-todos`; aba "Importar do código"
+  na Biblioteca (desktop + web).
+- [x] **Assistente de code review** (~3 hd) — aponta um repo + base (branch/ref) →
+  a IA revisa o diff git (resumo, problemas por severidade, sugestões),
+  opcionalmente postado como comentário `CODE_REVIEW` na tarefa. API
+  `/api/code/review`; aba "Code review" na Biblioteca (desktop + web).
+- [x] **Runbooks/comandos do projeto** (~2 hd) — cartões de setup/deploy/comandos
+  com copiar-em-1-clique. Aba "Runbooks" na Biblioteca (desktop) + web
+  `/biblioteca`; API `/api/runbooks` (categoria, contador de uso).
+
+---
+
+## 📝 Convenções
+- Documentação em **português por padrão** (`*.md`); a versão em inglês fica em
+  `*.en.md` (ex.: `README.md` → `README.en.md`).
+- Migrações de schema são aditivas e idempotentes (ver `_run_light_migrations`).
+- Novos módulos devem, quando fizer sentido, ser expostos também na API/MCP.

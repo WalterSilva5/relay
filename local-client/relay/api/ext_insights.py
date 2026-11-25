@@ -13,9 +13,11 @@ declares ``router = APIRouter()`` with final ``/api/...`` paths.
 Data logic mirrors the GUI views 1:1 so the Electron shell renders the
 same numbers:
 - ``dashboard_view._refresh_summary`` / ``_refresh_overdue`` /
-  ``_refresh_projects`` (cut-off "dev entregue" via
-  ``relay.dimensions.dev_done_ids_by_project``)
-- ``metrics_view.refresh``
+  ``_refresh_projects`` (overdue cut-off "dev entregue" via
+  ``relay.dimensions.dev_done_ids_by_project``; project progress via
+  ``relay.dimensions.delivered_ids``)
+- ``metrics_view.refresh`` (progress via ``delivered_ids_by_project``;
+  lead time/throughput keep the formal Done column)
 
 Out of scope on purpose (purely local, no backend needed):
 - Pomodoro timer (``gui/widgets/pomodoro.py``): in-memory QTimer only.
@@ -46,7 +48,11 @@ from relay.db.models import (
     Todo,
     get_session,
 )
-from relay.dimensions import dev_done_ids_by_project
+from relay.dimensions import (
+    delivered_ids,
+    delivered_ids_by_project,
+    dev_done_ids_by_project,
+)
 
 router = APIRouter()
 
@@ -63,6 +69,11 @@ def db():
 def _dev_ids(s: Session) -> dict:
     """Done-ish column ids per project ("dev entregue" cut-off)."""
     return dev_done_ids_by_project(s.query(BoardColumn).all())
+
+
+def _delivered_ids(s: Session) -> dict:
+    """Delivered column ids per project (Done + In Test/Verified/Accepted)."""
+    return delivered_ids_by_project(s.query(BoardColumn).all())
 
 
 def _as_date(value):
@@ -172,8 +183,8 @@ def dashboard_overdue(
 def dashboard_projects(s: Session = Depends(db)):
     """Per-project progress cards (done/total + per-column counts).
 
-    Mirrors ``DashboardView._refresh_projects``. Done = task in an
-    ``is_done`` column of its project.
+    Mirrors ``DashboardView._refresh_projects``. Done = delivered
+    (formal Done column + In Test/Verified/Accepted stages).
     """
     out = []
     for p in s.query(Project).order_by(Project.name).all():
@@ -184,12 +195,13 @@ def dashboard_projects(s: Session = Depends(db)):
             .all()
         )
         done_ids = {c.id for c in columns if c.is_done}
+        entregues_ids = delivered_ids(columns, done_ids)
         tasks = (
             s.query(Task)
             .filter(Task.project_id == p.id, Task.deleted_at.is_(None))
             .all()
         )
-        done = sum(1 for t in tasks if t.column_id in done_ids)
+        done = sum(1 for t in tasks if t.column_id in entregues_ids)
         counts: dict[int, int] = {}
         for t in tasks:
             counts[t.column_id] = counts.get(t.column_id, 0) + 1
@@ -221,6 +233,10 @@ def metrics_detail(s: Session = Depends(db)):
     overdue count (with the "dev entregue" cut-off), done/total splits per
     type/priority, and the 8 calendar-week (Mon-Sun) throughput buckets the
     GUI draws.
+
+    Progress counts (summary ``done``, byType/byPriority/byProject) use the
+    delivered rule (Done + In Test/Verified/Accepted). Flow counters
+    (last7d/last30d/lead time/throughput) keep the formal Done column.
     """
     now = datetime.utcnow()
     seven_ago = now - timedelta(days=7)
@@ -229,7 +245,10 @@ def metrics_detail(s: Session = Depends(db)):
     tasks = s.query(Task).filter(Task.deleted_at.is_(None)).all()
     cols_by_id = {c.id: c for c in s.query(BoardColumn).all()}
     done_tasks = [t for t in tasks if cols_by_id.get(t.column_id) and cols_by_id[t.column_id].is_done]
-    done_ids_set = {t.id for t in done_tasks}
+    entregues_por_projeto = _delivered_ids(s)
+    entregues_ids = {cid for ids in entregues_por_projeto.values() for cid in ids}
+    delivered_tasks = [t for t in tasks if t.column_id in entregues_ids]
+    delivered_ids_set = {t.id for t in delivered_tasks}
 
     last_7d = sum(1 for t in done_tasks if t.updated_at and t.updated_at >= seven_ago)
     last_30d = sum(1 for t in done_tasks if t.updated_at and t.updated_at >= thirty_ago)
@@ -264,7 +283,7 @@ def metrics_detail(s: Session = Depends(db)):
         tp = t.type or "FEATURE"
         entry = by_type.setdefault(tp, {"type": tp, "total": 0, "done": 0})
         entry["total"] += 1
-        if t.id in done_ids_set:
+        if t.id in delivered_ids_set:
             entry["done"] += 1
     for entry in by_type.values():
         entry["pct"] = round(entry["done"] / entry["total"] * 100) if entry["total"] else 0
@@ -274,7 +293,7 @@ def metrics_detail(s: Session = Depends(db)):
         pr = t.priority or "MEDIUM"
         entry = by_priority.setdefault(pr, {"priority": pr, "total": 0, "done": 0})
         entry["total"] += 1
-        if t.id in done_ids_set:
+        if t.id in delivered_ids_set:
             entry["done"] += 1
     for entry in by_priority.values():
         entry["pct"] = round(entry["done"] / entry["total"] * 100) if entry["total"] else 0
@@ -282,7 +301,7 @@ def metrics_detail(s: Session = Depends(db)):
     by_project = []
     for p in s.query(Project).order_by(Project.name).all():
         ptasks = [t for t in tasks if t.project_id == p.id]
-        pdone = [t for t in ptasks if t.id in done_ids_set]
+        pdone = [t for t in ptasks if t.id in delivered_ids_set]
         by_project.append({
             "projectId": p.id,
             "key": p.key,
@@ -295,7 +314,7 @@ def metrics_detail(s: Session = Depends(db)):
     return {
         "summary": {
             "total": len(tasks),
-            "done": len(done_tasks),
+            "done": len(delivered_tasks),
             "last7d": last_7d,
             "last30d": last_30d,
             "avgLeadHours": avg_lead,

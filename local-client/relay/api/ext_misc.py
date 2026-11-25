@@ -17,8 +17,9 @@ New endpoints
   rule as ``app._goal_progress`` (which mirrors
   ``gui/views/goals_view._progresso``): tasks of the goal's project,
   excluding deleted/archived, filtered by the goal's tag/epic/sprint,
-  excluding local-only tasks (``is_local``); done = task in an
-  ``is_done`` column. Note: the GUI ``_progresso`` does NOT exclude
+  excluding local-only tasks (``is_local``); done = delivered (formal Done
+  + In Test/Verified/Accepted), the same rule as the % Finalizado. Note:
+  the GUI ``_progresso`` does NOT exclude
   ``is_local`` while ``app._goal_progress`` does — this endpoint follows
   the backend rule (``app._goal_progress``), the canonical one.
 - ``GET /api/todos/unassigned`` — TODOs with ``project_id IS NULL``,
@@ -82,7 +83,8 @@ def _todo_dict(t: Todo) -> dict:
 def _goal_progress(s: Session, goal: Goal) -> dict:
     """Same rule as ``api.app._goal_progress``: project tasks (not
     deleted/archived), filtered by the goal's tag/epic/sprint, excluding
-    local-only tasks; done = task in an ``is_done`` column."""
+    local-only tasks; done = delivered (formal Done + In Test/Verified/
+    Accepted), the same rule as the % Finalizado."""
     q = s.query(Task).filter(
         Task.project_id == goal.project_id,
         Task.deleted_at.is_(None),
@@ -95,7 +97,10 @@ def _goal_progress(s: Session, goal: Goal) -> dict:
     if goal.sprint_id:
         q = q.filter(Task.sprint_id == goal.sprint_id)
     tasks = [t for t in q.all() if not t.is_local]
-    done = [t for t in tasks if t.column is not None and t.column.is_done]
+    from relay.dimensions import delivered_ids
+    cols = {t.column.id: t.column for t in tasks if t.column}.values()
+    entregues = delivered_ids(list(cols), {c.id for c in cols if c.is_done})
+    done = [t for t in tasks if t.column_id in entregues]
     pct = round(len(done) / len(tasks) * 100) if tasks else 0
     return {"done": len(done), "total": len(tasks), "pct": pct}
 

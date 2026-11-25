@@ -30,7 +30,6 @@ from PySide6.QtWidgets import (
 
 from relay.config import get_active_project_id
 from relay.db.models import (
-    BoardColumn,
     Epic,
     Goal,
     Label,
@@ -55,9 +54,13 @@ def _progresso(goal, s) -> tuple[int, int]:
         q = q.filter(Task.epics.any(Epic.id == goal.epic_id))
     if goal.sprint_id:
         q = q.filter(Task.sprint_id == goal.sprint_id)
-    total = q.count()
-    done = q.join(BoardColumn, Task.column_id == BoardColumn.id).filter(
-        BoardColumn.is_done == True).count()  # noqa: E712
+    tasks = q.all()
+    # entregue = Done + In Test/Verified/Accepted (mesma regra do % Finalizado)
+    from relay.dimensions import delivered_ids
+    cols = {t.column.id: t.column for t in tasks if t.column}.values()
+    entregues = delivered_ids(list(cols), {c.id for c in cols if c.is_done})
+    total = len(tasks)
+    done = sum(1 for t in tasks if t.column_id in entregues)
     return done, total
 
 

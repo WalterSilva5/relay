@@ -232,6 +232,7 @@ export const CATALOG = {
   "Enviar": "Send",
   "Tarefas": "Tasks",
   "Concluídas": "Done",
+  "Entregues": "Delivered",
   "Lead time (h)": "Lead time (h)",
   "Cycle time (h)": "Cycle time (h)",
   "Visão geral do workspace ativo (via API).": "Overview of the active workspace (via API).",

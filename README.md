@@ -1,44 +1,120 @@
-> 🇧🇷 [Versão em português](README.ptbr.md)
+> 🇬🇧 [English version](README.en.md)
 
 # Relay
 
-Desktop application for project management, work journaling, and study tracking, with an embedded REST API for integration with AI agents.
+Aplicação desktop para gestão de projetos, diário de trabalho e estudos — shell **Electron** com a web UI **React** (`local-client/webui`) e um **sidecar Python** (FastAPI + SQLite + IA + transcrição) — com API REST embutida para integração com agentes de IA.
 
-![Dashboard Light](local-client/docs/screenshots/dashboard-light.png)
+> 🖼️ As capturas de tela são do app Electron (shell + web UI), em 1440×900 — ver [Capturas de tela](#capturas-de-tela).
 
-## What it is
+## O que é
 
-Relay is a local tool for developers who want to organize their daily work, manage tasks on a kanban board, track their studies, and integrate AI agents into their development workflow. Everything runs locally — no external server, no account, no internet dependency.
+O Relay é uma ferramenta local para desenvolvedores que querem organizar seu trabalho diário, gerenciar tarefas em kanban, acompanhar estudos e integrar agentes de IA no fluxo de desenvolvimento. Tudo roda localmente — sem servidor externo, sem conta, sem dependência de internet.
 
-### Key differentiators
+O produto tem duas camadas (ver [ADR-0001](docs/adr/0001-electron-unificacao.md)):
 
-- **Fully local**: data in SQLite, native desktop GUI, no cloud
-- **Assistant**: internal AI agent (LangGraph) with a configurable provider (LM Studio, opencode) that acts on the board
-- **Cronista**: records meetings/study sessions, transcribes locally with Whisper, and summarizes with AI (the former wsi-cronista project, now integrated)
-- **Agent API**: AI agents create tasks, move them on the board, log code reviews, and generate reports — all via REST
-- **Ready-made skills**: 12 installable skills that teach agents how to use Relay
-- **Isolated workspaces**: each workspace has its own database, letting you separate personal from professional projects
-- **Obsidian sync**: synchronizes daily notes and tasks with your Obsidian vault
-- **Integrated Pomodoro**: timer on the Dashboard for focus sessions
+- **Electron** (`electron/`) — shell fino: janela, tray, instância única, autostart, atalho global, notificações, captura de tela e auto-update. Não reimplementa produto.
+- **Python** (`local-client/`) — dono da API, do SQLite, do assistente, da transcrição (parec + faster-whisper), do sync Obsidian e do backup. Roda como sidecar do Electron ou sozinho (headless).
 
-## Installation with an AI agent
+### Principais diferenciais
 
-You can ask an AI agent (Claude Code, Cursor, etc.) to install Relay end-to-end. This section has everything the agent needs: the prerequisites to install and the exact steps. A one-line prompt to kick it off:
+- **Tudo local**: dados em SQLite, GUI desktop, sem cloud
+- **Assistente**: agente de IA interno (LangGraph) com provedor configurável (LM Studio, opencode) que age sobre o board
+- **Cronista**: grava reuniões/estudos, transcreve local com Whisper e resume com IA (ex-projeto wsi-cronista integrado)
+- **API para agentes**: agentes de IA criam tarefas, movem no board, registram code reviews e geram relatórios — tudo via REST
+- **Skills prontas**: 17 skills instaláveis que ensinam agentes a usar o Relay
+- **Workspaces isolados**: cada workspace tem seu próprio banco, permitindo separar projetos pessoais de profissionais
+- **Obsidian sync**: sincroniza notas diárias e tarefas com seu vault do Obsidian
+- **Pomodoro integrado**: timer no Dashboard para sessões de foco
 
-> Read the "Installation with an AI agent" section of the README at https://github.com/WalterSilva5/relay.git, install the prerequisites for my OS, clone the repo, run `local-client/install.sh`, create a desktop shortcut for `local-client/run.sh`, then explain how to use the app.
+## Como rodar hoje
 
-### Prerequisites the agent must install
+Três caminhos, em ordem de prioridade:
 
-Install these **system packages** first. The Python libraries are handled by `install.sh` inside a virtualenv — do **not** install them globally.
+| Caminho | Status | Comando |
+|---|---|---|
+| **Electron** (shell + web UI) | principal | `cd electron && npm run dev` |
+| **API + web no navegador** | principal para headless/servidor | `cd local-client && ./run-web.sh` |
+| **GUI PySide6** | legado em transição | `cd local-client && ./run.sh` (ou `python -m relay`) |
 
-| Dependency | Why | Required |
+### 1. Electron (caminho principal)
+
+```bash
+# 1ª vez: cria o .venv, instala as deps Python e builda a web UI
+cd local-client && ./install.sh
+
+# 1ª vez: instala o shell
+cd ../electron && npm install
+
+# rodar
+npm run dev
+```
+
+Sem `ELECTRON_URL` e sem servidor rodando, o `npm run dev` sobe o sidecar Python sozinho a partir do `.venv` de dev. Para apontar a um servidor ou ao vite já rodando:
+
+```bash
+ELECTRON_URL=http://127.0.0.1:9777 npm run dev
+```
+
+Variáveis (`RELAY_PORT`, `RELAY_PYTHON`, `RELAY_AUTOSTART`, `ELECTRON_DEV`), atalhos e limites do shell: [electron/README.md](electron/README.md).
+
+Empacotamento (Linux):
+
+```bash
+cd electron
+npm run pack   # pasta dist/ sem instalador (fumaça)
+npm run dist   # AppImage + .deb
+```
+
+O `npm run dist` espera `local-client/dist-sidecar/relay-server`, gerado por `local-client/build-sidecar.sh` (PyInstaller one-file, CPU-only). Runbook completo de release e auto-update: [docs/e3-packaging.md](docs/e3-packaging.md).
+
+### 2. API + web (headless)
+
+```bash
+cd local-client
+./run-web.sh                # builda a webui se faltar e sobe API + web
+# ou
+python -m relay.webmain --port 9777
+# ou, pelo entry point clássico:
+python -m relay --headless  # alias: --no-gui
+```
+
+API em `http://127.0.0.1:9777/api`; web UI na raiz `http://127.0.0.1:9777/`.
+
+### 3. GUI PySide6 (legado)
+
+```bash
+cd local-client
+./run.sh          # ou: python -m relay
+```
+
+A GUI Qt está congelada após a paridade por view (E2) e sai depois de um release com aviso. O mapeamento do que falta migrar para HTTP está em [docs/e2-parity-matrix.md](docs/e2-parity-matrix.md).
+
+### Documentos de arquitetura
+
+- [ADR-0001 — Unificação no Electron](docs/adr/0001-electron-unificacao.md)
+- [E2 — Matriz de paridade GUI PySide → HTTP](docs/e2-parity-matrix.md)
+- [E3 — Empacotamento e release](docs/e3-packaging.md)
+- [electron/README.md](electron/README.md) — variáveis, atalhos, checklist do shell
+- [docs/prints/](docs/prints/) — capturas de tela atuais (Electron)
+
+## Instalação com agente de IA
+
+Você pode pedir a um agente de IA (Claude Code, Cursor, etc.) para instalar o Relay de ponta a ponta. Esta seção tem tudo que o agente precisa: os pré-requisitos a instalar e os passos exatos. Um prompt de uma linha para começar:
+
+> Leia a seção "Instalação com agente de IA" do README em https://github.com/WalterSilva5/relay.git, instale os pré-requisitos para o meu SO, clone o repositório, execute o `local-client/install.sh`, rode `npm install` e `npm run dev` dentro de `electron/`, e me explique como usar a aplicação.
+
+### Pré-requisitos que o agente deve instalar
+
+Instale estes **pacotes de sistema** primeiro. As bibliotecas Python são tratadas pelo `install.sh` dentro de um virtualenv — **não** as instale globalmente.
+
+| Dependência | Para quê | Obrigatório |
 | --- | --- | --- |
-| **git** | clone the repository | yes |
-| **Python 3.10+** (with the `venv` module) | runs the app | yes |
-| **pulseaudio-utils** (`parec` / `pactl`) | system-audio capture for Meetings / Transcriptions | Linux, for meetings |
-| **Node.js 18+ and npm** | builds the optional web UI served by the API | optional |
+| **git** | clonar o repositório | sim |
+| **Python 3.10+** (com o módulo `venv`) | sidecar: API, IA, transcrição | sim |
+| **Node.js 18+ e npm** | build da web UI e shell Electron | sim (shell Electron) |
+| **pulseaudio-utils** (`parec` / `pactl`) | captura do áudio do sistema em Reuniões / Transcrições | Linux, para reuniões |
 
-Install per OS:
+Instalação por SO:
 
 ```bash
 # Debian / Ubuntu
@@ -53,256 +129,281 @@ sudo dnf install -y git python3 python3-pip nodejs npm pulseaudio-utils
 # macOS (Homebrew)
 brew install git python node
 
-# Windows (winget) — native install; meeting recording needs Linux/WSL2
+# Windows (winget) — instalação nativa; gravar reuniões exige Linux/WSL2
 winget install Git.Git Python.Python.3.12 OpenJS.NodeJS
 ```
 
-> **Meetings / Transcriptions** capture system audio through PulseAudio's `parec` — a **Linux** feature. Without `pulseaudio-utils` the rest of the app still runs; only recording is disabled.
+> **Reuniões / Transcrições** capturam o áudio do sistema via `parec` do PulseAudio — recurso **Linux**. Sem o `pulseaudio-utils` o resto da aplicação continua funcionando; só a gravação fica desabilitada.
 >
-> **AI features** (assistant, meeting copilot, image/screen context) need an OpenAI-compatible provider configured in **Settings** (e.g. LM Studio locally, or a paid endpoint). Reading images/screenshots as meeting context requires a **vision-capable** model.
+> **Recursos de IA** (assistente, copiloto de reunião, contexto por imagem/tela) precisam de um provedor compatível com OpenAI configurado em **Configurações** (ex.: LM Studio local ou um endpoint pago). Ler imagens/capturas de tela como contexto exige um modelo **com visão**.
 
-### Steps
+### Passos
 
-The agent should:
+O agente deve:
 
-1. Install the prerequisites above for the user's OS.
-2. Clone the repository: `git clone https://github.com/WalterSilva5/relay.git`
-3. Run the installer from `local-client/`: **`./install.sh`** (Linux/macOS) or **`.\install.ps1`** (Windows/PowerShell) — creates a `.venv`, installs the Python deps (`pip install -e .`), validates, and builds the web UI when `npm` is present.
-4. Start it: `./run.sh` (optionally `--port 8888`). The desktop GUI opens and the API + web UI serve at `http://127.0.0.1:9777/`.
-5. *(Optional)* Create a `.desktop` shortcut on the desktop pointing to `local-client/run.sh`.
-6. Open **Settings** and configure an AI provider (base URL, model, API key) to enable the assistant and the meeting copilot.
-7. On the **Skills** tab, install the skills into the user's project directory — they teach the agent how to use the Relay API to create tasks, document progress, and generate reports.
+1. Instalar os pré-requisitos acima para o SO do usuário.
+2. Clonar o repositório: `git clone https://github.com/WalterSilva5/relay.git`
+3. Rodar o instalador dentro de `local-client/`: **`./install.sh`** (Linux/macOS) ou **`.\install.ps1`** (Windows/PowerShell) — cria um `.venv`, instala as dependências Python (`pip install -e .`), valida e builda a web UI quando o `npm` está presente.
+4. Instalar o shell: `cd electron && npm install`.
+5. Rodar: `npm run dev` em `electron/`. O Electron sobe o sidecar Python do `.venv` e abre a web UI na janela; a API fica em `http://127.0.0.1:9777/api`.
+6. Abrir **Configurações** e configurar um provedor de IA (base URL, modelo, API key) para habilitar o assistente e o copiloto de reunião.
+7. Na aba **Skills**, instalar as skills no diretório do projeto do usuário — elas ensinam o agente a usar a API do Relay para criar tarefas, documentar progresso e gerar relatórios.
+8. *(Opcional)* Empacotar: `cd electron && npm run dist` (AppImage + .deb) — ver [docs/e3-packaging.md](docs/e3-packaging.md).
 
-## Features
+## Funcionalidades
 
-### My Day (home)
-Main screen with daily notes in markdown, a pre-configured template, automatic report generation with an activity summary, and synchronization with an Obsidian vault. Date picker with a popup calendar for navigating between days. Includes a prompt hint so AI agents can generate the summary via a skill.
+### Meu Dia (home)
+Tela principal com notas diárias em markdown, template pre-configurado, geração de relatório automático com resumo de atividades, e sincronização com Obsidian vault. Date picker com calendário popup para navegar entre dias. Inclui dica de prompt para que agentes de IA gerem o resumo via skill.
 
 ### Dashboard
-Central hub organized into tabs: **Overview** (Pomodoro, summary cards, overdue tasks, recent activity, and progress by project), **Metrics**, **TODOs**, and **Labels**.
+Hub central organizado em abas: **Visão geral** (Pomodoro, cards de resumo, tarefas vencidas, atividade recente e progresso por projeto), **Métricas**, **TODOs** e **Labels**.
 
-### Kanban Board
-Board with drag-and-drop, columns customizable per project, filters by type/priority/assignee, a quick-move button to advance tasks, WIP limits, and a mandatory code review indicator. Agents always create review tasks (`requiresHuman: true`) so the developer can validate changes.
+### Board Kanban
+Board com drag-and-drop, colunas customizáveis por projeto, filtros por tipo/prioridade/responsável, botão quick-move para avançar tarefas, WIP limits e indicador de code review obrigatório. Agentes sempre criam tarefas de revisão (`requiresHuman: true`) para o desenvolvedor validar alterações.
 
-### Assistant
-Internal AI assistant that runs with your own provider (local LM Studio, opencode, or any OpenAI-compatible API). It reads the board, suggests priorities, requests task reviews, creates TODOs, and comments on tasks — all within the application. Built with LangGraph and internal tools. Configurable under Settings → AI Providers.
+### Reviews
+- **Review de PR** (`/reviews-pr`): monta o documento de review a partir do diff do PR (base `merge-base`, conflito via `merge-tree`) com veredito e checagens (escopo do card, testes, paridade/contrato, multi-tenant, IDs longos). Exporta `.md` e envia para o destino configurado.
+- **Review semanal** (`/reviews`): avaliação por pessoa no formato do vault (competências técnicas/comportamentais, comentário e evidências), com comparação entre semanas.
+- API: `/api/projects/{id}/pr-reviews` (+ `/diff`, `/export.md`, `/send`, `/reopen`) e `/api/projects/{id}/reviews` (+ `/export.md`, `/send`, `/reopen`).
 
-**Proactive coach:** throughout the day the agent surfaces short, actionable tips based on your board and TODOs (focus, organization, risk, or a healthy break) in a non-intrusive card (desktop **and** web UI). It also reacts to real signals — stuck tasks (idle 3+ days), high WIP, overdue TODOs — nudging on the spot (with a cooldown) instead of only on a timer. Opt-in and configurable under Settings → Proactive coach (interval); also available via `GET /api/coach/tip`.
+### Assistente
+Assistente de IA interno que roda com seu próprio provedor (LM Studio local, opencode ou qualquer API compatível com OpenAI). Ele lê o board, sugere prioridades, solicita revisões de tarefas, cria TODOs e comenta tarefas — tudo dentro da aplicação. Construído com LangGraph e ferramentas internas. Configurável em Configurações → Provedores de IA.
 
-### Transcriptions (Meetings)
-Records meetings and study sessions (microphone and/or system audio via PipeWire/PulseAudio), transcribes locally with faster-whisper, and generates structured summaries with AI — meetings become key points/decisions/action items; study sessions become concepts/exercises/related topics.
+**Coach proativo:** ao longo do dia o agente exibe dicas curtas e acionáveis com base no seu board e TODOs (foco, organização, risco ou uma pausa saudável) num card não intrusivo (desktop **e** web UI). Ele também reage a sinais reais — tarefas paradas (3+ dias sem alteração), WIP alto, TODOs vencidos — cutucando na hora (com cooldown) em vez de só por tempo. Opt-in e configurável em Configurações → Coach proativo (intervalo); também disponível via `GET /api/coach/tip`.
 
-The screen follows an explicit flow: **📁 Destination → 1 Prepare → 2 Record → 3 Result**.
+### Transcrições (Reuniões)
+Grava reuniões e sessões de estudo (microfone e/ou áudio do sistema via PipeWire/PulseAudio), transcreve localmente com faster-whisper e gera resumos estruturados com IA — reuniões viram pontos-chave/decisões/ações; estudos viram conceitos/exercícios/tópicos relacionados.
 
-- **📁 Destination** — the target workspace and project sit at the top: that's where the meeting and generated tasks go. Switching workspace asks for confirmation.
-- **1 Prepare** — agenda/goals plus attached context (files, PDFs, images, or a screenshot; images/screens are read by a vision model), so the copilot starts already knowing what it's about.
-- **2 Record** — audio sources live in a collapsible block (the Record button stays prominent). With the **live copilot**, plan, tips, actions, decisions and Q&A appear in real time, plus an "ask the meeting" box.
-- **3 Result** — transcript + summary and a grouped action bar: `↻ Analyze with AI │ Document: Export/Copy │ Send to: Create tasks/My Day`. The summary toggles between **Markdown source and formatted preview**.
-- **Automatic analysis** — when transcription finishes the report is generated on its own (with an AI provider configured); no need to click "Analyze".
-- **Editable transcript** — fix the text at any time and the agent **reviews the items** automatically.
-- **Manual answers** — answer the agent's questions right on the cards; it treats those answers as confirmed information and won't discard them when reprocessing.
-- **Everything saved automatically** — plan/tips/actions/decisions/questions are stored with the meeting; reopening restores it exactly as it was.
-- **Watch a monitor** — let the assistant periodically see a chosen screen to help solve on-screen tasks; toggleable during the meeting.
-- **Import from external transcripts** — create a meeting from a Meet/Teams export (text, VTT/SRT, PDF, DOCX) and run the same analysis.
-- **History** — searchable; **➕ New meeting** (starts from scratch), delete, archive and reorder; meetings are named with a date/time prefix.
-- Global **Ctrl+Shift+R** shortcut.
+A tela segue um fluxo explícito: **📁 Destino → 1 Preparar → 2 Gravar → 3 Resultado**.
 
-Features migrated from the wsi-cronista project.
+- **📁 Destino** — workspace e projeto de destino ficam no topo: é para lá que a reunião e as tarefas geradas vão. Trocar de workspace pede confirmação.
+- **1 Preparar** — pauta/objetivos e contexto anexado (arquivos, PDFs, imagens ou uma captura de tela; imagens/telas são lidas por um modelo com visão), para o copiloto já iniciar sabendo do que se trata.
+- **2 Gravar** — fontes de áudio num bloco recolhível (o botão Gravar fica em destaque). Com o **copiloto ao vivo**, plano, dicas, ações, decisões e perguntas & respostas aparecem em tempo real, além do campo "perguntar à reunião".
+- **3 Resultado** — transcrição + resumo e uma barra de ações agrupada: `↻ Analisar com IA │ Documento: Exportar/Copiar │ Enviar para: Criar tarefas/Meu Dia`. O resumo alterna entre **código Markdown e visualização formatada**.
+- **Análise automática** — ao terminar a transcrição o relatório é gerado sozinho (havendo provedor de IA); não é preciso clicar em "Analisar".
+- **Transcrição editável** — corrija o texto a qualquer momento e o agente **revisa os itens** automaticamente.
+- **Respostas manuais** — responda as perguntas do agente nos próprios cards; ele trata as respostas como informação confirmada e não as descarta ao reprocessar.
+- **Tudo salvo automaticamente** — plano/dicas/ações/decisões/perguntas ficam gravados com a reunião; ao reabrir, ela volta exatamente como estava.
+- **Ver um monitor** — deixe o assistente ver periodicamente uma tela escolhida para ajudar a resolver tarefas na tela; ativável/desativável durante a reunião.
+- **Importar de transcrições externas** — crie uma reunião a partir de uma exportação do Meet/Teams (texto, VTT/SRT, PDF, DOCX) e rode a mesma análise.
+- **Histórico** — pesquisável; **➕ Nova reunião** (começa do zero), excluir, arquivar e reordenar; reuniões nomeadas com prefixo de data/hora.
+- Atalho global **Ctrl+Shift+R**.
 
-### Projects
-Create and manage projects with a unique key (e.g., DEMO). Each project has its own board columns, tasks, labels, and metrics.
+Funcionalidades migradas do projeto wsi-cronista.
+
+### Projetos
+Criar e gerenciar projetos com chave única (ex: DEMO). Cada projeto tem suas colunas de board, tarefas, labels e métricas próprias.
 
 ### Labels
-Create labels with colors from the palette and apply them to tasks to categorize and filter. Labels are shared across projects in the same workspace.
+Criar labels com cores da paleta, aplicar em tarefas para categorizar e filtrar. Labels são compartilhadas entre projetos do mesmo workspace.
 
-### Metrics
-Dashboard with total tasks, completed (7 and 30 days), average lead time, cycle time, weekly throughput with a bar chart, and a breakdown by type, priority, and project.
+### Métricas
+Dashboard com total de tarefas, concluídas (7 e 30 dias), lead time médio, cycle time, throughput semanal com gráfico de barras, e breakdown por tipo, prioridade e projeto.
 
-### Studies
-Study plans with a visual roadmap, categories (Language, Framework, Certification, Concept, Course, Book), weighted topics, and sessions with hour tracking and a confidence level (1-5).
+### Estudos
+Planos de estudo com roadmap visual, categorias (Linguagem, Framework, Certificação, Conceito, Curso, Livro), tópicos ponderados, sessões com tracking de horas e nível de confiança (1-5).
+
+### Base de conhecimento
+Notas/wiki (reusa `Document` type=KB) com backlinks `[[título]]` e Q&A da IA sobre as notas (RAG-lite: recuperação por palavras-chave + resposta com citações). API `/api/kb/notes`, `/api/kb/ask`; tela `/base`.
 
 ### Skills
-Library of 12 skills for AI agents. Each skill is a SKILL.md file that can be installed into the project's `.claude/skills/` directory. "Install all" button for quick setup.
+Catálogo de 17 skills para agentes de IA. Cada skill é um arquivo SKILL.md que pode ser instalado no diretório `.claude/skills/` do projeto. Botão "Instalar todas" para setup rápido.
 
-### Instructions
-Application usage guide with 12 sections, including explanations of each screen, the workflow, the role of agents, and review tasks.
+### Instruções
+Guia de uso da aplicação com 12 seções, incluindo explicações de cada tela, fluxo de trabalho, o papel dos agentes e tarefas de revisão.
 
-### Settings
-General settings screen with:
-- **AI Providers**: register/select OpenAI-compatible providers (LM Studio, Ollama, OpenAI, OpenRouter, Groq, DeepSeek, Mistral, Gemini, Together, opencode), with a connection test. Used by the Assistant
-- **Pomodoro**: configurable session duration (1-120 min)
-- **Push notifications**: periodic desktop notifications with a custom message, configurable interval, and enable/disable toggle
+### Configurações
+Tela de configurações gerais com:
+- **Provedores de IA**: cadastrar/selecionar provedores compatíveis com OpenAI (LM Studio, Ollama, OpenAI, OpenRouter, Groq, DeepSeek, Mistral, Gemini, Together, opencode), com teste de conexão. Usado pelo Assistente
+- **Pomodoro**: duração da sessão configurável (1-120 min)
+- **Notificações push**: notificações periódicas na área de trabalho com mensagem personalizada, intervalo configurável e ativação/desativação
 
-### General features
-- Dark/light theme with a toggle in the sidebar
-- Configurable Pomodoro timer on the Dashboard
-- Quick access to Transcriptions in the sidebar (record in 1 click)
-- Periodic push notifications with a custom message
-- Global task search (Ctrl+K)
-- Isolated workspaces with separate databases, customizable emojis and colors
-- Database backup
-- Auto-sync with an Obsidian vault per workspace (every 5 min)
-- Vault configurable per workspace and project
+### Recursos gerais
+- Tema dark/light com toggle na sidebar
+- Pomodoro timer configurável no Dashboard
+- Acesso rápido às Transcrições na sidebar (gravar em 1 clique)
+- Notificações push periódicas com mensagem customizada
+- Busca global de tarefas (Ctrl+K)
+- Workspaces isolados com bancos separados, emojis e cores customizáveis
+- Backup do banco de dados
+- Auto-sync com Obsidian vault por workspace (a cada 5 min)
+- Vault configurável por workspace e projeto
 
-## Quick Start (automated install)
+## Início Rápido (instalação automatizada)
 
-Both scripts do the same thing: find Python 3.10+, create the `.venv`, install the
-dependencies, validate the install, and build the web UI when `npm` is available.
+Os dois scripts do `local-client` fazem o mesmo: encontram o Python 3.10+, criam a `.venv`, instalam as dependências, validam a instalação e buildam a web UI quando há `npm`.
 
 **Linux / macOS**
 
 ```bash
 cd local-client
-./install.sh    # creates venv + installs dependencies + validates
-./run.sh        # runs the application (optional: --port 8888)
+./install.sh    # cria venv + instala dependências + valida + builda a webui
+./run.sh        # GUI Qt (legado)
+./run-web.sh    # API + web (headless)
 ```
 
 **Windows (PowerShell)**
 
 ```powershell
 cd local-client
-.\install.ps1   # creates venv + installs dependencies + validates
-.\run.ps1       # runs the application (optional: --port 8888)
+.\install.ps1   # cria venv + instala dependências + valida
+.\run.ps1       # executa a aplicação (opcional: --port 8888)
 ```
 
-> If PowerShell blocks the script, run it as:
+> Se o PowerShell bloquear o script, rode:
 > `powershell -ExecutionPolicy Bypass -File .\install.ps1`
 >
-> **Windows note:** meeting *recording* uses PulseAudio's `parec` and is Linux-only.
-> Everything else works on Windows (board, AI assistant, importing Meet/Teams
-> transcripts, web UI); only live audio capture is unavailable.
+> **Nota Windows:** a *gravação* de reuniões usa o `parec` do PulseAudio e é
+> exclusiva do Linux. O resto funciona no Windows (board, assistente de IA,
+> importar transcrições do Meet/Teams, web UI); só a captura de áudio ao vivo
+> fica indisponível.
 
-Or manually:
+Ou manualmente:
 
 ```bash
 cd local-client
 python3 -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -e .
-python -m relay
+python -m relay.webmain        # API + web
+# ou: python -m relay          # GUI Qt (legado)
 ```
 
-The application opens with:
-- **Desktop GUI** — complete interface with 10 screens in the menu (Metrics, TODOs, and Labels became Dashboard tabs)
-- **REST API** — `http://127.0.0.1:9777/api` for AI agents
-
-### Custom port
+### Porta customizada
 
 ```bash
-./run.sh --port 8888
+./run.sh --port 8888              # GUI Qt (legado)
+python -m relay.webmain --port 8888
+RELAY_PORT=8888 npm run dev       # Electron (em electron/)
 ```
 
-### Desktop shell (experimental — web route)
+## API REST para agentes
 
-First step of the front-end migration to the web route (see
-[docs/planos/migracao-frontend-responsivo.md](docs/planos/migracao-frontend-responsivo.md)):
-run the responsive React web UI in a native window via pywebview, backed by the
-same local API/daemon. The Qt GUI stays the default; this is opt-in.
+A API roda em `http://127.0.0.1:9777/api` sem autenticação. Endpoints principais:
 
-```bash
-cd local-client
-pip install -e '.[shell]'   # installs pywebview
-relay-shell               # or: python -m relay.desktop_shell [--port 9777]
-```
-
-## REST API for agents
-
-The API runs at `http://127.0.0.1:9777/api` without authentication. Main endpoints:
-
-| Resource | Endpoints |
+| Recurso | Endpoints |
 |---|---|
 | Health | `GET /api/health` |
-| Projects | `POST/GET /api/projects`, `GET /api/projects/metrics` |
-| Tasks | `POST/GET /api/tasks`, `GET/PATCH/DELETE /api/tasks/{code}`, `POST /api/tasks/{code}/move` |
+| Projetos | `POST/GET /api/projects`, `GET /api/projects/metrics` |
+| Tarefas | `POST/GET /api/tasks`, `GET/PATCH/DELETE /api/tasks/{code}`, `POST /api/tasks/{code}/move` |
 | Checklist | `POST /api/tasks/{code}/checklist`, `PATCH/DELETE /api/tasks/checklist/{id}` |
 | Labels | `POST/GET /api/labels`, `POST/DELETE /api/labels/{id}/tasks/{task_id}` |
-| Comments | `GET/POST /api/comments`, `PATCH/DELETE /api/comments/{id}` |
-| Journal | `GET/POST /api/daily/{date}`, `PATCH /api/daily/{date}/report` |
+| Comentários | `GET/POST /api/comments`, `PATCH/DELETE /api/comments/{id}` |
+| Diario | `GET/POST /api/daily/{date}`, `PATCH /api/daily/{date}/report` |
 | TODOs | `GET/POST /api/todos`, `PATCH/DELETE /api/todos/{id}` |
-| Studies | `POST/GET /api/study/plans`, `PATCH/DELETE /api/study/plans/{id}` |
-| History | `GET /api/tasks/{code}/history` |
+| Estudos | `POST/GET /api/study/plans`, `PATCH/DELETE /api/study/plans/{id}` |
+| Reviews | `POST/GET /api/projects/{id}/reviews`, `POST/GET /api/projects/{id}/pr-reviews` |
+| Histórico | `GET /api/tasks/{code}/history` |
 | Changelog | `GET /api/projects/{project_id}/changelog?days=7` |
-| Activity | `GET /api/activity` |
+| Atividade | `GET /api/activity` |
 
-## Skills for AI agents
+## Skills para agentes de IA
 
-| Skill | What it does |
+| Skill | O que faz |
 |---|---|
-| `relay-run` | Start the application (GUI + API) |
-| `relay-api-agent` | Teaches the agent to use the REST API |
-| `relay-task-workflow` | Complete workflow: pick a task, implement, move, document |
-| `relay-project-setup` | Create a project with default columns and labels |
-| `relay-sprint-planning` | Plan a sprint with estimates and prioritization |
-| `relay-code-review-log` | Log code reviews as comments |
-| `relay-bug-triage` | Bug triage with priority and reproduction |
-| `relay-daily-standup` | Generate an automatic standup report |
-| `relay-tech-debt-tracker` | Log and prioritize technical debt |
-| `relay-documentation-writer` | Generate documentation from code |
-| `relay-daily-report` | Daily report with notes, activity, and summary (supports partial mode) |
-| `relay-context-loader` | Load the full workspace context to resume work from where you left off |
+| `relay-use` | Orquestrador: analisa o momento e escolhe quais skills usar |
+| `relay-run` | Iniciar a aplicação (GUI + API) |
+| `relay-api-agent` | Ensina o agente a usar a API REST |
+| `relay-task-workflow` | Fluxo completo: pegar task, implementar, mover, documentar |
+| `relay-project-setup` | Criar projeto com colunas e labels padrão |
+| `relay-sprint-planning` | Planejar sprint com estimativas e priorização |
+| `relay-code-review-log` | Registrar code reviews como comentários |
+| `relay-bug-triage` | Triagem de bugs com prioridade e reprodução |
+| `relay-daily-standup` | Gerar relatório de standup automático |
+| `relay-tech-debt-tracker` | Registrar e priorizar dívida técnica |
+| `relay-documentation-writer` | Gerar documentação a partir do código |
+| `relay-daily-report` | Relatório diário com notas, atividade e resumo (suporta modo parcial) |
+| `relay-context-loader` | Carregar contexto completo do workspace para retomar trabalho de onde parou |
+| `relay-agentic-memory` | Memória agentic do workspace: buscar, gravar, ingerir e consultar decisões |
+| `relay-project-daily` | Ler, filtrar, criar e editar o registro diário do projeto |
+| `relay-goals` | Acompanhar objetivos com progresso e contagem regressiva |
+| `relay-members` | Gerenciar responsáveis, atribuir cards e ver métricas por pessoa |
 
-## Screenshots
+## Capturas de tela
+
+Capturas reais do app Electron (shell + web UI), 1440×900, projeto MIG (VAR 3.0):
+
+![Dashboard](docs/prints/dashboard.png)
+![Board kanban](docs/prints/board.png)
+![Métricas](docs/prints/metricas.png)
+![Reviews de PR](docs/prints/reviews-pr.png)
+![Reuniões](docs/prints/reunioes.png)
+
+As capturas antigas da GUI Qt (legado) continuam em `local-client/docs/screenshots/`
+
+<details>
+<summary>Capturas antigas (GUI Qt, legado)</summary>
 
 ![Dashboard](local-client/docs/screenshots/dashboard-light.png)
-![My Day](local-client/docs/screenshots/meudia-light.png)
-![Board with sprints](local-client/docs/screenshots/board-light.png)
-![Sprint Planning](local-client/docs/screenshots/planejamento-light.png)
-![Studies with the assistant](local-client/docs/screenshots/estudos-light.png)
-![Assistant](local-client/docs/screenshots/chat-light.png)
-![Meetings (live copilot)](local-client/docs/screenshots/reunioes-light.png)
-![Projects](local-client/docs/screenshots/projetos-light.png)
-![Skills](local-client/docs/screenshots/skills-light.png)
-![Instructions](local-client/docs/screenshots/instrucoes-light.png)
-![Settings](local-client/docs/screenshots/configuracoes-light.png)
+![Board com sprints](local-client/docs/screenshots/board-light.png)
+![Reuniões](local-client/docs/screenshots/reunioes-light.png)
 
-## Project structure
+</details>
+
+## Estrutura do projeto
 
 ```
 relay/
-├── local-client/              # Main app (Python/PySide6)
-│   ├── relay/         # Source code
-│   │   ├── gui/views/         # interface screens (Dashboard with tabs)
-│   │   ├── api/               # FastAPI endpoints
-│   │   ├── db/                # SQLAlchemy models + SQLite
-│   │   └── skills/            # Catalog of 12 skills
-│   ├── install.sh             # Installation script
-│   ├── run.sh                 # Run script
-│   ├── pyproject.toml         # Python dependencies
-│   └── docs/screenshots/      # Screenshots
+├── electron/                  # Shell desktop (Electron): janela, tray, hotkey, update
+│   ├── main.js                # processo principal + ciclo de vida do sidecar
+│   ├── preload.js
+│   ├── assets/                # ícone
+│   └── README.md
 │
-├── web-client/                # Web client (NestJS + Angular) — CONGELADO (ver ADR-0001; UI oficial: local-client/webui no Electron)
-├── mcp/                       # MCP server for integration
-├── docs/                      # Architecture documentation
-├── CLAUDE.md                  # Guide for AI agents
+├── local-client/              # Produto Python (FastAPI + SQLite + IA + áudio)
+│   ├── relay/                 # Código fonte
+│   │   ├── api/               # FastAPI (endpoints)
+│   │   ├── db/                # SQLAlchemy + SQLite
+│   │   ├── ai/                # Assistente (LangGraph)
+│   │   ├── transcricoes/      # Gravação + Whisper
+│   │   ├── gui/               # GUI PySide6 (legado; congela após E2)
+│   │   └── skills/            # Catálogo de skills
+│   ├── webui/                 # Web UI React + Vite (UI oficial no Electron)
+│   ├── install.sh             # Instalação (venv + deps + webui)
+│   ├── run.sh                 # GUI Qt (legado)
+│   ├── run-web.sh             # API + web (headless)
+│   ├── build-sidecar.sh       # PyInstaller one-file (E3)
+│   ├── pyproject.toml         # Dependências Python
+│   └── docs/screenshots/      # Capturas antigas (GUI Qt)
+│
+├── web-client/                # Web client (NestJS + Angular) — CONGELADO (ADR-0001)
+├── mcp/                       # Servidor MCP para integração
+├── docs/
+│   ├── adr/0001-electron-unificacao.md
+│   ├── e2-parity-matrix.md
+│   ├── e3-packaging.md
+│   └── prints/                # Plano das capturas de tela
+├── CLAUDE.md                  # Guia para agentes de IA
 └── README.md
 ```
 
-## Data
+## Dados
 
-Data lives in `~/.relay/`:
+Os dados ficam em `~/.relay/`:
 
 ```
 ~/.relay/
-├── config.json                # Settings (workspaces, vault paths, theme)
+├── config.json                # Configurações (workspaces, vault paths, tema)
 └── workspaces/
     ├── default/
-    │   └── maestro.db         # SQLite database for the default workspace
+    │   └── maestro.db         # Banco SQLite do workspace padrão
     └── {workspace-id}/
-        └── maestro.db         # SQLite database for each workspace
+        └── maestro.db         # Banco SQLite de cada workspace
 ```
 
-## Requirements
+## Requisitos
 
-- Python 3.10+ (with the `venv` module)
+- Python 3.10+ (com o módulo `venv`)
+- Node.js 18+ e npm — build da web UI e shell Electron
 - git
-- Operating system: Linux, macOS, or Windows (Windows via WSL2)
-- Qt 6 (installed automatically with PySide6)
-- `pulseaudio-utils` (`parec` / `pactl`) — Linux only, for Meetings/Transcriptions recording
-- Node.js 18+ and npm — optional, to build the web UI
-- An OpenAI-compatible AI provider — optional, to enable the assistant and meeting copilot (a vision-capable model is needed to read images/screens as context)
+- Sistema operacional: Linux, macOS ou Windows (Windows via WSL2)
+- Qt 6 (instalado automaticamente com PySide6) — necessário apenas para a GUI legada
+- `pulseaudio-utils` (`parec` / `pactl`) — só Linux, para gravação em Reuniões/Transcrições
+- Provedor de IA compatível com OpenAI — opcional, para habilitar o assistente e o copiloto de reunião (modelo com visão é necessário para ler imagens/telas como contexto)
+- App empacotado: **Linux** (X11 + Wayland) nesta fase; Windows depois (ADR-0001)
 
-See [Installation with an AI agent](#installation-with-an-ai-agent) for the per-OS install commands.
+Veja [Instalação com agente de IA](#instalação-com-agente-de-ia) para os comandos de instalação por SO.
 
-## License
+## Licença
 
-Private License. Copyright (c) 2026 WalterSilva5. All rights reserved. See the [LICENSE](LICENSE) file for details.
+Licença Privada. Copyright (c) 2026 WalterSilva5. Todos os direitos reservados. Consulte o arquivo [LICENSE](LICENSE) para detalhes.

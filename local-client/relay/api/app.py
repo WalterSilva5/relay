@@ -6503,6 +6503,27 @@ def _mount_webui(_app):
     mimetypes.add_type("application/javascript", ".js")
     mimetypes.add_type("image/svg+xml", ".svg")
 
+    # Override explícito (dev/shell): RELAY_WEBUI_DIR aponta para o build fresco.
+    import os as _os
+    _override = (_os.environ.get("RELAY_WEBUI_DIR") or "").strip()
+    if _override:
+        dist_override = Path(_override).expanduser()
+        if (dist_override / "index.html").exists():
+            assets_override = dist_override / "assets"
+            if assets_override.exists():
+                _app.mount("/assets", StaticFiles(directory=str(assets_override)), name="assets")
+
+            @_app.get("/{full_path:path}", include_in_schema=False)
+            def _spa_override(full_path: str):
+                if full_path == "api" or full_path.startswith("api/"):
+                    raise HTTPException(status_code=404, detail="Not Found")
+                cand = dist_override / full_path
+                if full_path and cand.is_file():
+                    return FileResponse(str(cand))
+                return FileResponse(str(dist_override / "index.html"))
+
+            return
+
     dist = _base_dir() / "webui" / "dist"
     if not (dist / "index.html").exists():
         # Layout empacotado: webui-dist/ ao lado do binário.
