@@ -3,7 +3,7 @@ import Swal from 'sweetalert2'
 import {
   listRecordings, getRecording, updateRecording, deleteRecording,
   archiveRecording, recordingExportUrl, recordingAudioUrl,
-  analyzeRecording, getWorkspaces, getProjects,
+  analyzeRecording, getWorkspaces, getProjects, transcribeRecording,
   getLiveStatus, startLiveRecording, stopLiveRecording,
 } from '../api.js'
 import { getActiveProjectId } from '../components/ProjectSelector.jsx'
@@ -183,6 +183,23 @@ export default function Reunioes() {
       if (r.recordingId) abrir(r.recordingId)
     } catch (e) {
       setErro(textoErro(e))
+    }
+  }
+
+  const [transcrevendo, setTranscrevendo] = useState(false)
+
+  const transcrever = async () => {
+    if (!sel || transcrevendo) return
+    setTranscrevendo(true)
+    setErro('')
+    try {
+      const d = await transcribeRecording(sel, { append: false })
+      await abrir(sel)
+      setMsg(tf('Transcrição pronta ({n} trechos). Analise para gerar as dicas.', { n: d.segments?.length ?? 0 }))
+    } catch (e) {
+      setErro(textoErro(e))
+    } finally {
+      setTranscrevendo(false)
     }
   }
 
@@ -432,6 +449,17 @@ export default function Reunioes() {
 
               {/* análise com o contexto do projeto (board, atrasos, dailies) */}
               <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  className="ghost row"
+                  onClick={transcrever}
+                  disabled={transcrevendo || !detalhe?.hasAudio}
+                  title={detalhe?.hasAudio
+                    ? t('Transcreve o áudio com o Whisper local (offline)')
+                    : t('Esta reunião não tem áudio')}
+                >
+                  <Icon name="mic" size={14} />
+                  {transcrevendo ? t('Transcrevendo...') : t('Transcrever')}
+                </button>
                 <button className="ghost row" onClick={analisar} disabled={analisando}>
                   <Icon name="sparkles" size={14} />
                   {analisando ? t('Analisando...') : t('Analisar reunião')}

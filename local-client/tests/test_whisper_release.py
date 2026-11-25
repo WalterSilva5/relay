@@ -1,5 +1,5 @@
 """Liberação do modelo Whisper quando ocioso (economia de RAM)."""
-from relay.transcricoes import transcriber as tr
+from relay.transcricoes import models as tr  # cache do modelo vive aqui
 from relay.transcricoes.agent_service import MeetingAgentService
 
 

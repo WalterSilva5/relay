@@ -84,8 +84,10 @@ pyinstaller \
   --hidden-import uvicorn.loops.auto \
   --hidden-import uvicorn.protocols.http.auto \
   --hidden-import uvicorn.protocols.websockets.auto \
-  --hidden-import faster_whisper \
-  --hidden-import ctranslate2 \
+  --collect-all faster_whisper \
+  --collect-all ctranslate2 \
+  --collect-all av \
+  --collect-all tokenizers \
   --hidden-import onnxruntime \
   relay/webmain.py
 
@@ -100,7 +102,22 @@ else
 fi
 
 # 3. Smoke test ---------------------------------------------------------------
-"$OUT_DIR/$BIN_NAME" --help >/dev/null 2>&1 || true
+# Usa porta própria e SEMPRE encerra: antes, um `--help` subia o servidor na
+# 9777 e ficava preso, fazendo o app Electron reutilizar binário antigo.
+SMOKE_PORT="${SMOKE_PORT:-9899}"
+"$OUT_DIR/$BIN_NAME" --port "$SMOKE_PORT" >/tmp/relay-sidecar-smoke.log 2>&1 &
+SMOKE_PID=$!
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+  sleep 1
+  if curl -sf "http://127.0.0.1:$SMOKE_PORT/api/health" >/dev/null 2>&1; then break; fi
+done
+if curl -sf "http://127.0.0.1:$SMOKE_PORT/api/health" >/dev/null 2>&1; then
+  echo "smoke: /api/health ok na porta $SMOKE_PORT"
+else
+  echo "AVISO: smoke test não respondeu (veja /tmp/relay-sidecar-smoke.log)"
+fi
+kill "$SMOKE_PID" 2>/dev/null || true
+wait "$SMOKE_PID" 2>/dev/null || true
 echo "OK: $OUT_DIR/$BIN_NAME"
 ls -lh "$OUT_DIR/$BIN_NAME"
 echo "Teste manual: PORTA livre? rode: $OUT_DIR/$BIN_NAME --port 9777"

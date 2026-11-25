@@ -6343,6 +6343,64 @@ def export_recording(rec_id: int, format: str = "md", s: Session = Depends(db)):
     )
 
 
+class TranscribeRecordingBody(BaseModel):
+    model: Optional[str] = None       # tamanho do Whisper (tiny..large-v3)
+    language: Optional[str] = None    # "" = autodetecção
+    append: bool = False              # soma ao texto existente
+
+
+@app.post("/api/recordings/{rec_id}/transcribe")
+def transcribe_recording(rec_id: int, body: TranscribeRecordingBody | None = None,
+                         s: Session = Depends(db)):
+    """Transcreve o áudio da reunião com o Whisper local (offline).
+
+    Fecha o ciclo no shell Electron: gravar -> transcrever -> analisar (dicas).
+    A transcrição é síncrona (uso local, single-user); áudios longos demoram.
+    """
+    from relay.transcricoes.engine import transcribe_path
+
+    body = body or TranscribeRecordingBody()
+    r = s.get(Recording, rec_id)
+    if not r:
+        raise HTTPException(404, "Recording not found")
+    audio = (r.audio_path or "").strip()
+    if not audio:
+        raise HTTPException(400, "Reunião sem áudio para transcrever")
+    try:
+        resultado = transcribe_path(
+            audio, model_size=body.model or None, language=body.language,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(400, str(e))
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+    except Exception as e:  # noqa: BLE001
+        import logging as _logging
+        _logging.getLogger("relay.api").exception("transcrição falhou (rec %s)", rec_id)
+        raise HTTPException(500, f"falha ao transcrever: {e}")
+
+    texto = resultado.text.strip()
+    if body.append and (r.transcript or "").strip():
+        r.transcript = (r.transcript or "").rstrip() + " " + texto
+    else:
+        r.transcript = texto
+    if resultado.language:
+        r.language = resultado.language
+    if resultado.duration and not (r.duration or 0):
+        r.duration = resultado.duration
+    s.commit()
+    s.refresh(r)
+    return {
+        "recordingId": r.id,
+        "text": r.transcript or texto,   # texto final salvo (com append, se houve)
+        "newText": texto,
+        "language": r.language or "",
+        "durationSec": round(r.duration or 0, 1),
+        "segments": [{"start": x.start, "end": x.end, "text": x.text}
+                     for x in resultado.segments],
+    }
+
+
 @app.post("/api/recordings/{rec_id}/analyze")
 def analyze_recording(
     rec_id: int,

@@ -19,8 +19,8 @@ from .constants import (
 
 logger = logging.getLogger("relay.transcricoes.transcription")
 
-_cached_model = None
-_cached_size = None
+from .models import cpu_threads as _cpu_threads  # noqa: E402
+from .models import get_model, release_model  # noqa: E402,F401
 
 
 def _force_c_utf8_locale() -> None:
@@ -39,53 +39,6 @@ def _force_c_utf8_locale() -> None:
             return
         except locale.Error:
             continue
-
-
-def _cpu_threads() -> int:
-    """Núcleos para o Whisper, deixando folga para o resto do sistema.
-
-    O ctranslate2 usa TODOS os núcleos por padrão; durante a transcrição ao vivo
-    isso saturava a CPU e travava a máquina.
-    """
-    import os
-    if WHISPER_CPU_THREADS > 0:
-        return WHISPER_CPU_THREADS
-    return max(1, (os.cpu_count() or 2) // 2)
-
-
-def get_model(model_size: str = WHISPER_DEFAULT_MODEL, compute_type: str = WHISPER_COMPUTE_TYPE):
-    global _cached_model, _cached_size
-    if model_size not in WHISPER_SUPPORTED_MODELS:
-        raise ValueError(f"Modelo Whisper inválido: {model_size}")
-    if _cached_model is not None and _cached_size == model_size:
-        return _cached_model
-    from faster_whisper import WhisperModel
-    threads = _cpu_threads()
-    logger.info("Carregando Whisper '%s' (compute=%s, cpu_threads=%d)...",
-                model_size, compute_type, threads)
-    _cached_model = WhisperModel(model_size, device="auto", compute_type=compute_type,
-                                 cpu_threads=threads, num_workers=1)
-    _cached_size = model_size
-    return _cached_model
-
-
-def release_model() -> bool:
-    """Libera o modelo Whisper da memória (ele recarrega sozinho no próximo uso).
-
-    O modelo fica residente após o primeiro uso — o `small` int8 são centenas de
-    MB de RAM parados quando não se está transcrevendo. Chamar isto quando o app
-    está ocioso devolve essa memória ao sistema. Só chame quando NÃO houver
-    transcrição/gravação em andamento (senão o worker em execução quebra).
-    """
-    global _cached_model, _cached_size
-    if _cached_model is None:
-        return False
-    import gc
-    logger.info("Liberando Whisper '%s' da memória (ocioso).", _cached_size)
-    _cached_model = None
-    _cached_size = None
-    gc.collect()
-    return True
 
 
 @dataclass

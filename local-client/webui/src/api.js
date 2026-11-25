@@ -316,6 +316,9 @@ export const startLiveRecording = (body = {}) =>
   api.post('/recordings/live/start', body).then((r) => r.data)
 export const stopLiveRecording = () => api.post('/recordings/live/stop', {}).then((r) => r.data)
 
+export const transcribeRecording = (id, body = {}) =>
+  api.post(`/recordings/${id}/transcribe`, body).then((r) => r.data)
+
 export const analyzeRecording = (id, body = {}) =>
   api.post(`/recordings/${id}/analyze`, body).then((r) => r.data)
 
