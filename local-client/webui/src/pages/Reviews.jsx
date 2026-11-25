@@ -14,6 +14,7 @@ import {
 } from '../api'
 import { getActiveProjectId } from '../components/ProjectSelector.jsx'
 import { t, tf } from '../i18n'
+import Icon from '../components/Icon'
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const mondayOf = (d) => {
@@ -95,7 +96,7 @@ function Campo({ titulo, ajuda, children }) {
   )
 }
 
-const inputStyle = { width: '100%', padding: '6px 8px', fontSize: 13 }
+const inputStyle = { width: '100%' }
 
 export default function Reviews() {
   const [projeto, setProjeto] = useState(null)
@@ -281,11 +282,14 @@ export default function Reviews() {
 
       <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
         <div className="card" style={{ flex: '0 0 300px' }}>
-          <strong>{t('Reviews')}</strong>
+          <div className="section-title">{t('Reviews')}</div>
           {reviews.map((r) => (
             <div key={r.id} onClick={() => abrir(r)} style={{ cursor: 'pointer', padding: '6px 4px', borderLeft: selId === r.id ? '3px solid var(--accent)' : '3px solid transparent', paddingLeft: 6 }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{r.personName} <span className="muted">· {r.periodStart?.slice(5).replace('-', '/')}–{r.periodEnd?.slice(5).replace('-', '/')}</span></div>
-              <div className="muted" style={{ fontSize: 11 }}>{r.techScore ?? 'N'}·{t('téc')} / {r.softScore ?? 'N'}·{t('comp')} · {r.status === 'SENT' ? `✅ ${t('Enviado')}` : `📝 ${t('Rascunho')}`}</div>
+              <div className="muted" style={{ fontSize: 11 }}>
+                {r.techScore ?? 'N'}·{t('téc')} / {r.softScore ?? 'N'}·{t('comp')}{' '}
+                <span className={r.status === 'SENT' ? 'chip success' : 'chip'}>{r.status === 'SENT' ? t('Enviado') : t('Rascunho')}</span>
+              </div>
             </div>
           ))}
           {reviews.length === 0 && <div className="muted">{t('Nenhum review.')}</div>}
@@ -302,12 +306,12 @@ export default function Reviews() {
               )}
               <button className="ghost" onClick={duplicar} title={t('Copia notas e estrutura para a próxima semana')}>{t('Duplicar da semana anterior')}</button>
               <a href={reviewExportUrl(projeto.id, form.id)} target="_blank" rel="noreferrer" style={{ pointerEvents: erros.length ? 'none' : 'auto', opacity: erros.length ? 0.4 : 1 }}>
-                <button disabled={erros.length > 0} title={erros.join('\n') || t('Baixa o .md no formato do vault')}>⬇ {t('Exportar .md')}</button>
+                <button disabled={erros.length > 0} title={erros.join('\n') || t('Baixa o .md no formato do vault')}>{t('Exportar .md')}</button>
               </a>
               <button className="ghost" onClick={verPrevia}>{t('Pré-visualizar')}</button>
             </div>
-            {erros.length > 0 && <div className="banner">{erros.map((e, i) => <div key={i}>⛔ {e}</div>)}</div>}
-            {avisos.length > 0 && <div className="banner" style={{ background: 'var(--card)' }}>{avisos.map((a, i) => <div key={i}>⚠️ {a}</div>)}</div>}
+            {erros.length > 0 && <div className="banner">{erros.map((e, i) => <div key={i}>{e}</div>)}</div>}
+            {avisos.length > 0 && <div className="banner" style={{ background: 'var(--warning-soft)', color: 'var(--warning)' }}>{avisos.map((a, i) => <div key={i}>{a}</div>)}</div>}
             {erroAcao && <div className="banner">{erroAcao}</div>}
 
             <div className="row" style={{ gap: 16, alignItems: 'flex-start' }}>
@@ -336,10 +340,14 @@ export default function Reviews() {
                       <input style={{ ...inputStyle, flex: 2 }} value={f.what} disabled={travado} onChange={(e) => { const c = [...fatos]; c[i] = { ...c[i], what: e.target.value }; setFatos(c) }} placeholder={t('O que')} />
                       <input style={{ ...inputStyle, flex: 1 }} value={f.ref} disabled={travado} onChange={(e) => { const c = [...fatos]; c[i] = { ...c[i], ref: e.target.value }; setFatos(c) }} placeholder={t('PR ou card')} />
                       <input style={{ ...inputStyle, flex: 2 }} value={f.evidence} disabled={travado} onChange={(e) => { const c = [...fatos]; c[i] = { ...c[i], evidence: e.target.value }; setFatos(c) }} placeholder={t('Evidência')} />
-                      {!travado && <button className="ghost" onClick={() => setFatos(fatos.filter((_, j) => j !== i))}>✕</button>}
+                      {!travado && (
+                        <button className="danger sm" title={t('Remover')} onClick={() => setFatos(fatos.filter((_, j) => j !== i))}>
+                          <Icon name="close" size={13} />
+                        </button>
+                      )}
                     </div>
                   ))}
-                  {!travado && <button className="ghost" onClick={() => setFatos([...fatos, { what: '', ref: '', evidence: '' }])}>+ {t('Adicionar linha')}</button>}
+                  {!travado && <button className="ghost sm" onClick={() => setFatos([...fatos, { what: '', ref: '', evidence: '' }])}>+ {t('Adicionar linha')}</button>}
                 </Campo>
 
                 <Campo titulo={t('Como aparece no código')} ajuda={HELP.codigo}>
@@ -364,8 +372,8 @@ export default function Reviews() {
                 </Campo>
 
                 {mostraPrevia && (
-                  <div className="card" style={{ marginTop: 8 }}>
-                    <strong>{t('Pré-visualização do .md')}</strong>
+                  <div className="card card-tight" style={{ marginTop: 8 }}>
+                    <div className="section-title">{t('Pré-visualização do .md')}</div>
                     <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, marginTop: 6 }}>{previa}</pre>
                   </div>
                 )}
@@ -373,7 +381,7 @@ export default function Reviews() {
 
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div className="card" style={{ marginBottom: 8 }}>
-                  <strong>{t('Histórico — nota anterior')}</strong>
+                  <div className="section-title">{t('Histórico — nota anterior')}</div>
                   {historico.anterior ? (
                     <div style={{ fontSize: 12, marginTop: 4 }}>
                       <div>{t('Anterior')}: {historico.anterior.periodStart}–{historico.anterior.periodEnd} · {historico.anterior.techScore ?? 'N'}·{t('téc')} / {historico.anterior.softScore ?? 'N'}·{t('comp')}</div>
@@ -385,13 +393,18 @@ export default function Reviews() {
                   {historico.lista.length > 1 && (
                     <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>
                       {historico.lista.filter((r) => r.id !== form.id).slice(0, 5).map((r) => (
-                        <div key={r.id} style={{ cursor: 'pointer' }} onClick={() => abrir(r)}>• {r.periodStart}–{r.periodEnd} · {r.techScore ?? 'N'}/{r.softScore ?? 'N'} · {r.status === 'SENT' ? '✅' : '📝'}</div>
+                        <div key={r.id} style={{ cursor: 'pointer' }} onClick={() => abrir(r)}>
+                          • {r.periodStart}–{r.periodEnd} · {r.techScore ?? 'N'}/{r.softScore ?? 'N'} ·{' '}
+                          <span className={r.status === 'SENT' ? 'chip success' : 'chip'}>
+                            {r.status === 'SENT' ? t('Enviado') : t('Rascunho')}
+                          </span>
+                        </div>
                       ))}
                     </div>
                   )}
                 </div>
                 <div className="card">
-                  <strong>{t('Cards da pessoa no período')}</strong>
+                  <div className="section-title">{t('Cards da pessoa no período')}</div>
                   <div className="muted" style={{ fontSize: 11, margin: '2px 0 6px' }}>{t('Só para referência — clique para copiar o código.')}</div>
                   {cardsPessoa.slice(0, 12).map((tk) => (
                     <div key={tk.id} style={{ fontSize: 12, cursor: 'pointer', padding: '2px 0' }} title={t('Copiar código')}

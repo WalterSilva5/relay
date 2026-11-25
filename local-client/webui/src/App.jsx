@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Route, Routes, Navigate } from 'react-router-dom'
+import { NavLink, Route, Routes, Navigate, useNavigate } from 'react-router-dom'
 import Dashboard from './pages/Dashboard.jsx'
 import MeuDia from './pages/MeuDia.jsx'
 import Estudos from './pages/Estudos.jsx'
@@ -27,9 +27,11 @@ import Guia from './pages/Guia.jsx'
 import Configuracoes from './pages/Configuracoes.jsx'
 import WorkspaceSelector from './components/WorkspaceSelector.jsx'
 import ProjectSelector from './components/ProjectSelector.jsx'
+import { getActiveProjectId } from './components/ProjectSelector.jsx'
+import Icon from './components/Icon.jsx'
 import PendingTodosReminder from './components/PendingTodosReminder.jsx'
 import CoachTip from './components/CoachTip.jsx'
-import { getPendingTodos } from './api'
+import { getPendingTodos, getProjects, getWorkspaces } from './api'
 import { t } from './i18n'
 
 function Sidebar({ onNavigate, onCollapse }) {
@@ -43,35 +45,47 @@ function Sidebar({ onNavigate, onCollapse }) {
     return () => clearInterval(id)
   }, [])
 
-  // Menu enxuto: essenciais + hub "Ferramentas" (extras: estudos, métricas,
-  // labels, biblioteca, testador de API, base).
-  const nav = [
-    ['/dashboard', t('Dashboard'), '📊'],
-    ['/meu-dia', t('Meu Dia'), '📅'],
-    ['/projetos', t('Projetos'), '📁'],
-    ['/goals', t('Goals'), '🎯'],
-    ['/time', t('Time'), '👥'],
-    ['/reunioes', t('Reuniões'), '🎙️'],
-    ['/reviews', t('Reviews'), '📋'],
-    ['/reviews-pr', t('Reviews de PR'), '🔎'],
-    ['/assistente', t('Assistente'), '💬'],
-    ['/todos', t('TODOs'), '✅'],
-    ['/ferramentas', t('Ferramentas'), '🧰'],
-    ['/memoria', t('Memória agentic'), '🧬'],
-    ['/ingles', t('Praticar Inglês'), '🗣️'],
-    ['/skills', t('Skills'), '🧩'],
-    ['/guia', t('Instruções'), '📖'],
-    ['/configuracoes', t('Configurações'), '⚙️'],
-    // deep link do app desktop: mesma lista, sem seção própria
-    ['relay://vault', t('Senhas'), '🔒', t('Cofre KeePass no desktop')],
+  // Menu em grupos: o que é uso diário fica em cima; o resto em "Extras".
+  const grupos = [
+    {
+      titulo: t('Trabalho'),
+      itens: [
+        ['/dashboard', t('Dashboard'), 'dashboard'],
+        ['/meu-dia', t('Meu Dia'), 'calendar'],
+        ['/projetos', t('Projetos'), 'folder'],
+        ['/board', t('Board'), 'board', 'Abra pelo seletor de projeto acima'],
+        ['/goals', t('Goals'), 'target'],
+        ['/time', t('Time'), 'users'],
+      ],
+    },
+    {
+      titulo: t('Registro'),
+      itens: [
+        ['/reunioes', t('Reuniões'), 'mic'],
+        ['/reviews', t('Reviews'), 'clipboard'],
+        ['/reviews-pr', t('Reviews de PR'), 'search'],
+        ['/assistente', t('Assistente'), 'sparkles'],
+        ['/todos', t('TODOs'), 'check'],
+      ],
+    },
+    {
+      titulo: t('Ferramentas'),
+      itens: [
+        ['/ferramentas', t('Ferramentas'), 'briefcase'],
+        ['/memoria', t('Memória'), 'brain'],
+        ['/techlinks', t('TechLinks'), 'globe'],
+        ['/configuracoes', t('Configurações'), 'settings'],
+      ],
+    },
   ]
+  const externo = ['relay://vault', t('Senhas'), 'lock', t('Cofre KeePass no desktop')]
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="badge">A</div>
+        <div className="badge"><Icon name="layers" size={18} strokeWidth={1.9} /></div>
         <div>
-          <div className="name">Agentic Dev</div>
-          <div className="sub">Relay · web</div>
+          <div className="name">Relay</div>
+          <div className="sub">{t('Central de trabalho')}</div>
         </div>
         <button
           type="button"
@@ -85,38 +99,59 @@ function Sidebar({ onNavigate, onCollapse }) {
       </div>
       <WorkspaceSelector />
       <ProjectSelector />
-      <div className="nav-label">{t('Workspace')}</div>
       <nav className="nav">
-        {nav.map(([to, label, ico, hint]) =>
-          to.startsWith('relay://') ? (
-            // atalho do app desktop (abre o Relay nativo)
-            <a key={to} href={to} title={hint}>
-              <span className="nav-ico">{ico}</span>
-              <span>{label}</span>
-              <span className="nav-ext">↗</span>
-            </a>
-          ) : (
-            <NavLink key={to} to={to} onClick={onNavigate}>
-              <span className="nav-ico">{ico}</span>
-              <span>{label}</span>
-              {to === '/todos' && pendingCount > 0 && (
-                <span
-                  style={{
-                    marginLeft: 'auto',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: 'var(--danger, #e5484d)',
-                  }}
-                >
-                  ⏰{pendingCount}
-                </span>
-              )}
-            </NavLink>
-          )
-        )}
+        {grupos.map((g) => (
+          <div key={g.titulo}>
+            <div className="nav-label">{g.titulo}</div>
+            {g.itens.map(([to, label, ico, hint]) => (
+                <NavLink key={to + label} to={to} onClick={onNavigate} title={hint || undefined}>
+                  <span className="nav-ico"><Icon name={ico} /></span>
+                  <span>{label}</span>
+                {to === '/todos' && pendingCount > 0 && (
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: 'var(--danger)',
+                    }}
+                  >
+                    {pendingCount}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        ))}
+        <div className="nav-label">{t('Desktop')}</div>
+        <a href={externo[0]} title={externo[3]}>
+          <span className="nav-ico"><Icon name={externo[2]} /></span>
+          <span>{externo[1]}</span>
+          <span className="nav-ext"><Icon name="external" size={12} /></span>
+        </a>
       </nav>
     </aside>
   )
+}
+
+// /board sem id: abre o projeto ativo do seletor (ou o primeiro do workspace).
+function BoardIndex() {
+  const nav = useNavigate()
+  const [erro, setErro] = useState('')
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const [ws, projetos] = await Promise.all([getWorkspaces(), getProjects()])
+        const pid = getActiveProjectId(ws.active)
+        const alvo = projetos.find((p) => String(p.id) === String(pid)) || projetos[0]
+        if (alvo) nav(`/board/${alvo.id}`, { replace: true })
+        else setErro(t('Nenhum projeto neste workspace.'))
+      } catch (e) {
+        setErro(String(e.message || e))
+      }
+    })()
+  }, [nav])
+  return <div className="muted">{erro || t('Abrindo board…')}</div>
 }
 
 export default function App() {
@@ -180,6 +215,7 @@ export default function App() {
           <Route path="/estudos" element={<Estudos />} />
           <Route path="/projetos" element={<Projects />} />
           <Route path="/projects" element={<Navigate to="/projetos" replace />} />
+          <Route path="/board" element={<BoardIndex />} />
           <Route path="/board/:projectId" element={<Board />} />
           <Route path="/assistente" element={<Assistente />} />
         <Route path="/goals" element={<Goals />} />

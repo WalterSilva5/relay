@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getTechLinks, saveTechLinks } from '../api-techlinks'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 const vazio = () => ({ nome: '', url: '', categoria: 'Notícias', descricao: '' })
 
@@ -93,24 +94,16 @@ export default function TechLinks() {
   }, [links])
 
   return (
-    <div style={{ padding: 20, maxWidth: 900 }}>
-      <h2>{t('Novidades de tecnologia')}</h2>
-      <p style={{ opacity: 0.7 }}>
+    <div>
+      <h1 className="page-title">{t('Novidades de tecnologia')}</h1>
+      <p className="subtitle">
         {t('Clique num cartão para abrir no navegador.')}
       </p>
-      {erro && <p style={{ color: 'var(--danger, #c00)' }}>{erro}</p>}
-      {salvo && <p style={{ color: 'var(--ok, #090)' }}>{t('Salvo!')}</p>}
+      {erro && <div className="banner">{erro}</div>}
+      {salvo && <p className="muted">{t('Salvo!')}</p>}
 
-      <div
-        style={{
-          display: 'flex',
-          gap: 8,
-          flexWrap: 'wrap',
-          marginBottom: 20,
-          alignItems: 'flex-end',
-        }}
-      >
-        <label>
+      <div className="toolbar" style={{ alignItems: 'flex-end' }}>
+        <label className="muted">
           {t('Nome')}
           <br />
           <input
@@ -119,17 +112,16 @@ export default function TechLinks() {
             placeholder="daily.dev"
           />
         </label>
-        <label>
+        <label className="muted">
           {t('URL')}
           <br />
           <input
             value={form.url}
             onChange={(e) => setForm({ ...form, url: e.target.value })}
             placeholder="https://…"
-            style={{ width: 260 }}
           />
         </label>
-        <label>
+        <label className="muted">
           {t('Categoria')}
           <br />
           <input
@@ -138,40 +130,26 @@ export default function TechLinks() {
             placeholder={t("Notícias")}
           />
         </label>
-        <label>
+        <label className="muted">
           {t('Descrição')}
           <br />
           <input
             value={form.descricao}
             onChange={(e) => setForm({ ...form, descricao: e.target.value })}
             placeholder={t("O que tem de bom aqui")}
-            style={{ width: 260 }}
           />
         </label>
         <button onClick={aoAdicionar}>+ {t('Adicionar atalho')}</button>
       </div>
 
-      {links.length === 0 && <p style={{ opacity: 0.6 }}>{t('Nenhum atalho salvo ainda.')}</p>}
+      {links.length === 0 && <p className="muted">{t('Nenhum atalho salvo ainda.')}</p>}
 
       {grupos.map(([cat, itens]) => (
         <div key={cat} style={{ marginBottom: 18 }}>
-          <h4 style={{ textTransform: 'uppercase', opacity: 0.6 }}>{cat}</h4>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-              gap: 12,
-            }}
-          >
+          <h2 className="section-title">{cat}</h2>
+          <div className="projects-grid">
             {itens.map(([i, l]) => (
-              <div
-                key={i}
-                style={{
-                  border: '1px solid var(--border, #ccc)',
-                  borderRadius: 8,
-                  padding: 12,
-                }}
-              >
+              <div key={i} className="card card-tight">
                 {editando === i ? (
                   <>
                     <input
@@ -198,37 +176,33 @@ export default function TechLinks() {
                       placeholder={t("Descrição")}
                       style={{ width: '100%', marginBottom: 6 }}
                     />
-                    <button onClick={() => aoSalvarEdicao(i)}>{t('Salvar')}</button>{' '}
-                    <button onClick={() => { setEditando(null); carregar() }}>
-                      {t('Cancelar')}
-                    </button>
+                    <div className="row">
+                      <button onClick={() => aoSalvarEdicao(i)}>{t('Salvar')}</button>
+                      <button className="ghost" onClick={() => { setEditando(null); carregar() }}>
+                        {t('Cancelar')}
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
+                    <div className="row" style={{ justifyContent: 'space-between' }}>
                       <strong>{l.nome}</strong>
                       <button
+                        className="icon-btn"
                         onClick={() => aoRemover(i)}
                         title={t("Remover atalho")}
-                        style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
                       >
-                        ✕
+                        <Icon name="close" size={14} />
                       </button>
                     </div>
                     {l.descricao && (
-                      <p style={{ opacity: 0.75, margin: '6px 0' }}>{l.descricao}</p>
+                      <p className="muted" style={{ margin: '6px 0' }}>{l.descricao}</p>
                     )}
                     <a href={l.url} target="_blank" rel="noreferrer">
                       {l.url}
                     </a>
                     <div style={{ marginTop: 8 }}>
-                      <button onClick={() => setEditando(i)}>{t('Editar')}</button>
+                      <button className="ghost sm" onClick={() => setEditando(i)}>{t('Editar')}</button>
                     </div>
                   </>
                 )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getKbNotes, createKbNote, updateKbNote, deleteKbNote, kbAsk } from '../api'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 const EMPTY = { title: '', body: '' }
 
@@ -93,9 +94,13 @@ export default function Base() {
               <div key={n.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
                 <span style={{ cursor: 'pointer', fontWeight: sel === n.id ? 700 : 400 }} onClick={() => openNote(n)}>
                   {n.title}
-                  {n.backlinks?.length > 0 && <span className="muted" style={{ fontSize: 11 }}> ↩{n.backlinks.length}</span>}
+                  {n.backlinks?.length > 0 && (
+                    <span className="muted" style={{ fontSize: 11 }}> <Icon name="layers" size={10} />{n.backlinks.length}</span>
+                  )}
                 </span>
-                <button className="danger" onClick={() => remove(n.id)}>✕</button>
+                <button className="danger sm" title={t('Excluir')} onClick={() => remove(n.id)}>
+                  <Icon name="close" size={13} />
+                </button>
               </div>
             ))}
             {notes.length === 0 && <div className="muted">{t('Nenhuma nota ainda.')}</div>}

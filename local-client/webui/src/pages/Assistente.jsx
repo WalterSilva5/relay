@@ -79,14 +79,14 @@ export default function Assistente() {
 
   return (
     <div>
-      <div className="page-title">{t('Assistente')}</div>
-      <div className="subtitle">
+      <h1 className="page-title">{t('Assistente')}</h1>
+      <p className="subtitle">
         {profiles.length > 0
           ? t(profiles.find((pf) => pf.id === profile)?.description || '')
           : t(
               'Converse com o assistente interno: ele lê o board, sugere prioridades, solicita revisões, cria TODOs e comenta tarefas.'
             )}
-      </div>
+      </p>
 
       {error && <div className="banner">{error}</div>}
 

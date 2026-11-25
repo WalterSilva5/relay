@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { englishStart, englishMessage, apiError } from '../api'
 import { englishTranscribe } from '../api-english'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 const LEVELS = [
   ['BEGINNER', 'Iniciante'],
@@ -150,14 +151,27 @@ export default function Ingles() {
           <div key={i} style={{ display: 'flex', justifyContent: m.who === 'me' ? 'flex-end' : 'flex-start' }}>
             <div className="card" style={{ maxWidth: 560, textAlign: 'left' }}>
               <div>{m.text}</div>
-              {m.correction && <div style={{ fontSize: 12, marginTop: 4 }}>✅ {m.correction}</div>}
-              {m.feedback && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>📝 {m.feedback}</div>}
-              {m.vocab?.length > 0 && (
-                <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-                  🗂 {m.vocab.map((v) => `${v.word} (${v.respell}) — ${v.meaning}`).join(' · ')}
+              {m.correction && (
+                <div className="row" style={{ fontSize: 12, marginTop: 4 }}>
+                  <Icon name="check" size={13} /><span>{m.correction}</span>
                 </div>
               )}
-              {m.suggestion && <div className="muted" style={{ fontSize: 12, fontStyle: 'italic', marginTop: 4 }}>💡 {m.suggestion}</div>}
+              {m.feedback && (
+                <div className="row muted" style={{ fontSize: 12, marginTop: 4 }}>
+                  <Icon name="chat" size={13} /><span>{m.feedback}</span>
+                </div>
+              )}
+              {m.vocab?.length > 0 && (
+                <div className="row muted" style={{ fontSize: 12, marginTop: 4 }}>
+                  <Icon name="book" size={13} />
+                  <span>{m.vocab.map((v) => `${v.word} (${v.respell}) — ${v.meaning}`).join(' · ')}</span>
+                </div>
+              )}
+              {m.suggestion && (
+                <div className="row muted" style={{ fontSize: 12, fontStyle: 'italic', marginTop: 4 }}>
+                  <Icon name="sparkles" size={13} /><span>{m.suggestion}</span>
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -173,10 +187,11 @@ export default function Ingles() {
           onKeyDown={(e) => e.key === 'Enter' && send()}
         />
         <button
+          className="ghost icon"
           onClick={toggleRecord}
           disabled={!started || busy || transcribing}
           title={t('Gravar voz')}
-        >{recording ? '⏹' : '🎤'}</button>
+        ><Icon name={recording ? 'close' : 'mic'} size={16} /></button>
         <button
           onClick={sendAudio}
           disabled={!started || busy || transcribing || !audioBlob}

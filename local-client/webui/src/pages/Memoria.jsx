@@ -11,6 +11,7 @@ import {
   apiError,
 } from '../api'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 const KINDS = [
   ['fact', 'Fato'],
@@ -191,17 +192,20 @@ export default function Memoria() {
               <option value="">{t('Todos os tipos')}</option>
               {KINDS.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
             </select>
-            <button className="ghost" onClick={newEntry}>{t('+ Nova')}</button>
+            <button className="ghost row" onClick={newEntry}>
+              <Icon name="plus" size={14} /> {t('Nova')}
+            </button>
           </div>
           <div style={{ maxHeight: 480, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {entries.map((n) => (
               <div
                 key={n.id}
-                className="card"
-                style={{ cursor: 'pointer', padding: '8px 10px', borderColor: sel === n.id ? 'var(--accent)' : undefined }}
+                className="card card-tight"
+                style={{ cursor: 'pointer', borderColor: sel === n.id ? 'var(--accent)' : undefined }}
                 onClick={() => openEntry(n.id)}
               >
-                <span className="muted">[{n.kind}]</span> {n.title || t('(sem título)')}
+                <span className="chip">{n.kind}</span>{' '}
+                {n.title || t('(sem título)')}
                 {n.score != null && <span className="muted"> · {n.score}</span>}
               </div>
             ))}

@@ -81,9 +81,9 @@ export default function Skills() {
             <b>{preview.name}</b>
             <span className="muted">{preview.filename}</span>
             <span style={{ flex: 1 }} />
-            <button className="ghost" onClick={copy}>{t('Copiar')}</button>
-            <button className="ghost" onClick={download}>{t('Baixar SKILL.md')}</button>
-            <button className="ghost" onClick={() => setPreview(null)}>{t('Fechar preview')}</button>
+            <button className="ghost sm" onClick={copy}>{t('Copiar')}</button>
+            <button className="ghost sm" onClick={download}>{t('Baixar SKILL.md')}</button>
+            <button className="ghost sm" onClick={() => setPreview(null)}>{t('Fechar preview')}</button>
           </div>
           <pre style={{ whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}>{preview.content}</pre>
         </div>
@@ -93,13 +93,15 @@ export default function Skills() {
         {visible.map((s) => (
           <div key={s.id} className="card">
             <div style={{ fontWeight: 700 }}>{s.name}</div>
-            <div className="muted" style={{ fontSize: 12, margin: '4px 0' }}>{s.categoryLabel || s.category}</div>
+            <div style={{ margin: '4px 0' }}>
+              <span className="chip accent">{s.categoryLabel || s.category}</span>
+            </div>
             <div style={{ fontSize: 13 }}>{s.description}</div>
             {(s.tags?.length > 0) && (
               <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{s.tags.join(' · ')}</div>
             )}
             <div style={{ marginTop: 8 }}>
-              <button className="ghost" onClick={() => openPreview(s.id)}>{t('Ver conteúdo')}</button>
+              <button className="ghost sm" onClick={() => openPreview(s.id)}>{t('Ver conteúdo')}</button>
             </div>
           </div>
         ))}

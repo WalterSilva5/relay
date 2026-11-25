@@ -6,6 +6,7 @@ import {
 import { getActiveProjectId } from '../components/ProjectSelector.jsx'
 import { t, tf } from '../i18n'
 import { isoLocal } from '../dateutil.js'
+import Icon from '../components/Icon'
 
 const iso = (d) => isoLocal(d)
 const hoje = () => iso(new Date())
@@ -152,7 +153,9 @@ export default function Time() {
           </p>
         </div>
         <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-          <button className="ghost" onClick={() => setSemana(somarDias(dados?.week?.start || semana, -7))} title={t('Semana anterior')}>‹</button>
+          <button className="ghost row" onClick={() => setSemana(somarDias(dados?.week?.start || semana, -7))} title={t('Semana anterior')}>
+            <Icon name="chevronLeft" size={14} />
+          </button>
           <strong style={{ minWidth: 150, textAlign: 'center' }}>
             {dados ? dados.week.label : '—'}
           </strong>
@@ -174,11 +177,14 @@ export default function Time() {
               [t('Sem responsável'), resumo.unassigned, ''],
             ].map(([rotulo, valor, extra]) => (
               <div key={rotulo}>
-                <div className="muted" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6 }}>{rotulo}</div>
+                <div className="section-title" style={{ margin: 0 }}>{rotulo}</div>
                 <div style={{ fontSize: 22, fontWeight: 800 }}>{valor}</div>
                 {extra && <div className="muted" style={{ fontSize: 11 }}>{extra}</div>}
               </div>
             ))}
+          </div>
+          <div className="progress" style={{ marginTop: 12 }}>
+            <span className="ok" style={{ width: `${resumo.pct}%` }} />
           </div>
           {resumo.byModule?.length > 0 && (
             <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>
@@ -200,7 +206,7 @@ export default function Time() {
               </div>
 
               <div style={{ marginTop: 8, fontSize: 12 }}>
-                <div className="muted" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6, marginBottom: 3 }}>
+                <div className="section-title" style={{ margin: '0 0 3px' }}>
                   {t('Entregas')}
                 </div>
                 {m.delivered.length === 0 ? (
@@ -208,15 +214,14 @@ export default function Time() {
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                     {m.delivered.map((e) => (
-                      <span key={e.code} title={`${e.title}${e.module ? ` · ${e.module}` : ''}`}
-                        style={{ background: 'var(--accent-soft)', color: 'var(--accent)', borderRadius: 8, padding: '1px 6px', fontSize: 11, fontWeight: 600 }}>
+                      <span key={e.code} className="chip accent" title={`${e.title}${e.module ? ` · ${e.module}` : ''}`}>
                         {e.code}{e.module ? ` · ${e.module}` : ''}
                       </span>
                     ))}
                   </div>
                 )}
 
-                <div className="muted" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .6, margin: '8px 0 3px' }}>
+                <div className="section-title" style={{ margin: '8px 0 3px' }}>
                   {t('Em aberto por coluna')}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -228,8 +233,8 @@ export default function Time() {
                       </span>
                     ))}
                   {m.overdue > 0 && (
-                    <span style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 700 }}>
-                      · {tf('{n} atrasado(s)', { n: m.overdue })}
+                    <span className="chip danger">
+                      {tf('{n} atrasado(s)', { n: m.overdue })}
                     </span>
                   )}
                   {m.reviews > 0 && (
@@ -238,14 +243,14 @@ export default function Time() {
                 </div>
 
                 {(m.serviceSuggested || m.reviewedCards?.length > 0) && (
-                  <div style={{ marginTop: 6, padding: '6px 8px', background: 'var(--bg)', border: '1px solid var(--border-light)', borderRadius: 8 }}>
-                    <div className="muted" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5 }}>
+                  <div className="card card-tight" style={{ marginTop: 6 }}>
+                    <div className="section-title" style={{ margin: 0 }}>
                       {t('Serviço registrado no board')}
                     </div>
                     <div style={{ fontSize: 11, marginTop: 2 }}>{m.serviceSuggested || '—'}</div>
                     <button
-                      className="ghost"
-                      style={{ marginTop: 4, fontSize: 11, padding: '2px 8px' }}
+                      className="ghost sm"
+                      style={{ marginTop: 4 }}
                       onClick={() => alterar(m.name, 'service', m.serviceSuggested || '')}
                     >
                       {t('Usar no campo Serviço/apoio')}
@@ -262,7 +267,7 @@ export default function Time() {
                   ['nextStep', t('Próximo passo')],
                 ].map(([campo, rotulo]) => (
                   <label key={campo} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <span className="muted" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5 }}>{rotulo}</span>
+                    <span className="section-title" style={{ margin: 0 }}>{rotulo}</span>
                     <textarea
                       value={(notas[m.name] || VAZIO)[campo] || ''}
                       onChange={(e) => alterar(m.name, campo, e.target.value)}

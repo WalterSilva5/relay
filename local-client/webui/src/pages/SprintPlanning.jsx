@@ -136,7 +136,7 @@ export default function SprintPlanning({ projectId, onChanged }) {
 
   const moveOptions = (task) => (
     <select
-      style={{ fontSize: 11, width: '100%' }}
+      style={{ width: '100%' }}
       value={task.sprintId ?? ''}
       onChange={(e) => moveTaskToSprint(task, e.target.value)}
       title={t('Mover para')}
@@ -221,7 +221,7 @@ export default function SprintPlanning({ projectId, onChanged }) {
             <div key={sp.id} className="column">
               <h3 style={{ flexWrap: 'wrap', gap: 4 }}>
                 <span>{sp.name}</span>
-                <span className="badge-type">{t(STATUS_LABELS[sp.status] || sp.status)}</span>
+                <span className="chip accent">{t(STATUS_LABELS[sp.status] || sp.status)}</span>
                 <span className="count">{list.length}</span>
               </h3>
               {sp.goal && <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{sp.goal}</div>}
@@ -232,38 +232,37 @@ export default function SprintPlanning({ projectId, onChanged }) {
               )}
               {editingDates[sp.id] ? (
                 <div className="row" style={{ gap: 4, marginBottom: 6 }}>
-                  <input type="date" value={dateDrafts[sp.id]?.startDate ?? (sp.startDate || '').slice(0, 10)} onChange={(e) => setDateDrafts((d) => ({ ...d, [sp.id]: { ...d[sp.id], startDate: e.target.value } }))} style={{ fontSize: 11 }} />
-                  <input type="date" value={dateDrafts[sp.id]?.endDate ?? (sp.endDate || '').slice(0, 10)} onChange={(e) => setDateDrafts((d) => ({ ...d, [sp.id]: { ...d[sp.id], endDate: e.target.value } }))} style={{ fontSize: 11 }} />
-                  <button className="ghost" style={{ fontSize: 11 }} onClick={() => saveDates(sp)}>{t('Salvar')}</button>
-                  <button className="ghost" style={{ fontSize: 11 }} onClick={() => setEditingDates((e) => ({ ...e, [sp.id]: false }))}>{t('Cancelar')}</button>
+                  <input type="date" value={dateDrafts[sp.id]?.startDate ?? (sp.startDate || '').slice(0, 10)} onChange={(e) => setDateDrafts((d) => ({ ...d, [sp.id]: { ...d[sp.id], startDate: e.target.value } }))} />
+                  <input type="date" value={dateDrafts[sp.id]?.endDate ?? (sp.endDate || '').slice(0, 10)} onChange={(e) => setDateDrafts((d) => ({ ...d, [sp.id]: { ...d[sp.id], endDate: e.target.value } }))} />
+                  <button className="ghost sm" onClick={() => saveDates(sp)}>{t('Salvar')}</button>
+                  <button className="ghost sm" onClick={() => setEditingDates((e) => ({ ...e, [sp.id]: false }))}>{t('Cancelar')}</button>
                 </div>
               ) : (
-                <button className="ghost" style={{ fontSize: 11, marginBottom: 6 }} onClick={() => setEditingDates((e) => ({ ...e, [sp.id]: true }))}>{t('Editar datas')}</button>
+                <button className="ghost sm" style={{ marginBottom: 6 }} onClick={() => setEditingDates((e) => ({ ...e, [sp.id]: true }))}>{t('Editar datas')}</button>
               )}
               {/* Capacidade vs comprometido */}
-              <div style={{ fontSize: 11, margin: '4px 0', color: over ? 'var(--danger, #e5484d)' : 'inherit' }}>
+              <div style={{ fontSize: 11, margin: '4px 0', color: over ? 'var(--danger)' : 'inherit' }}>
                 {tf('Comprometido {c}hd', { c: committed })}
                 {sp.capacity != null ? tf(' / capacidade {cap}hd', { cap: sp.capacity }) : ''}
-                {over ? ' ⚠' : ''}{' · '}
+                {' · '}
                 {tf('{d}/{n} concluídas', { d: doneOf(sp.id), n: list.length })}
               </div>
               {sp.capacity != null && (
-                <div style={{ background: 'var(--border)', borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 6 }}>
-                  <div style={{ background: over ? 'var(--danger, #e5484d)' : 'var(--accent)', height: '100%', width: `${pct}%` }} />
+                <div className="progress" style={{ marginBottom: 6 }}>
+                  <span className={over ? 'warn' : ''} style={{ width: `${pct}%` }} />
                 </div>
               )}
               {/* Ações da sprint */}
               <div className="row" style={{ gap: 4, flexWrap: 'wrap', marginBottom: 6 }}>
                 {sp.status !== 'ATIVA' && sp.status !== 'CONCLUIDA' && (
-                  <button className="ghost" style={{ fontSize: 11 }} onClick={() => activate(sp)}>{t('Ativar')}</button>
+                  <button className="ghost sm" onClick={() => activate(sp)}>{t('Ativar')}</button>
                 )}
                 {sp.status !== 'CONCLUIDA' && (
-                  <button className="ghost" style={{ fontSize: 11 }} onClick={() => complete(sp)}>{t('Concluir')}</button>
+                  <button className="ghost sm" onClick={() => complete(sp)}>{t('Concluir')}</button>
                 )}
-                <button className="ghost" style={{ fontSize: 11 }} onClick={() => openRetro(sp)}>{t('Retrospectiva')}</button>
+                <button className="ghost sm" onClick={() => openRetro(sp)}>{t('Retrospectiva')}</button>
                 <button
-                  className="ghost"
-                  style={{ fontSize: 11 }}
+                  className="ghost sm"
                   onClick={() => {
                     if (confirm(t('Excluir a sprint? As tarefas voltam ao backlog.'))) remove(sp)
                   }}
@@ -272,28 +271,28 @@ export default function SprintPlanning({ projectId, onChanged }) {
                 </button>
               </div>
               {retros[sp.id]?.open && (
-                <div className="card" style={{ marginBottom: 6, fontSize: 12 }}>
+                <div className="card card-tight" style={{ marginBottom: 6, fontSize: 12 }}>
                   <div className="row" style={{ gap: 6, marginBottom: 4 }}>
-                    <button className="ghost" style={{ fontSize: 11 }} disabled={retros[sp.id]?.loading} onClick={() => runRetro(sp)}>
+                    <button className="ghost sm" disabled={retros[sp.id]?.loading} onClick={() => runRetro(sp)}>
                       {retros[sp.id]?.loading ? t('Gerando...') : (retros[sp.id]?.retro ? t('Regerar com IA') : t('Gerar com IA'))}
                     </button>
-                    <button className="ghost" style={{ fontSize: 11 }} onClick={() => setRetros((r) => ({ ...r, [sp.id]: { ...r[sp.id], open: false } }))}>
+                    <button className="ghost sm" onClick={() => setRetros((r) => ({ ...r, [sp.id]: { ...r[sp.id], open: false } }))}>
                       {t('Fechar')}
                     </button>
                   </div>
                   {retros[sp.id]?.retro ? (
                     <div>
                       {retros[sp.id].retro.well?.length > 0 && (
-                        <div><b>👍 {t('O que foi bem')}</b><ul style={{ margin: '2px 0 6px' }}>{retros[sp.id].retro.well.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
+                        <div><div className="section-title">{t('O que foi bem')}</div><ul style={{ margin: '2px 0 6px' }}>{retros[sp.id].retro.well.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
                       )}
                       {retros[sp.id].retro.badly?.length > 0 && (
-                        <div><b>👎 {t('O que pode melhorar')}</b><ul style={{ margin: '2px 0 6px' }}>{retros[sp.id].retro.badly.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
+                        <div><div className="section-title">{t('O que pode melhorar')}</div><ul style={{ margin: '2px 0 6px' }}>{retros[sp.id].retro.badly.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
                       )}
                       {retros[sp.id].retro.actions?.length > 0 && (
                         <div>
-                          <b>✅ {t('Ações')}</b>
+                          <div className="section-title">{t('Ações')}</div>
                           <ul style={{ margin: '2px 0 6px' }}>{retros[sp.id].retro.actions.map((a, i) => <li key={i}>{a.title}</li>)}</ul>
-                          <button className="ghost" style={{ fontSize: 11 }} onClick={() => retroToTasks(sp)}>{t('Criar tarefas das ações')}</button>
+                          <button className="ghost sm" onClick={() => retroToTasks(sp)}>{t('Criar tarefas das ações')}</button>
                         </div>
                       )}
                     </div>

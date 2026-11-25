@@ -7,6 +7,7 @@ import {
 } from '../api.js'
 import { getActiveProjectId } from '../components/ProjectSelector.jsx'
 import { t, tf } from '../i18n'
+import Icon from '../components/Icon'
 
 // Markdown mínimo (títulos, listas, negrito, código) — sem dependência nova.
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -252,7 +253,7 @@ export default function Reunioes() {
 
   const Seletor = (
     <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
-      <input placeholder={t('🔍 Buscar por título, tópico ou transcrição...')} value={q}
+      <input placeholder={t('🔍 Buscar por título, tópico ou transcrição...').replace('🔍 ', '')} value={q}
         onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && carregar()}
         style={{ flex: '1 1 220px' }} />
       <select value={kind} onChange={(e) => setKind(e.target.value)}>
@@ -272,15 +273,15 @@ export default function Reunioes() {
 
   return (
     <div>
-      <h1>{t('Reuniões')}</h1>
-      <p className="muted">{t('Gravações do app desktop: o mesmo conteúdo para gerenciar, visualizar, editar e exportar.')}</p>
+      <h1 className="page-title">{t('Reuniões')}</h1>
+      <p className="subtitle">{t('Gravações do app desktop: o mesmo conteúdo para gerenciar, visualizar, editar e exportar.')}</p>
       {erro && <div className="banner">{erro}</div>}
       {msg && <div className="muted" style={{ marginBottom: 8 }}>{msg}</div>}
       {Seletor}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 320px) 1fr', gap: 12, alignItems: 'start' }}>
         {/* lista */}
-        <div className="card" style={{ padding: 8, maxHeight: '72vh', overflowY: 'auto' }}>
+        <div className="card card-tight" style={{ maxHeight: '72vh', overflowY: 'auto' }}>
           {itens.length === 0 && <div className="muted" style={{ padding: 8 }}>{t('Nenhuma reunião encontrada.')}</div>}
           {itens.map((r) => {
             const ativo = r.id === sel
@@ -293,13 +294,13 @@ export default function Reunioes() {
                 }}>
                 <div className="muted" style={{ fontSize: 10 }}>{dt(r.createdAt)}</div>
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{r.title || r.topic || t('(sem título)')}</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 3, fontSize: 10 }}>
-                  {r.kind === 'study' && <span className="badge-type">{t('Estudo')}</span>}
-                  {r.hasSummary && <span className="badge-type">📝 {t('resumo')}</span>}
-                  {r.hasTranscript && <span className="badge-type">💬 {t('transcrição')}</span>}
-                  {r.hasAudio && <span className="badge-type">🎧 {t('áudio')}</span>}
-                  {r.archivedAt && <span className="badge-type">📦 {t('arquivada')}</span>}
-                  {!!r.duration && <span className="muted">{dur(r.duration)}</span>}
+                <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 3 }}>
+                  {r.kind === 'study' && <span className="chip accent">{t('Estudo')}</span>}
+                  {r.hasSummary && <span className="chip">{t('resumo')}</span>}
+                  {r.hasTranscript && <span className="chip">{t('transcrição')}</span>}
+                  {r.hasAudio && <span className="chip">{t('áudio')}</span>}
+                  {r.archivedAt && <span className="chip warn">{t('arquivada')}</span>}
+                  {!!r.duration && <span className="muted" style={{ fontSize: 10 }}>{dur(r.duration)}</span>}
                 </div>
               </div>
             )
@@ -307,7 +308,7 @@ export default function Reunioes() {
         </div>
 
         {/* detalhe */}
-        <div className="card" style={{ padding: 14 }}>
+        <div className="card">
           {!detalhe || !draft ? (
             <div className="muted">{t('Selecione uma reunião na lista.')}</div>
           ) : (
@@ -315,9 +316,9 @@ export default function Reunioes() {
               <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <input value={draft.title} onChange={(e) => set('title', e.target.value)}
                   placeholder={t('Título da reunião')}
-                  style={{ flex: '1 1 260px', fontWeight: 700, fontSize: 15 }} />
+                  style={{ flex: '1 1 260px' }} />
                 <button onClick={salvar} disabled={salvando}>{salvando ? t('Salvando...') : t('Salvar')}</button>
-                {sujo && <span className="muted" style={{ fontSize: 11 }}>● {t('não salvo')}</span>}
+                {sujo && <span className="chip warn">{t('não salvo')}</span>}
               </div>
 
               <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
@@ -333,21 +334,22 @@ export default function Reunioes() {
               </div>
 
               <div className="row" style={{ gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
-                <button className="ghost" onClick={() => exportar('md')}>⬇ Markdown</button>
-                <button className="ghost" onClick={() => exportar('txt')}>⬇ TXT</button>
-                <button className="ghost" onClick={() => exportar('json')}>⬇ JSON</button>
-                <button className="ghost" onClick={copiar}>{t('Copiar markdown')}</button>
+                <button className="ghost sm" onClick={() => exportar('md')}>Markdown</button>
+                <button className="ghost sm" onClick={() => exportar('txt')}>TXT</button>
+                <button className="ghost sm" onClick={() => exportar('json')}>JSON</button>
+                <button className="ghost sm" onClick={copiar}>{t('Copiar markdown')}</button>
                 <span style={{ flex: 1 }} />
                 {!detalhe.archivedAt
-                  ? <button className="ghost" onClick={() => arquivar(true)}>{t('Arquivar')}</button>
-                  : <button className="ghost" onClick={() => arquivar(false)}>{t('Desarquivar')}</button>}
-                <button className="ghost" style={{ color: 'var(--danger)' }} onClick={excluir}>{t('Excluir')}</button>
+                  ? <button className="ghost sm" onClick={() => arquivar(true)}>{t('Arquivar')}</button>
+                  : <button className="ghost sm" onClick={() => arquivar(false)}>{t('Desarquivar')}</button>}
+                <button className="ghost sm" style={{ color: 'var(--danger)' }} onClick={excluir}>{t('Excluir')}</button>
               </div>
 
               {/* análise com o contexto do projeto (board, atrasos, dailies) */}
               <div className="row" style={{ gap: 8, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                <button className="ghost" onClick={analisar} disabled={analisando}>
-                  {analisando ? `⏳ ${t('Analisando...')}` : `🧠 ${t('Analisar com contexto')}`}
+                <button className="ghost row" onClick={analisar} disabled={analisando}>
+                  <Icon name="sparkles" size={14} />
+                  {analisando ? t('Analisando...') : t('Analisar com contexto')}
                 </button>
                 <span className="muted" style={{ fontSize: 11 }}>
                   {projeto
@@ -357,26 +359,29 @@ export default function Reunioes() {
               </div>
 
               {analise && (
-                <div style={{ marginTop: 8, border: '1px solid var(--border-light)', borderRadius: 8, padding: 10, background: 'var(--bg)' }}>
+                <div className="card card-tight" style={{ marginTop: 8 }}>
                   <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700 }}>
-                      {analise.engine === 'llm' ? `🧠 ${t('Análise por IA')}` : `📐 ${t('Análise pelo contexto (sem IA)')}`}
-                      {analise.usedProjectContext ? ` · ${t('com projeto')}` : ` · ${t('só transcrição')}`}
+                    <span className="section-title row" style={{ margin: 0 }}>
+                      <Icon name={analise.engine === 'llm' ? 'sparkles' : 'brain'} size={12} />
+                      <span>
+                        {analise.engine === 'llm' ? t('Análise por IA') : t('Análise pelo contexto (sem IA)')}
+                        {analise.usedProjectContext ? ` · ${t('com projeto')}` : ` · ${t('só transcrição')}`}
+                      </span>
                     </span>
                     <div className="row" style={{ gap: 6 }}>
-                      <button className="ghost" onClick={salvarAnalise}>{t('Salvar na reunião')}</button>
-                      <button className="ghost" onClick={() => setAnalise(null)}>{t('Fechar')}</button>
+                      <button className="ghost sm" onClick={salvarAnalise}>{t('Salvar na reunião')}</button>
+                      <button className="ghost sm" onClick={() => setAnalise(null)}>{t('Fechar')}</button>
                     </div>
                   </div>
 
                   {[
-                    ['tips', `💡 ${t('Dicas')}`],
-                    ['plan', `🗺 ${t('Plano')}`],
-                    ['decisions', `📌 ${t('Decisões')}`],
+                    ['tips', t('Dicas')],
+                    ['plan', t('Plano')],
+                    ['decisions', t('Decisões')],
                   ].map(([campo, rotulo]) => (
                     (analise[campo] || []).length > 0 && (
                       <div key={campo} style={{ marginTop: 8 }}>
-                        <div className="muted" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5 }}>{rotulo}</div>
+                        <div className="section-title" style={{ margin: '0 0 2px' }}>{rotulo}</div>
                         <ul style={{ margin: '2px 0 0 16px', padding: 0, fontSize: 12 }}>
                           {analise[campo].map((item, i) => <li key={i}>{item}</li>)}
                         </ul>
@@ -385,7 +390,7 @@ export default function Reunioes() {
                   ))}
                   {(analise.actionItems || []).length > 0 && (
                     <div style={{ marginTop: 8 }}>
-                      <div className="muted" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5 }}>✅ {t('Ações')}</div>
+                      <div className="section-title" style={{ margin: '0 0 2px' }}>{t('Ações')}</div>
                       <ul style={{ margin: '2px 0 0 16px', padding: 0, fontSize: 12 }}>
                         {analise.actionItems.map((a, i) => (
                           <li key={i}>{a.description}{a.assignee ? ` — ${a.assignee}` : ''}</li>
@@ -424,7 +429,7 @@ export default function Reunioes() {
                     </span>
                   </div>
                   {preview ? (
-                    <div style={{ background: 'var(--bg)', border: '1px solid var(--border-light)', borderRadius: 8, padding: 12, maxHeight: '48vh', overflowY: 'auto' }}
+                    <div className="card card-tight" style={{ maxHeight: '48vh', overflowY: 'auto' }}
                       dangerouslySetInnerHTML={{ __html: mdToHtml(draft.markdown || detalhe.markdown) }} />
                   ) : (
                     <textarea value={draft.markdown} onChange={(e) => set('markdown', e.target.value)}
@@ -446,9 +451,9 @@ export default function Reunioes() {
 
               {tab === 'secoes' && (
                 <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {[['plan', t('🗺 Plano')], ['tips', t('💡 Dicas')], ['decisions', t('📌 Decisões')]].map(([campo, rotulo]) => (
+                  {[['plan', t('Plano')], ['tips', t('Dicas')], ['decisions', t('Decisões')]].map(([campo, rotulo]) => (
                     <div key={campo}>
-                      <div className="muted" style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{rotulo}</div>
+                      <div className="section-title" style={{ margin: '0 0 4px' }}>{rotulo}</div>
                       <textarea value={draft[campo]} onChange={(e) => set(campo, e.target.value)}
                         placeholder={t('um item por linha')}
                         style={{ width: '100%', minHeight: 70, fontSize: 12 }} />
@@ -456,14 +461,16 @@ export default function Reunioes() {
                   ))}
 
                   <div>
-                    <div className="muted" style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{t('✅ Ações')}</div>
+                    <div className="section-title" style={{ margin: '0 0 4px' }}>{t('Ações')}</div>
                     {draft.actions.map((a, i) => (
                       <div key={i} className="row" style={{ gap: 6, marginBottom: 4 }}>
                         <input value={a.description} onChange={(e) => setAcao(i, 'description', e.target.value)}
                           placeholder={t('O que fazer')} style={{ flex: 3 }} />
                         <input value={a.assignee} onChange={(e) => setAcao(i, 'assignee', e.target.value)}
                           placeholder={t('Responsável')} style={{ flex: 1 }} />
-                        <button className="ghost" onClick={() => setDraft((d) => ({ ...d, actions: d.actions.filter((_, j) => j !== i) }))}>✕</button>
+                        <button className="danger sm" title={t('Remover')} onClick={() => setDraft((d) => ({ ...d, actions: d.actions.filter((_, j) => j !== i) }))}>
+                          <Icon name="close" size={13} />
+                        </button>
                       </div>
                     ))}
                     <button className="ghost" onClick={() => setDraft((d) => ({ ...d, actions: [...d.actions, { description: '', assignee: '' }] }))}>
@@ -472,18 +479,20 @@ export default function Reunioes() {
                   </div>
 
                   <div>
-                    <div className="muted" style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>{t('❓ Perguntas')}</div>
+                    <div className="section-title" style={{ margin: '0 0 4px' }}>{t('Perguntas')}</div>
                     {draft.questions.map((x, i) => (
-                      <div key={i} style={{ border: '1px solid var(--border-light)', borderRadius: 6, padding: 6, marginBottom: 4 }}>
+                      <div key={i} className="card card-tight" style={{ marginBottom: 4 }}>
                         <div className="row" style={{ gap: 6 }}>
                           <input value={x.question} onChange={(e) => setPergunta(i, 'question', e.target.value)}
                             placeholder={t('Pergunta')} style={{ flex: 2 }} />
-                          <label className="muted" style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: 11 }}>
+                          <label className="muted row" style={{ fontSize: 11 }}>
                             <input type="checkbox" checked={!!x.resolved} style={{ width: 'auto' }}
                               onChange={(e) => setPergunta(i, 'resolved', e.target.checked)} />
                             {t('resolvida')}
                           </label>
-                          <button className="ghost" onClick={() => setDraft((d) => ({ ...d, questions: d.questions.filter((_, j) => j !== i) }))}>✕</button>
+                          <button className="danger sm" title={t('Remover')} onClick={() => setDraft((d) => ({ ...d, questions: d.questions.filter((_, j) => j !== i) }))}>
+                            <Icon name="close" size={13} />
+                          </button>
                         </div>
                         <input value={x.answer} onChange={(e) => setPergunta(i, 'answer', e.target.value)}
                           placeholder={t('Resposta')} style={{ width: '100%', marginTop: 4 }} />

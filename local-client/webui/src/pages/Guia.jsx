@@ -1,8 +1,9 @@
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 const SECTIONS = [
   {
-    icon: '🎯',
+    icon: 'target',
     title: 'O papel dos agentes',
     body: 'Agentes de IA são auxiliares dos desenvolvedores. Ajudam a acelerar o trabalho repetitivo, documentar progresso e preparar código para revisão humana.\n\nO que agentes fazem:\n- Auxiliam na implementação de tarefas\n- Documentam progresso com comentários estruturados\n- Criam code reviews detalhados\n- Criam tarefas de revisão para o desenvolvedor validar\n- Geram relatórios e resumos do dia\n\nO que agentes NUNCA fazem:\n- Commits ou pushs (responsabilidade exclusiva do dev)\n- Tocar em tarefas marcadas como "Requer desenvolvedor"\n- Tomar decisões de arquitetura sem consultar o dev',
   },
@@ -57,7 +58,7 @@ const SECTIONS = [
     body: 'A tela de Reuniões gerencia gravações feitas no app desktop: transcrição, resumo, análise com contexto do projeto e exportação. A gravação em si (microfone/áudio do sistema, atalho Ctrl+Shift+R) acontece no desktop.',
   },
   {
-    icon: '🔒',
+    icon: 'lock',
     title: 'Senhas e recursos do desktop',
     body: 'Alguns recursos são exclusivos do app desktop: cofre de senhas KeePass (atalho ↗ Senhas no menu abre o app nativo), gravação de áudio, instalação de skills e entrada por voz no Praticar Inglês.',
   },
@@ -78,7 +79,11 @@ export default function Guia() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
         {SECTIONS.map((s) => (
           <div key={s.title} className="card" style={{ display: 'flex', gap: 14 }}>
-            <div style={{ fontSize: 15, fontWeight: 800 }}>{s.icon}</div>
+            {/^\d+$|^\?$/.test(s.icon) ? (
+              <div style={{ fontSize: 15, fontWeight: 800 }}>{s.icon}</div>
+            ) : (
+              <div className="muted"><Icon name={s.icon} size={18} /></div>
+            )}
             <div>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>{t(s.title)}</div>
               <div style={{ whiteSpace: 'pre-wrap' }}>{t(s.body)}</div>

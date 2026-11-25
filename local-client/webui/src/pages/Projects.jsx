@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Swal from 'sweetalert2'
 import { getProjects, createProject, updateProject, moveProject, getWorkspaces } from '../api'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 export default function Projects() {
   const [projects, setProjects] = useState([])
@@ -140,13 +141,17 @@ export default function Projects() {
             {p.targetDate && <div className="muted" style={{ fontSize: 11 }}>{t('Previsão de entrega')}: {p.targetDate.slice(0, 10).split('-').reverse().join('/')}</div>}
             <div className="row" style={{ marginTop: 8, gap: 6 }} onClick={(e)=>e.stopPropagation()}>
               {p.boardUrl ? (
-                <a href={p.boardUrl} target="_blank" rel="noreferrer" className="badge-type" style={{ textDecoration: 'none' }} title={p.boardUrl}>🔗 Board ↗</a>
+                <a href={p.boardUrl} target="_blank" rel="noreferrer" className="chip accent" title={p.boardUrl}>
+                  <Icon name="external" size={11} /> Board
+                </a>
               ) : (
                 <span className="muted" style={{ fontSize: 11 }}>{t('Sem link do board')}</span>
               )}
-              <button className="ghost" style={{ padding: '2px 8px', fontSize: 11 }} onClick={()=>onSetTarget(p)}>{p.targetDate ? t('Editar previsão') : t('Definir previsão')}</button>
-              <button className="ghost" style={{ marginLeft: 'auto', padding: '2px 8px', fontSize: 11 }} onClick={()=>onSetBoard(p)}>{p.boardUrl ? t('Editar link') : t('Definir link')}</button>
-              <button className="ghost" style={{ padding: '2px 8px', fontSize: 11 }} onClick={()=>onMove(p)} title={t('Mover para outro workspace')}>↗ {t('Mover')}</button>
+              <button className="ghost sm" onClick={()=>onSetTarget(p)}>{p.targetDate ? t('Editar previsão') : t('Definir previsão')}</button>
+              <button className="ghost sm" style={{ marginLeft: 'auto' }} onClick={()=>onSetBoard(p)}>{p.boardUrl ? t('Editar link') : t('Definir link')}</button>
+              <button className="ghost sm row" onClick={()=>onMove(p)} title={t('Mover para outro workspace')}>
+                <Icon name="folder" size={12} /> {t('Mover')}
+              </button>
             </div>
           </div>
         ))}

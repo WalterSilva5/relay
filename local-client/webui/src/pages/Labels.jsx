@@ -99,7 +99,7 @@ export default function Labels() {
               />
               <span>{l.name}</span>
             </div>
-            <button className="danger" onClick={() => onDelete(l.id)}>{t('Excluir')}</button>
+            <button className="danger sm" onClick={() => onDelete(l.id)}>{t('Excluir')}</button>
           </div>
         ))}
         {labels.length === 0 && <div className="muted">{t('Nenhuma label ainda.')}</div>}

@@ -1,15 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 const ITEMS = [
-  ['/estudos', '📚', 'Estudos', 'Planos, tópicos e assistente de estudo'],
-  ['/metricas', '◧', 'Métricas', 'Velocity, lead time e cycle time'],
-  ['/labels', '◉', 'Labels', 'Organize tarefas com labels coloridas'],
-  ['/biblioteca', '📇', 'Biblioteca', 'Snippets, runbooks, triagem, code review, git, tempo'],
-  ['/api-tester', '🛰', 'Testador de API', 'Monte, execute e salve requisições HTTP'],
-  ['/base', '🧠', 'Base de conhecimento', 'Notas com backlinks e Q&A por IA'],
-  ['/techlinks', '🔗', 'TechLinks', 'Atalhos de sites de tecnologia'],
-  ['/traducao', '🌐', 'Tradutor', 'Traduza texto entre idiomas (estilo Google Tradutor)'],
+  ['/estudos', 'book', 'Estudos', 'Planos, tópicos e assistente de estudo'],
+  ['/metricas', 'dashboard', 'Métricas', 'Velocity, lead time e cycle time'],
+  ['/labels', 'layers', 'Labels', 'Organize tarefas com labels coloridas'],
+  ['/biblioteca', 'clipboard', 'Biblioteca', 'Snippets, runbooks, triagem, code review, git, tempo'],
+  ['/api-tester', 'activity', 'Testador de API', 'Monte, execute e salve requisições HTTP'],
+  ['/base', 'brain', 'Base de conhecimento', 'Notas com backlinks e Q&A por IA'],
+  ['/techlinks', 'external', 'TechLinks', 'Atalhos de sites de tecnologia'],
+  ['/traducao', 'globe', 'Tradutor', 'Traduza texto entre idiomas (estilo Google Tradutor)'],
 ]
 
 export default function Ferramentas() {
@@ -33,8 +34,10 @@ export default function Ferramentas() {
             style={{ cursor: 'pointer', minHeight: 120 }}
             onClick={() => nav(to)}
           >
-            <div style={{ fontSize: 30 }}>{icon}</div>
-            <div style={{ fontWeight: 700, fontSize: 15, marginTop: 6 }}>{t(label)}</div>
+            <span className="muted">
+              <Icon name={icon} size={22} />
+            </span>
+            <div style={{ fontWeight: 700, fontSize: 15, marginTop: 8 }}>{t(label)}</div>
             <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t(desc)}</div>
           </div>
         ))}

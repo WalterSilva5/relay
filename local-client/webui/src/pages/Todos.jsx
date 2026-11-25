@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getTodos, addTodo, updateTodo, deleteTodo } from '../api'
 import { t, tf } from '../i18n'
+import Icon from '../components/Icon'
 
 const PRIORITIES = [
   ['LOW', 'Baixa'],
@@ -121,7 +122,7 @@ export default function Todos() {
         <select value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
           {RECURRENCES.map(([v, l]) => (
             <option key={v} value={v}>
-              {v !== 'NONE' ? '🔁 ' : ''}{t(l)}
+              {t(l)}
             </option>
           ))}
         </select>
@@ -144,11 +145,9 @@ export default function Todos() {
                 style={{ flex: 1, minWidth: 160, textDecoration: td.done ? 'line-through' : 'none' }}
                 className={td.done ? 'muted' : undefined}
               >
-                {td.recurrence && td.recurrence !== 'NONE' ? '🔁 ' : ''}
                 {td.text}
               </span>
               <select
-                style={{ fontSize: 11 }}
                 value={td.priority || 'MEDIUM'}
                 onChange={(e) => onEdit(td.id, { priority: e.target.value })}
                 title={t('Prioridade')}
@@ -160,22 +159,20 @@ export default function Todos() {
                 ))}
               </select>
               <select
-                style={{ fontSize: 11 }}
                 value={td.recurrence || 'NONE'}
                 onChange={(e) => onEdit(td.id, { recurrence: e.target.value })}
                 title={t('Recorrência')}
               >
                 {RECURRENCES.map(([v, l]) => (
                   <option key={v} value={v}>
-                    {v !== 'NONE' ? '🔁 ' : ''}{t(l)}
+                    {t(l)}
                   </option>
                 ))}
               </select>
               <input
                 type="datetime-local"
                 style={{
-                  fontSize: 11,
-                  color: overdue ? 'var(--danger, #e5484d)' : undefined,
+                  color: overdue ? 'var(--danger)' : undefined,
                   fontWeight: overdue ? 700 : 400,
                 }}
                 value={toLocalInput(td.dueAt)}
@@ -184,15 +181,15 @@ export default function Todos() {
               />
               {td.dueAt && (
                 <button
-                  className="ghost"
+                  className="ghost sm"
                   onClick={() => onEdit(td.id, { dueAt: null })}
                   title={t('Remover agendamento')}
                 >
-                  🚫
+                  <Icon name="close" size={13} />
                 </button>
               )}
-              <button className="ghost" onClick={() => onDelete(td.id)}>
-                ✕
+              <button className="danger sm" title={t('Excluir')} onClick={() => onDelete(td.id)}>
+                <Icon name="close" size={13} />
               </button>
             </div>
           )

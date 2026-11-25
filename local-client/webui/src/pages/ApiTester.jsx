@@ -8,6 +8,7 @@ import {
   getApiHistory,
 } from '../api'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 const EMPTY = { name: '', method: 'GET', url: '', headers: '', body: '' }
@@ -104,10 +105,7 @@ export default function ApiTester() {
           {resp && (
             <div className="card" style={{ marginTop: 12 }}>
               <div className="row" style={{ gap: 12, alignItems: 'center' }}>
-                <span style={{
-                  fontWeight: 700,
-                  color: resp.ok ? 'var(--success, #2f9e44)' : 'var(--danger, #e5484d)',
-                }}>
+                <span className={resp.ok ? 'chip success' : 'chip danger'}>
                   {resp.status ?? t('Erro')}
                 </span>
                 <span className="muted">{resp.durationMs} ms</span>
@@ -120,23 +118,25 @@ export default function ApiTester() {
 
         <div style={{ flex: 1, minWidth: 200 }}>
           <div className="card">
-            <b>{t('Salvos')}</b>
+            <div className="section-title">{t('Salvos')}</div>
             {saved.map((r) => (
               <div key={r.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
                 <span style={{ cursor: 'pointer', fontSize: 13 }} onClick={() => load(r)}>
                   <b>{r.method}</b> {r.name}
                 </span>
-                <button className="danger" onClick={() => remove(r.id)}>✕</button>
+                <button className="danger sm" title={t('Excluir')} onClick={() => remove(r.id)}>
+                  <Icon name="close" size={13} />
+                </button>
               </div>
             ))}
             {saved.length === 0 && <div className="muted">{t('Nenhum request salvo.')}</div>}
           </div>
 
           <div className="card" style={{ marginTop: 12 }}>
-            <b>{t('Histórico')}</b>
+            <div className="section-title">{t('Histórico')}</div>
             {history.map((h) => (
               <div key={h.id} style={{ padding: '4px 0', fontSize: 12, borderBottom: '1px solid var(--border)' }}>
-                <span style={{ color: h.ok ? 'var(--success, #2f9e44)' : 'var(--danger, #e5484d)', fontWeight: 700 }}>
+                <span className={h.ok ? 'chip success' : 'chip danger'}>
                   {h.status ?? 'ERR'}
                 </span>{' '}
                 <b>{h.method}</b> <span className="muted">{h.durationMs}ms</span>

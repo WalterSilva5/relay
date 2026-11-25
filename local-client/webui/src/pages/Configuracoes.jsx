@@ -7,6 +7,7 @@ import {
 } from '../api'
 import { getTheme, toggleTheme } from '../theme'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 export default function Configuracoes() {
   const [settings, setSettings] = useState(null)
@@ -196,23 +197,24 @@ export default function Configuracoes() {
       {saved && <p className="muted">{saved}</p>}
 
       <div className="card">
-        <h4 style={{ color: 'var(--muted)' }}>🎨 {t('Aparência')}</h4>
+        <h2 className="section-title">{t('Aparência')}</h2>
         <div className="row" style={{ gap: 8, alignItems: 'center' }}>
           <span className="muted">{t('Tema atual:')} <b>{tema === 'dark' ? t('Escuro') : t('Claro')}</b></span>
-          <button className="ghost" onClick={trocarTema}>
-            {tema === 'dark' ? `☀ ${t('Usar tema claro')}` : `☾ ${t('Usar tema escuro')}`}
+          <button className="ghost row" onClick={trocarTema}>
+            <Icon name={tema === 'dark' ? 'sun' : 'moon'} size={15} />
+            {tema === 'dark' ? t('Usar tema claro') : t('Usar tema escuro')}
           </button>
         </div>
       </div>
 
       <div className="card">
-        <h4 style={{ color: 'var(--muted)' }}>💾 {t('Backup do banco')}</h4>
+        <h2 className="section-title">{t('Backup do banco')}</h2>
         <p className="muted" style={{ marginTop: 0 }}>
           {t('A API copia o banco do workspace ativo para a pasta de backup do servidor. Nada é gravado pelo navegador.')}
         </p>
         <div className="row" style={{ gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={fazerBackup} disabled={backupando}>
-            {backupando ? `⏳ ${t('Fazendo backup...')}` : `💾 ${t('Fazer backup agora')}`}
+            {backupando ? t('Fazendo backup...') : t('Fazer backup agora')}
           </button>
           {backupDir && <span className="muted" style={{ fontSize: 11 }}>{t('Destino:')} <code>{backupDir}</code></span>}
         </div>
@@ -225,9 +227,7 @@ export default function Configuracoes() {
 
         {backups.length > 0 && (
           <div style={{ marginTop: 10 }}>
-            <div className="muted" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: .5, marginBottom: 4 }}>
-              {t('Últimos backups')}
-            </div>
+            <div className="section-title">{t('Últimos backups')}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {backups.slice(0, 5).map((b) => (
                 <div key={b.file} className="row" style={{ gap: 8, alignItems: 'center', fontSize: 12 }}>
@@ -245,7 +245,7 @@ export default function Configuracoes() {
       </div>
 
       <div className="card">
-        <h4 style={{ color: 'var(--muted)' }}>{t('Idioma')}</h4>
+        <h2 className="section-title">{t('Idioma')}</h2>
         <div className="row">
           <select
             value={settings.language}
@@ -262,7 +262,7 @@ export default function Configuracoes() {
       </div>
 
       <div className="card">
-        <h4 style={{ color: 'var(--muted)' }}>{t('Provedores de IA')}</h4>
+        <h2 className="section-title">{t('Provedores de IA')}</h2>
         <div className="row">
           <select
             value={selectedProviderId}
@@ -312,14 +312,17 @@ export default function Configuracoes() {
             </div>
 
             <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <button onClick={onTestConnection} disabled={testando}>
-                {testando ? '⏳' : `🔌 ${t('Testar conexão')}`}
+              <button className="row" onClick={onTestConnection} disabled={testando}>
+                <Icon name="activity" size={14} />
+                {testando ? '…' : t('Testar conexão')}
               </button>
-              <button className="ghost" onClick={onListModels} disabled={listando}>
-                {listando ? '⏳' : `📋 ${t('Listar modelos')}`}
+              <button className="ghost row" onClick={onListModels} disabled={listando}>
+                <Icon name="layers" size={14} />
+                {listando ? '…' : t('Listar modelos')}
               </button>
-              <button className="ghost" onClick={onVerifyModel} disabled={verificando}>
-                {verificando ? '⏳' : `✅ ${t('Verificar modelo')}`}
+              <button className="ghost row" onClick={onVerifyModel} disabled={verificando}>
+                <Icon name="check" size={14} />
+                {verificando ? '…' : t('Verificar modelo')}
               </button>
             </div>
             <p className="muted" style={{ marginBottom: 0, fontSize: 11 }}>
@@ -343,7 +346,7 @@ export default function Configuracoes() {
       </div>
 
       <div className="card">
-        <h4 style={{ color: 'var(--muted)' }}>{t('Reuniões')}</h4>
+        <h2 className="section-title">{t('Reuniões')}</h2>
         <div className="row">
           <select
             value={settings.whisperModel}
@@ -385,7 +388,9 @@ export default function Configuracoes() {
 
       {coach && (
         <div className="card">
-          <h4 style={{ color: 'var(--muted)' }}>💡 {t('Coach proativo')}</h4>
+          <h2 className="section-title row">
+            <Icon name="sparkles" size={14} /> {t('Coach proativo')}
+          </h2>
           <p className="muted" style={{ marginTop: 0 }}>
             {t('O agente dá dicas curtas e acionáveis ao longo do dia, com base no seu board e TODOs. Requer um provedor de IA ativo.')}
           </p>

@@ -12,6 +12,7 @@ import {
   saveStudyDoc,
 } from '../api'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 const TEXT_ACTIONS = ['explain', 'exercises', 'quiz', 'flashcards']
 const TOPIC_REQUIRED = [...TEXT_ACTIONS, 'diagnose']
@@ -380,8 +381,8 @@ export default function Estudos() {
           style={{ display: 'none' }}
           onChange={onPickFiles}
         />
-        <button className="ghost" onClick={() => fileRef.current?.click()}>
-          {t('📎 Anexar arquivos')}
+        <button className="ghost row" onClick={() => fileRef.current?.click()}>
+          <Icon name="plus" size={14} /> {t('📎 Anexar arquivos').replace('📎 ', '')}
         </button>
         <button disabled={creating} onClick={onCreatePlan}>
           {creating ? t('Criando...') : t('+ Criar plano')}
@@ -392,9 +393,9 @@ export default function Estudos() {
         <div className="muted" style={{ marginBottom: 6 }}>
           {t('Anexos (usados como contexto):')}{' '}
           {attachedFiles.map((f, i) => (
-            <span key={i} className="badge-type" style={{ marginRight: 6 }}>
+            <span key={i} className="chip" style={{ marginRight: 6 }}>
               {f.name}{' '}
-              <a style={{ cursor: 'pointer' }} onClick={() => removeAttached(i)}>✕</a>
+              <a style={{ cursor: 'pointer' }} onClick={() => removeAttached(i)}><Icon name="close" size={12} /></a>
             </span>
           ))}
         </div>
@@ -417,22 +418,8 @@ export default function Estudos() {
             </span>
           </div>
 
-          <div
-            style={{
-              background: 'var(--border)',
-              borderRadius: 4,
-              height: 8,
-              marginTop: 8,
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                background: 'var(--accent)',
-                height: '100%',
-                width: `${p.progress}%`,
-              }}
-            />
+          <div className="progress" style={{ marginTop: 8 }}>
+            <span style={{ width: `${p.progress}%` }} />
           </div>
           <div className="muted" style={{ marginTop: 4 }}>
             {p.progress}% · {t(STATUS_LABELS[p.status] || p.status)}
@@ -481,7 +468,7 @@ export default function Estudos() {
                   borderTop: '1px solid var(--border)',
                 }}
               >
-                <strong>{t("Assistente de estudo")}</strong>
+                <div className="section-title">{t("Assistente de estudo")}</div>
                 <div className="muted" style={{ margin: '4px 0 8px' }}>
                   {t("Escolha um tópico e clique numa ação. A IA gera sob demanda.")}
                 </div>
@@ -508,11 +495,13 @@ export default function Estudos() {
                     {t("Flashcards")}
                   </button>
                   <button
+                    className="row"
                     disabled={assistBusy}
                     onClick={() => runAssist('diagnose', p)}
                     title={t("Travou? Descobre qual pré-requisito está faltando e monta a base.")}
                   >
-                    {t("🧭 Diagnosticar base")}
+                    <Icon name="target" size={14} />
+                    {t("🧭 Diagnosticar base").replace('🧭 ', '')}
                   </button>
                   <button
                     className="ghost"
@@ -574,9 +563,9 @@ export default function Estudos() {
                 {assistBusy && <div className="muted" style={{ marginTop: 8 }}>{t("Pensando...")}</div>}
 
                 {assistSuggested.length > 0 && (
-                  <div className="card" style={{ marginTop: 8 }}>
-                    <div style={{ marginBottom: 6 }}>
-                      <strong>{suggestedKind === 'prereqs' ? t("Pré-requisitos sugeridos") : t("Tópicos sugeridos")}</strong>
+                  <div className="card card-tight" style={{ marginTop: 8 }}>
+                    <div className="section-title">
+                      {suggestedKind === 'prereqs' ? t("Pré-requisitos sugeridos") : t("Tópicos sugeridos")}
                     </div>
                     {assistSuggested.map((tp, i) => (
                       <div key={i} className="row">
@@ -595,7 +584,7 @@ export default function Estudos() {
                 {assistOutput && !assistBusy && (
                   <>
                     <div
-                      className="card"
+                      className="card card-tight"
                       style={{ marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}
                     >
                       {assistOutput}
@@ -607,9 +596,13 @@ export default function Estudos() {
                         title={p.docsPath ? t('Salva o texto acima como .md no vault do plano') : t('Vincule o vault do plano para salvar')}
                         onClick={() => saveOutputDoc({ ...p }, t('Estudo'))}
                       >
-                        {savingDoc ? '…' : `💾 ${t('Salvar no vault')}`}
+                        {savingDoc ? '…' : t('Salvar no vault')}
                       </button>
-                      {savedDoc && <span className="muted" style={{ fontSize: 11 }}>✓ {savedDoc}</span>}
+                      {savedDoc && (
+                        <span className="muted row" style={{ fontSize: 11 }}>
+                          <Icon name="check" size={12} /> {savedDoc}
+                        </span>
+                      )}
                       {!p.docsPath && (
                         <span className="muted" style={{ fontSize: 11 }}>{t('Vincule o vault abaixo para salvar.')}</span>
                       )}
@@ -618,8 +611,8 @@ export default function Estudos() {
                 )}
 
                 {/* Vault de docs do plano */}
-                <div className="card" style={{ marginTop: 8 }}>
-                  <strong>{t("Vault de estudos")}</strong>
+                <div className="card card-tight" style={{ marginTop: 8 }}>
+                  <div className="section-title">{t("Vault de estudos")}</div>
                   <div className="muted" style={{ margin: '4px 0 8px', fontSize: 12 }}>
                     {t("Pasta onde os docs gerados são salvos (.md).")}
                   </div>
@@ -642,7 +635,7 @@ export default function Estudos() {
                   {planDocs.length > 0 && (
                     <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
                       {planDocs.slice(0, 8).map((d) => (
-                        <div key={d.name}>📄 {d.name}</div>
+                        <div key={d.name} className="row"><Icon name="book" size={12} /> {d.name}</div>
                       ))}
                       {planDocs.length > 8 && <div>+{planDocs.length - 8}…</div>}
                     </div>

@@ -21,6 +21,7 @@ import {
   getProjects,
 } from '../api'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 const EMPTY_SNIPPET = { title: '', kind: 'SNIPPET', language: '', tags: '', content: '' }
 const EMPTY_RUNBOOK = { title: '', category: '', command: '', description: '' }
@@ -97,9 +98,10 @@ function SnippetsTab() {
         {items.map((s) => (
           <div key={s.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600 }}>
-                {s.kind === 'SNIPPET' ? '🧩' : '💬'} {s.title}
-                <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>
+              <div style={{ fontWeight: 600 }} className="row">
+                <Icon name={s.kind === 'SNIPPET' ? 'clipboard' : 'chat'} size={13} />
+                <span>{s.title}</span>
+                <span className="muted" style={{ fontSize: 12 }}>
                   {[s.language, s.tags].filter(Boolean).join(' · ')}
                 </span>
               </div>
@@ -107,8 +109,10 @@ function SnippetsTab() {
             </div>
             <div className="row" style={{ gap: 6 }}>
               <button onClick={() => { copy(s.content); useSnippet(s.id) }}>{t('Copiar')}</button>
-              <button className="ghost" onClick={() => startEdit(s)}>✎</button>
-              <button className="danger" onClick={() => deleteSnippet(s.id).then(load)}>✕</button>
+              <button className="ghost sm" title={t('Editar')} onClick={() => startEdit(s)}>✎</button>
+              <button className="danger sm" title={t('Excluir')} onClick={() => deleteSnippet(s.id).then(load)}>
+                <Icon name="close" size={13} />
+              </button>
             </div>
           </div>
         ))}
@@ -173,17 +177,20 @@ function RunbooksTab() {
         {items.map((r) => (
           <div key={r.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600 }}>
-                ⚙️ {r.title}
-                {r.category && <span className="muted" style={{ marginLeft: 8, fontSize: 12 }}>{r.category}</span>}
+              <div style={{ fontWeight: 600 }} className="row">
+                <Icon name="settings" size={13} />
+                <span>{r.title}</span>
+                {r.category && <span className="muted" style={{ fontSize: 12 }}>{r.category}</span>}
               </div>
               <code style={{ fontSize: 12, opacity: 0.85 }}>{r.command}</code>
               {r.description && <div className="muted" style={{ fontSize: 12 }}>{r.description}</div>}
             </div>
             <div className="row" style={{ gap: 6 }}>
               <button onClick={() => { copy(r.command); useRunbook(r.id) }}>{t('Copiar comando')}</button>
-              <button className="ghost" onClick={() => startEdit(r)}>✎</button>
-              <button className="danger" onClick={() => deleteRunbook(r.id).then(load)}>✕</button>
+              <button className="ghost sm" title={t('Editar')} onClick={() => startEdit(r)}>✎</button>
+              <button className="danger sm" title={t('Excluir')} onClick={() => deleteRunbook(r.id).then(load)}>
+                <Icon name="close" size={13} />
+              </button>
             </div>
           </div>
         ))}
@@ -374,8 +381,6 @@ function CodeReviewTab() {
     }
   }
 
-  const sevColor = (s) => s === 'HIGH' ? 'var(--danger, #e5484d)' : s === 'MEDIUM' ? 'var(--warning, #f08c00)' : 'var(--muted)'
-
   return (
     <div>
       <p className="subtitle">{t('Aponte um repositório e uma base (branch/ref). A IA revisa o diff.')}</p>
@@ -403,7 +408,12 @@ function CodeReviewTab() {
               <b>{t('Problemas')}</b>
               <ul style={{ margin: '2px 0 8px' }}>
                 {review.issues.map((it, i) => (
-                  <li key={i}><b style={{ color: sevColor(it.severity) }}>[{it.severity}]</b> {it.file && <code>{it.file}</code>} — {it.note}</li>
+                  <li key={i}>
+                    <span className={it.severity === 'HIGH' ? 'chip danger' : it.severity === 'MEDIUM' ? 'chip warn' : 'chip'}>
+                      {it.severity}
+                    </span>{' '}
+                    {it.file && <code>{it.file}</code>} — {it.note}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -454,9 +464,9 @@ function GitTab() {
       {st && (
         <div className="card" style={{ marginTop: 12, fontSize: 13 }}>
           <div className="row" style={{ gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span><b>🌿 {st.branch}</b></span>
+            <b className="row"><Icon name="layers" size={13} /> {st.branch}</b>
             <span className="muted">↑{st.ahead} ↓{st.behind}</span>
-            <span style={{ color: st.clean ? 'var(--success, #2f9e44)' : 'var(--warning, #f08c00)' }}>
+            <span className={st.clean ? 'chip success' : 'chip warn'}>
               {st.clean ? t('Limpo') : t('Com alterações')}
             </span>
           </div>
@@ -572,7 +582,9 @@ function TimeTab() {
         {data.logs.map((l) => (
           <div key={l.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', fontSize: 13 }}>
             <span>{fmtDur(l.seconds)} {l.taskCode && <b>· {l.taskCode}</b>} {l.note && <span className="muted">— {l.note}</span>}</span>
-            <button className="danger" onClick={() => deleteTimeLog(l.id).then(load)}>✕</button>
+            <button className="danger sm" title={t('Excluir')} onClick={() => deleteTimeLog(l.id).then(load)}>
+              <Icon name="close" size={13} />
+            </button>
           </div>
         ))}
         {data.logs.length === 0 && <div className="muted">{t('Nenhum registro ainda.')}</div>}

@@ -16,6 +16,7 @@ import {
 } from '../api'
 import { getActiveProjectId } from '../components/ProjectSelector.jsx'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 const VERDICTS = [
   { id: '', label: '—' },
@@ -107,7 +108,7 @@ function Campo({ titulo, ajuda, children }) {
     </div>
   )
 }
-const inputStyle = { width: '100%', padding: '6px 8px', fontSize: 13 }
+const inputStyle = { width: '100%' }
 
 export default function PrReviews() {
   const [projeto, setProjeto] = useState(null)
@@ -323,8 +324,8 @@ export default function PrReviews() {
       {erro && <div className="banner">{erro}</div>}
 
       <div className="card" style={{ marginBottom: 10 }}>
-        <strong>{t('Pasta de destino')}</strong>
-        <span className="muted" style={{ fontSize: 11, marginLeft: 6 }}>{t('Os exports NN-review-pr-*.md são numerados e gravados aqui.')}</span>
+        <div className="section-title">{t('Pasta de destino')}</div>
+        <span className="muted" style={{ fontSize: 11 }}>{t('Os exports NN-review-pr-*.md são numerados e gravados aqui.')}</span>
         <div className="row" style={{ gap: 6, marginTop: 6 }}>
           <input style={{ ...inputStyle, flex: 1 }} value={destino} onChange={(e) => setDestino(e.target.value)} placeholder="/home/usuario/.../lideranca/reviews" />
           <button className="ghost" onClick={salvarDestino}>{t('Salvar pasta')}</button>
@@ -332,7 +333,7 @@ export default function PrReviews() {
       </div>
 
       <div className="card" style={{ marginBottom: 10 }}>
-        <strong>{t('Novo review — colar URL do PR')}</strong>
+        <div className="section-title">{t('Novo review — colar URL do PR')}</div>
         <div className="row" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
           <input style={{ ...inputStyle, flex: 2, minWidth: 220 }} value={novaUrl} onChange={(e) => setNovaUrl(e.target.value)} placeholder="https://dev.azure.com/.../_git/Repo/pullrequest/123" />
           <input style={{ ...inputStyle, flex: 1, minWidth: 120 }} value={novoRepo} onChange={(e) => setNovoRepo(e.target.value)} placeholder={t('Repo (se a URL não reconhecer)')} />
@@ -365,11 +366,16 @@ export default function PrReviews() {
 
       <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
         <div className="card" style={{ flex: '0 0 340px' }}>
-          <strong>{t('Reviews')}</strong>
+          <div className="section-title">{t('Reviews')}</div>
           {reviews.map((r) => (
             <div key={r.id} onClick={() => abrir(r)} style={{ cursor: 'pointer', padding: '6px 4px', borderLeft: selId === r.id ? '3px solid var(--accent)' : '3px solid transparent', paddingLeft: 6 }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>#{r.prNumber || '?'} · {r.prTitle || t('(sem título)')}</div>
-              <div className="muted" style={{ fontSize: 11 }}>{r.repo} · {r.prAuthor} · {vereditoLabel(r.verdict)} · {r.reviewDate || '—'} · {t('voto')}: {r.vote || '—'} · {r.status === 'SENT' ? '✅' : '📝'}</div>
+              <div className="muted" style={{ fontSize: 11 }}>
+                {r.repo} · {r.prAuthor} · {vereditoLabel(r.verdict)} · {r.reviewDate || '—'} · {t('voto')}: {r.vote || '—'}{' '}
+                <span className={r.status === 'SENT' ? 'chip success' : 'chip'}>
+                  {r.status === 'SENT' ? t('Enviado') : t('Rascunho')}
+                </span>
+              </div>
             </div>
           ))}
           {reviews.length === 0 && <div className="muted">{t('Nenhum review.')}</div>}
@@ -386,12 +392,12 @@ export default function PrReviews() {
               )}
               <button className="ghost" onClick={duplicar} title={t('Nova rodada de revisão do mesmo PR, mantendo o conteúdo')}>{t('Duplicar revisão deste PR')}</button>
               <a href={prReviewExportUrl(projeto.id, form.id)} target="_blank" rel="noreferrer" style={{ pointerEvents: erros.length ? 'none' : 'auto', opacity: erros.length ? 0.4 : 1 }}>
-                <button disabled={erros.length > 0} title={erros.join('\n') || t('Numera e grava o .md na pasta de destino')}>⬇ {t('Exportar .md')}</button>
+                <button disabled={erros.length > 0} title={erros.join('\n') || t('Numera e grava o .md na pasta de destino')}>{t('Exportar .md')}</button>
               </a>
               <button className="ghost" onClick={verPrevia}>{t('Pré-visualizar')}</button>
             </div>
-            {erros.length > 0 && <div className="banner">{erros.map((e, i) => <div key={i}>⛔ {e}</div>)}</div>}
-            {avisos.length > 0 && <div className="banner" style={{ background: 'var(--card)' }}>{avisos.map((a, i) => <div key={i}>⚠️ {a}</div>)}</div>}
+            {erros.length > 0 && <div className="banner">{erros.map((e, i) => <div key={i}>{e}</div>)}</div>}
+            {avisos.length > 0 && <div className="banner" style={{ background: 'var(--warning-soft)', color: 'var(--warning)' }}>{avisos.map((a, i) => <div key={i}>{a}</div>)}</div>}
             {erroAcao && <div className="banner">{erroAcao}</div>}
 
             <div className="row" style={{ gap: 16, alignItems: 'flex-start' }}>
@@ -426,10 +432,14 @@ export default function PrReviews() {
                     <div key={i} className="row" style={{ gap: 4, marginBottom: 4 }}>
                       <input style={{ ...inputStyle, flex: 1 }} value={p.peca} disabled={travado} onChange={(e) => { const c = [...pecas]; c[i] = { ...c[i], peca: e.target.value }; setPecas(c) }} placeholder={t('Peça')} />
                       <input style={{ ...inputStyle, flex: 2 }} value={p.papel} disabled={travado} onChange={(e) => { const c = [...pecas]; c[i] = { ...c[i], papel: e.target.value }; setPecas(c) }} placeholder={t('Papel')} />
-                      {!travado && <button className="ghost" onClick={() => setPecas(pecas.filter((_, j) => j !== i))}>✕</button>}
+                      {!travado && (
+                        <button className="danger sm" title={t('Remover')} onClick={() => setPecas(pecas.filter((_, j) => j !== i))}>
+                          <Icon name="close" size={13} />
+                        </button>
+                      )}
                     </div>
                   ))}
-                  {!travado && <button className="ghost" onClick={() => setPecas([...pecas, { peca: '', papel: '' }])}>+ {t('Adicionar peça')}</button>}
+                  {!travado && <button className="ghost sm" onClick={() => setPecas([...pecas, { peca: '', papel: '' }])}>+ {t('Adicionar peça')}</button>}
                 </Campo>
 
                 <Campo titulo={t('4. O que muda de comportamento')} ajuda={HELP.comportamento}>
@@ -456,10 +466,14 @@ export default function PrReviews() {
                       <input style={{ ...inputStyle, flex: 1 }} value={a.onde} disabled={travado} onChange={(e) => { const c = [...achados]; c[i] = { ...c[i], onde: e.target.value }; setAchados(c) }} placeholder={t('arquivo:linha')} />
                       <input style={{ ...inputStyle, flex: 2 }} value={a.problema} disabled={travado} onChange={(e) => { const c = [...achados]; c[i] = { ...c[i], problema: e.target.value }; setAchados(c) }} placeholder={t('Problema')} />
                       <input style={{ ...inputStyle, flex: 2 }} value={a.sugestao} disabled={travado} onChange={(e) => { const c = [...achados]; c[i] = { ...c[i], sugestao: e.target.value }; setAchados(c) }} placeholder={t('Sugestão')} />
-                      {!travado && <button className="ghost" onClick={() => setAchados(achados.filter((_, j) => j !== i))}>✕</button>}
+                      {!travado && (
+                        <button className="danger sm" title={t('Remover')} onClick={() => setAchados(achados.filter((_, j) => j !== i))}>
+                          <Icon name="close" size={13} />
+                        </button>
+                      )}
                     </div>
                   ))}
-                  {!travado && <button className="ghost" onClick={() => setAchados([...achados, { severidade: '', onde: '', problema: '', sugestao: '' }])}>+ {t('Adicionar achado')}</button>}
+                  {!travado && <button className="ghost sm" onClick={() => setAchados([...achados, { severidade: '', onde: '', problema: '', sugestao: '' }])}>+ {t('Adicionar achado')}</button>}
                   <div className="muted" style={{ fontSize: 11, margin: '8px 0 2px' }}><b>{t('Perguntas ao autor:')}</b></div>
                   <textarea rows={2} style={inputStyle} value={form.questionsMd || ''} disabled={travado} onChange={(e) => set('questionsMd', e.target.value)} placeholder={t('Uma pergunta por linha')} />
                 </Campo>
@@ -483,8 +497,8 @@ export default function PrReviews() {
                 </Campo>
 
                 {mostraPrevia && (
-                  <div className="card" style={{ marginTop: 8 }}>
-                    <strong>{t('Pré-visualização do .md')}</strong>
+                  <div className="card card-tight" style={{ marginTop: 8 }}>
+                    <div className="section-title">{t('Pré-visualização do .md')}</div>
                     <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, marginTop: 6 }}>{previa}</pre>
                   </div>
                 )}
@@ -492,7 +506,7 @@ export default function PrReviews() {
 
               <div style={{ flex: 1, minWidth: 200 }}>
                 <div className="card" style={{ marginBottom: 8 }}>
-                  <strong>{t('Diff local (referência)')}</strong>
+                  <div className="section-title">{t('Diff local (referência)')}</div>
                   <div className="muted" style={{ fontSize: 11, margin: '2px 0 6px' }}>{t('Somente leitura — rode na mão se preferir.')}</div>
                   <input style={{ ...inputStyle, marginBottom: 4 }} value={diffRepo} onChange={(e) => setDiffRepo(e.target.value)} placeholder={t('Repo local (caminho absoluto)')} />
                   <div className="row" style={{ gap: 4, marginBottom: 4 }}>
@@ -505,16 +519,19 @@ export default function PrReviews() {
                   {diffOut?.commits && <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11, marginTop: 6 }}>{diffOut.commits}</pre>}
                 </div>
                 <div className="card" style={{ marginBottom: 8 }}>
-                  <strong>{t('Histórico deste PR')}</strong>
+                  <div className="section-title">{t('Histórico deste PR')}</div>
                   {historicoPR.length === 0 && <div className="muted" style={{ fontSize: 12 }}>{t('Só esta revisão.')}</div>}
                   {historicoPR.map((r) => (
-                    <div key={r.id} style={{ fontSize: 12, cursor: 'pointer', padding: '2px 0' }} onClick={() => abrir(r)}>
-                      • {r.reviewDate || '—'} · {vereditoLabel(r.verdict)} · {r.status === 'SENT' ? '✅' : '📝'}
+                    <div key={r.id} className="row" style={{ fontSize: 12, cursor: 'pointer', padding: '2px 0' }} onClick={() => abrir(r)}>
+                      <span>• {r.reviewDate || '—'} · {vereditoLabel(r.verdict)}</span>
+                      <span className={r.status === 'SENT' ? 'chip success' : 'chip'}>
+                        {r.status === 'SENT' ? t('Enviado') : t('Rascunho')}
+                      </span>
                     </div>
                   ))}
                 </div>
                 <div className="card">
-                  <strong>{t('Outros reviews do autor')}</strong>
+                  <div className="section-title">{t('Outros reviews do autor')}</div>
                   {historicoAutor.length === 0 && <div className="muted" style={{ fontSize: 12 }}>{t('Nenhum outro.')}</div>}
                   {historicoAutor.map((r) => (
                     <div key={r.id} style={{ fontSize: 12, cursor: 'pointer', padding: '2px 0' }} onClick={() => abrir(r)}>

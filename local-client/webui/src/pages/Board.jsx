@@ -409,9 +409,9 @@ export default function Board() {
   if (devPct < 100) metricSummary.push(`${t('dev')} ${devPct}%`)
   if (pct < 100) metricSummary.push(`${t('finalizado')} ${pct}%`)
   if (wipAlerts.length) metricSummary.push(`⚠ WIP ${wipAlerts.length}`)
-  if (vencidos.length) metricSummary.push(`⏰ ${vencidos.length} vencida(s)`)
+  if (vencidos.length) metricSummary.push(`${vencidos.length} vencida(s)` )
   if (parados.length) metricSummary.push(`• ${parados.length} parada(s)`)
-  if (goalsAtrasados) metricSummary.push(`🎯 ${goalsAtrasados} atrasado(s)`)
+  if (goalsAtrasados) metricSummary.push(`${goalsAtrasados} atrasado(s)`)
   const goalProgress = (g) => {
     let q = tasksMetric
     if (g.tag) q = q.filter((tk) => tk.labels?.some((l) => l.name === g.tag))
@@ -595,7 +595,7 @@ export default function Board() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <button className="ghost" style={{ padding: 0, fontSize: 10, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }} title={avancoVisivel ? t('Ocultar avanço') : t('Mostrar avanço')} onClick={() => setAvancoVisivel((v) => { try { localStorage.setItem(`relay.metrics.avanco.${projectId}`, v ? '0' : '1') } catch {} return !v })}>
                   <span style={{ color: 'var(--muted)' }}>{avancoVisivel ? '▾' : '▸'}</span>
-                  <span className="muted">📈 {t('Avanço (ontem → hoje)')}</span>
+                  <span className="muted">{t('Avanço (ontem → hoje)')}</span>
                 </button>
                 {dailyAdvance?.engine === 'llm' && <span style={{ fontSize: 10, color: 'var(--accent)' }}>✨ {t('gerado por IA')}</span>}
                 {dailyAdvance?.engine === 'heuristic' && <span className="muted" style={{ fontSize: 10 }}>{t('resumo automático')}</span>}
@@ -901,7 +901,7 @@ export default function Board() {
             </div>
             {/* Hierárquico por módulos — barra proporcional */}
             <div style={{ background: 'var(--bg)', border: '1px solid var(--border-light)', borderRadius: 8, padding: '10px', marginTop: 4 }}>
-              <div className="muted" style={{ fontSize: 10, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase', marginBottom: 6 }}>📊 {t('Progresso geral')}</div>
+              <div className="muted" style={{ fontSize: 10, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase', marginBottom: 6 }}>{t('Progresso geral')}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span style={{ fontSize: 11, minWidth: 150 }}>{t('Desenvolvimento concluído')}</span>
                 <div style={{ flex: 1, height: 14, background: 'var(--border-light)', borderRadius: 7, overflow: 'hidden', display: 'flex' }}><div style={{ width: `${devPct}%`, background: devPct===100?'#16a34a':'#4f46e5' }} /></div>
@@ -1042,7 +1042,7 @@ export default function Board() {
             {/* Módulos e submódulos — classificação explícita (módulo != sprint != tag) */}
             <div style={{ background: 'var(--bg)', border: '1px solid var(--border-light)', borderRadius: 8, padding: '10px', marginTop: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <span className="muted" style={{ fontSize: 10, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase' }}>📊 {t('Módulos e submódulos')}</span>
+                <span className="muted" style={{ fontSize: 10, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase' }}>{t('Módulos e submódulos')}</span>
                 {dimensions && (
                   <span className="muted" style={{ fontSize: 10 }}>
                     {dimensions.modules.length} {t('módulos')}
@@ -1332,7 +1332,7 @@ export default function Board() {
                 )}
                 <div className="row" style={{ marginTop: 6 }} onClick={(e) => e.stopPropagation()}>
                   <select
-                    style={{ fontSize: 11, flex: 1 }}
+                    style={{ width: '100%' }}
                     value={task.sprintId ?? ''}
                     onChange={(e) => assignSprint(task, e.target.value)}
                     title={t('Sprint da tarefa')}
@@ -1347,7 +1347,7 @@ export default function Board() {
                 </div>
                 <div className="row" style={{ marginTop: 6 }} onClick={(e) => e.stopPropagation()}>
                   <select
-                    style={{ fontSize: 11, flex: 1 }}
+                    style={{ width: '100%' }}
                     value={task.assignee || ''}
                     onChange={(e) => assignTask(task, e.target.value)}
                     title={t('Responsável')}

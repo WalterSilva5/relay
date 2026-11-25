@@ -9,6 +9,7 @@ import {
   getSprints,
 } from '../api'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
 
 function daysLabel(days) {
   if (days == null) return t('Sem data alvo')
@@ -159,58 +160,27 @@ export default function Goals() {
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <div style={{ fontWeight: 700, fontSize: 16, flex: 1 }}>{g.name}</div>
                 <button
-                  className="ghost"
+                  className="ghost sm"
                   title={t('Excluir')}
                   onClick={() => onDelete(g.id)}
                 >
-                  ✕
+                  <Icon name="close" size={13} />
                 </button>
               </div>
               {filters.length > 0 && (
-                <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-                  {filters.join(' · ')}
+                <div className="row" style={{ flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+                  {filters.map((f) => <span key={f} className="chip">{f}</span>)}
                 </div>
               )}
               {g.description && <div style={{ fontSize: 13, marginTop: 4 }}>{g.description}</div>}
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10 }}>
-                <div
-                  style={{
-                    flex: 1,
-                    height: 18,
-                    borderRadius: 9,
-                    background: 'var(--column, #eef0f3)',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${p.pct}%`,
-                      height: '100%',
-                      background: 'var(--accent, #4f46e5)',
-                      color: '#fff',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {p.pct}% ({p.done}/{p.total})
-                  </div>
+              <div className="row" style={{ marginTop: 10 }}>
+                <div className="progress" style={{ flex: 1 }}>
+                  <span style={{ width: `${p.pct}%` }} />
                 </div>
-                <div
-                  className="muted"
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color:
-                      p.daysLeft != null && p.daysLeft < 0
-                        ? 'var(--danger, #e5484d)'
-                        : undefined,
-                  }}
-                >
+                <span className="chip">{p.pct}% · {p.done}/{p.total}</span>
+                <span className={p.daysLeft != null && p.daysLeft < 0 ? 'chip danger' : 'chip'}>
                   {daysLabel(p.daysLeft)}
-                </div>
+                </span>
               </div>
             </div>
           )
