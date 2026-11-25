@@ -95,6 +95,8 @@ A GUI Qt está congelada após a paridade por view (E2) e sai depois de um relea
 - [E2 — Matriz de paridade GUI PySide → HTTP](docs/e2-parity-matrix.md)
 - [E3 — Empacotamento e release](docs/e3-packaging.md)
 - [electron/README.md](electron/README.md) — variáveis, atalhos, checklist do shell
+- [UI — plano de reconstrução e design system](docs/ui-rebuild-plan.md)
+- [UI — guia de migração das páginas](docs/ui-migration-guide.md)
 - [docs/prints/](docs/prints/) — capturas de tela atuais (Electron)
 
 ## Instalação com agente de IA

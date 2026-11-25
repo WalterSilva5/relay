@@ -95,7 +95,8 @@ The Qt GUI is frozen after per-view parity (E2) and goes away after one release 
 - [E2 — PySide GUI → HTTP parity matrix](docs/e2-parity-matrix.md)
 - [E3 — Packaging and release](docs/e3-packaging.md)
 - [electron/README.md](electron/README.md) — variables, shortcuts, shell checklist
-- [docs/prints/README.md](docs/prints/README.md) — pending screenshots
+- [UI — rebuild plan and design system](docs/ui-rebuild-plan.md)
+- [docs/prints/README.md](docs/prints/README.md) — current Electron screenshots
 
 ## Installation with an AI agent
 

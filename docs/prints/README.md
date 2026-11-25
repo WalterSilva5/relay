@@ -57,7 +57,20 @@ cd local-client && ./run-web.sh   # http://127.0.0.1:9777/
 
 Capturados do app Electron empacotado (1440×900, tema claro, projeto MIG) e já
 usados no README: `dashboard.png`, `board.png`, `metricas.png`,
-`reviews-pr.png`, `reunioes.png`. Recapturar quando a UI mudar de forma
-relevante. Como recapturar sem monitor ligado: subir o app com
-`RELAY_ELECTRON_ARGS="--remote-debugging-port=9222" ./electron/relay-electron.sh`
-e usar CDP (`Page.captureScreenshot` após navegar para a rota).
+`reviews-pr.png`, `reunioes.png`.
+
+**Recapturados após a reconstrução da UI** (design system v2: Tailwind v4 +
+primitivos em `src/ui`, shell novo e `/design`). Os prints anteriores eram do
+design antigo.
+
+Como recapturar sem monitor ligado:
+
+```bash
+RELAY_ELECTRON_ARGS="--remote-debugging-port=9222" ./electron/relay-electron.sh
+python3 local-client/webui/scripts/ui-shot.py /dashboard,/board,/metricas,/reunioes,/reviews-pr /tmp/ui-prints 1440 6
+cp /tmp/ui-prints/1440/*.png docs/prints/
+```
+
+O script usa CDP (`Page.captureScreenshot`) após navegar para cada rota. Em
+janela oculta, finalize as transições CSS com
+`document.getAnimations().forEach(a => a.finish())` antes do print.
