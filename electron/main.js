@@ -80,14 +80,38 @@ function waitHealthy(timeoutMs = 30000) {
   });
 }
 
+let sidecarOwned = false;
+
 async function startSidecar() {
-  const python = resolvePython();
-  const cwd = path.join(__dirname, '..', 'local-client');
-  log('subindo sidecar:', python, '(cwd=local-client)');
-  sidecar = spawn(python, ['-m', 'relay.webmain', '--port', String(PORT)], {
-    cwd,
-    env: { ...process.env, PYTHONPATH: cwd, PYTHONUNBUFFERED: '1' },
+  // Se já existe um sidecar saudável (ex.: órfão de um crash anterior),
+  // reaproveita em vez de subir outro e brigar pela porta.
+  try {
+    if (await waitHealthy(2000)) {
+      log('sidecar já rodando — reaproveitando (não será encerrado no quit)');
+      return BASE_URL;
+    }
+  } catch { /* segue para o spawn normal */ }
+  const runtime = resolvePython();
+  const isBundle = path.basename(runtime) === 'relay-server' || path.basename(runtime) === 'relay-server.exe';
+  // No pacote, o sidecar é o binário (já recebe --port); em dev, é o Python
+  // rodando o módulo (-m relay.webmain) com cwd=local-client.
+  const args = isBundle ? ['--port', String(PORT)] : ['-m', 'relay.webmain', '--port', String(PORT)];
+  const cwd = isBundle ? undefined : path.join(__dirname, '..', 'local-client');
+  const env = { ...process.env, PYTHONUNBUFFERED: '1' };
+  if (!isBundle && cwd) env.PYTHONPATH = cwd;
+  log('subindo sidecar:', runtime, args.join(' '), cwd ? `(cwd=${cwd})` : '(sem cwd)');
+  sidecar = spawn(runtime, args, {
+    ...(cwd ? { cwd } : {}),
+    env,
     stdio: ['ignore', 'pipe', 'pipe'],
+    detached: process.platform !== 'win32', // grupo próprio: kill(-pid) mata a árvore
+  });
+  sidecar.on('error', (err) => {
+    log(`falha ao iniciar o sidecar: ${err.message}`);
+    if (!quitting) {
+      try { dialog.showErrorBox('Relay', `Não consegui iniciar o motor local:\n${err.message}`); } catch {}
+      app.quit();
+    }
   });
   const out = fs.createWriteStream(logFile, { flags: 'a' });
   sidecar.stdout.on('data', (d) => out.write(`[sidecar] ${d}`));
@@ -104,19 +128,30 @@ async function startSidecar() {
     stopSidecar();
     throw new Error(`sidecar não respondeu em ${BASE_URL}/api/health`);
   }
+  sidecarOwned = true;
   log('sidecar saudável em', BASE_URL);
 }
 
 function stopSidecar() {
-  if (!sidecar || sidecar.exitCode !== null) return;
-  try {
-    // mata a árvore inteira (o servidor pode ter filhos)
-    if (process.platform === 'win32') {
-      execSync(`taskkill /pid ${sidecar.pid} /T /F`);
-    } else {
-      try { process.kill(-sidecar.pid, 'SIGTERM'); } catch { sidecar.kill('SIGTERM'); }
+  // Só encerra o que este processo subiu; sidecar reaproveitado é alheio.
+  if (!sidecarOwned) { log('stopSidecar: não é meu, mantendo'); sidecar = null; return; }
+  if (!sidecar || sidecar.exitCode !== null) { log('stopSidecar: já encerrado'); return; }
+  const proc = sidecar;
+  const pid = proc.pid;
+  if (process.platform === 'win32') {
+    log(`stopSidecar: taskkill na árvore ${pid}`);
+    try { execSync(`taskkill /pid ${pid} /T /F`); } catch (e) { log(`stopSidecar taskkill: ${e.message}`); }
+    sidecar = null;
+    return;
+  }
+  log(`stopSidecar: SIGTERM no grupo ${pid}`);
+  try { process.kill(-pid, 'SIGTERM'); } catch (e) { log(`stopSidecar kill falhou: ${e.message}`); }
+  setTimeout(() => {
+    if (proc.exitCode === null) {
+      log(`stopSidecar: ainda vivo após 3s, SIGKILL no grupo ${pid}`);
+      try { process.kill(-pid, 'SIGKILL'); } catch { /* já morreu */ }
     }
-  } catch { /* já morreu */ }
+  }, 3000).unref();
   sidecar = null;
 }
 
@@ -202,9 +237,20 @@ function buildTrayMenu(recording = false) {
   tray.setContextMenu(menu);
 }
 
+function trayIcon() {
+  // Embarcado via `files` do electron-builder (dev: electron/assets, pacote: app.asar/assets).
+  const bundled = path.join(__dirname, 'assets', 'icon.png');
+  if (fs.existsSync(bundled)) return bundled;
+  return null;
+}
+
 function createTray() {
-  // TODO(E3): ícone próprio; usa o do Electron no spike.
-  tray = new Tray(path.join(__dirname, '..', '..', 'build', 'icon.png'));
+  const icon = trayIcon();
+  if (!icon) {
+    log('sem ícone de tray — seguindo sem tray (menu indisponível)');
+    return;
+  }
+  tray = new Tray(icon);
   buildTrayMenu(false);
   tray.on('click', () => { win.isVisible() ? win.hide() : win.show(); });
 }
@@ -275,8 +321,8 @@ if (!gotLock) {
     }
   });
 
+  // Residente: só sai pelo tray/Sair (no macOS, comportamento padrão já é esse).
   app.on('window-all-closed', () => {
-    // residente: só sai pelo tray/Sair (no macOS, comportamento padrão já é esse)
     if (process.platform === 'darwin' && !quitting) return;
     if (!quitting) return; // Linux/Windows: janela fechada = minimizado no tray
     app.quit();
@@ -286,4 +332,15 @@ if (!gotLock) {
     globalShortcut.unregisterAll();
     stopSidecar();
   });
+
+  // Desligamento do SO / kill: garante quit gracioso (fecha sidecar próprio).
+  // O handler roda antes do default do Chromium; sem ele o app morre sem will-quit.
+  for (const sig of ['SIGTERM', 'SIGINT']) {
+    process.on(sig, () => {
+      log(`sinal ${sig} recebido — encerrando`);
+      quitting = true;
+      try { stopSidecar(); } catch (e) { log(`stop no sinal falhou: ${e.message}`); }
+      app.quit();
+    });
+  }
 }

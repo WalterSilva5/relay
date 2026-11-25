@@ -592,7 +592,10 @@ def _goal_progress(s: Session, goal) -> dict:
         t for t in _goal_filter_query(s, goal).all()
         if not t.is_local  # lembrete local não conta em objetivo
     ]
-    done = [t for t in tasks if t.column and t.column.is_done]
+    from relay.dimensions import delivered_ids
+    cols = {t.column.id: t.column for t in tasks if t.column}.values()
+    entregues = delivered_ids(list(cols), {c.id for c in cols if c.is_done})
+    done = [t for t in tasks if t.column_id in entregues]
     pct = round(len(done) / len(tasks) * 100) if tasks else 0
     days_left = None
     if goal.due_date:
@@ -910,24 +913,40 @@ def project_metrics(s: Session = Depends(db)):
         by_type[t.type or "FEATURE"] = by_type.get(t.type or "FEATURE", 0) + 1
         by_priority[t.priority or "MEDIUM"] = by_priority.get(t.priority or "MEDIUM", 0) + 1
 
+    # entregue = Done ou estágio de teste/aceite (mesma regra do board);
+    # lead time e throughput continuam medindo a conclusão formal (Done).
+    from relay.dimensions import delivered_ids as _delivered_for
+    _por_projeto: dict[int, list] = {}
+    for c in s.query(BoardColumn).all():
+        _por_projeto.setdefault(c.project_id, []).append(c)
+    _entregues_ids: set[int] = set()
+    for _cols in _por_projeto.values():
+        _entregues_ids |= _delivered_for(_cols, {c.id for c in _cols if c.is_done})
+    delivered_count = len([t for t in all_tasks if t.column_id in _entregues_ids])
+
     # Per project
     per_project: list[dict] = []
     projects = s.query(Project).all()
     for p in projects:
         ptasks = [t for t in all_tasks if t.project_id == p.id]
         pdone = [t for t in ptasks if t.column and t.column.is_done]
+        _pcols = _por_projeto.get(p.id, [])
+        _pent = _delivered_for(_pcols, {c.id for c in _pcols if c.is_done})
         per_project.append({
             "projectId": p.id,
             "projectName": p.name,
             "projectKey": p.key,
             "totalTasks": len(ptasks),
             "doneTasks": len(pdone),
+            "deliveredTasks": len([t for t in ptasks if t.column_id in _pent]),
         })
 
     return {
         "summary": {
             "totalTasks": total,
             "doneTasks": done_count,
+            "deliveredTasks": delivered_count,
+            "deliveredPct": round(delivered_count / total * 100) if total else 0,
             "completedLast7d": completed_7d,
             "completedLast30d": completed_30d,
             "avgLeadTimeHours": avg_lead,
@@ -3358,11 +3377,12 @@ def project_metrics_dimensions(project_id: int, exclude: str | None = None, s: S
         tasks = [t for t in tasks if t.column_id not in fora]
     dados = aggregate_dimensions(tasks, done_ids, colunas)
     # totais de primeiro nível: desenvolvimento concluído x finalizado
-    from relay.dimensions import dev_done_column as _dev_col_api
+    from relay.dimensions import delivered_ids as _entregues_api, dev_done_column as _dev_col_api
     _cd = _dev_col_api(colunas)
     _dev_ids = {c.id for c in colunas if _cd is not None and c.order >= _cd.order} or set(done_ids)
+    _entregues = _entregues_api(colunas, done_ids)
     _nl = [t for t in tasks if not getattr(t, "is_local", False)]
-    _done_n = sum(1 for t in _nl if t.column_id in done_ids)
+    _done_n = sum(1 for t in _nl if t.column_id in _entregues)
     _dev_n = sum(1 for t in _nl if t.column_id in _dev_ids)
     _tot_n = len(_nl)
     dados["done"] = _done_n
@@ -6461,6 +6481,16 @@ def global_search(q: str, limit: int = 20, s: Session = Depends(db)):
 # Web UI (servida junto com a API, se o bundle estiver buildado em webui/dist)
 # ---------------------------------------------------------------------------
 
+def _base_dir() -> "Path":
+    """Raiz dos artefatos: no source é `local-client/`; no binário PyInstaller
+    (`sys.frozen`) é a pasta do executável (sidecar + `webui-dist` ao lado)."""
+    import sys
+    from pathlib import Path
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parents[2]
+
+
 def _mount_webui(_app):
     import mimetypes
     from pathlib import Path
@@ -6473,7 +6503,12 @@ def _mount_webui(_app):
     mimetypes.add_type("application/javascript", ".js")
     mimetypes.add_type("image/svg+xml", ".svg")
 
-    dist = Path(__file__).resolve().parents[2] / "webui" / "dist"
+    dist = _base_dir() / "webui" / "dist"
+    if not (dist / "index.html").exists():
+        # Layout empacotado: webui-dist/ ao lado do binário.
+        alt = _base_dir() / "webui-dist"
+        if (alt / "index.html").exists():
+            dist = alt
     if not (dist / "index.html").exists():
         return  # web UI não buildada; apenas a API responde
 

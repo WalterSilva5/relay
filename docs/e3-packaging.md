@@ -227,3 +227,74 @@ Artefatos (`electron/dist/`, build 24/11, sem display — NÃO testados visualme
 
 O que continua exigindo máquina com display: item 4 e 5 acima, na íntegra.
 ```
+
+## Validação do boot empacotado — 25/11/2026 (sem display, com X real)
+
+Primeiro boot do `linux-unpacked/relay-desktop` **falhou silenciosamente**
+(janela abre, sidecar morre na hora, `/api/health` sem resposta). Causas-raiz,
+ambas corrigidas no código:
+
+1. **Spawn errado no pacote**: `main.js` chamava o binário como se fosse o
+   Python (`[bin, "-m", "relay.webmain", ...]`) e com `cwd=local-client`
+   (inexistente no pacote). O argparse do webmain abortava (exit 2) por flag
+   desconhecida. Correção: se o basename é `relay-server*`, executa o binário
+   direto com `['--port', N]` e sem `cwd` (`main.js: startSidecar`).
+2. **Web UI invisível no pacote**: `_mount_webui` resolvia
+   `webui/dist` a partir do código-fonte (`relay/api/app.py` → `parents[2]`),
+   que não existe no bundle. Correção: `_base_dir()` — com `sys.frozen`,
+   usa a pasta do executável e aceita o layout empacotado `webui-dist/`
+   (ao lado do binário); sem frozen, mantém o path de dev.
+   Cobertura: `tests/test_spa_mount.py` (mount empacotado + fallback 404 p/ `/api/*`).
+3. **Kill em grupo inseguro**: `process.kill(-pid)` sem `detached: true` no
+   `spawn` mataria o grupo do próprio Electron. Agora o sidecar sobe em grupo
+   próprio e o `stopSidecar` mata a árvore com segurança.
+4. **Tray sem ícone quebrava o boot do menu**: `createTray` agora tolera
+   ausência de ícone (loga e segue sem tray); ícone real em
+   `electron/assets/icon.png` (incluído em `files` do builder).
+
+Lição de processo: todo caminho que depende do layout do repo precisa de um
+ramo `isPackaged`/`sys.frozen` + teste sem Qt que simule o layout empacotado.
+
+## Validação do app empacotado (sem display, com X real) — 25/11/2026
+
+- Boot limpo com as correções acima: sidecar sobe sozinho, `/api/health` ok,
+  web 200, janela comprovada via CDP (`title "Relay"`, url `/dashboard`,
+  depois `/reviews-pr` — app real renderizando).
+- Hotkey registrada no log (`CommandOrControl+Shift+R`), Wayland aceitou.
+- **Orfãos reaproveitados**: app novo detecta sidecar saudável na porta e
+  reutiliza em vez de duplicar (`sidecar já rodando — reaproveitando`).
+- **SIGTERM no app empacotado é ignorado** (handler Node não dispara; shutdown
+  do Chromium não completa sem GPU/tela neste host). Mitigação: handler
+  explícito `SIGTERM/SIGINT` + escalada TERM→KILL(3s) + reaproveitamento de
+  órfãos no boot. Sair pelo tray continua o caminho suportado; SIGTERM real
+  precisa de revalidação em máquina com display.
+- Screenshots saíram pretos (monitores desligados — X com outputs inativos);
+  validação de pixel fica para máquina com vídeo. `mss` via pip em /tmp
+  funciona para captura quando houver tela acesa.
+
+### Revalidação 25/11 (pós-correções) — boot, gravação real e shutdown
+
+- **Boot do pacote final** (`linux-unpacked` rebuildado com todas as correções):
+  spawn direto do binário (sem `cwd`), sidecar saudável, web 200, janela via
+  CDP (`/reviews-pr`), hotkey registrada. Sem os erros silenciosos de antes.
+- **Gravação ponta a ponta contra o app empacotado** (o que o Ctrl+Shift+R faz):
+  `POST /live/start` → `recording:true` com mic/monitor reais do host
+  (`SU8 Estéreo analógico` + `Monitor of Starship/Matisse HD Audio`) →
+  `POST /live/stop` gravou WAV real em
+  `~/.relay/workspaces/gav/recordings/` + linha no banco (`recordingId`).
+  Áudio PipeWire funciona a partir do sidecar empacotado.
+- **Reaproveitamento de órfão verificado na prática**: app novo com sidecar
+  antigo na porta logou `sidecar já rodando — reaproveitando` em vez de
+  duplicar.
+- **SIGTERM continua ignorado neste host** mesmo com handler explícito +
+  escalada (nenhuma linha de log nova; só `kill -9` limpa). Hipótese: shutdown
+  do Chromium não completa sem GPU/tela aqui. Mitigação vigente: sair pelo
+  tray + reaproveitamento de órfãos no boot (zumbis viram inofensivos).
+  Revalidar SIGTERM/SIGINT em máquina com display antes de declarar pronto.
+- **Instaladores finais rebuildados com todo o código acima**
+  (`Relay-0.1.0.AppImage` 291 MB, `relay-desktop_0.1.0_amd64.deb` 265 MB):
+  asar verificado por extração — contém spawn direto, reuse, handlers SIGTERM,
+  escalada TERM→KILL, tray com ícone (`assets/icon.png` dentro do asar) e
+  `desktopName`/`syncDesktopName` (sem warnings no build).
+- Pendente (só em máquina com vídeo): pixel da janela, clique no tray,
+  hotkey física fim a fim, instalador em sistema limpo, feed de auto-update.
