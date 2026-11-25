@@ -5,7 +5,7 @@ import App from './App.jsx'
 import { applyTheme, getTheme } from './theme'
 import { getSettings } from './api'
 import { setLang } from './i18n'
-import './styles.css'
+import './styles/theme.css'
 
 applyTheme(getTheme())
 

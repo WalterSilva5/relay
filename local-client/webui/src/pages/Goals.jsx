@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import Swal from 'sweetalert2'
 import {
   getEpics,
   getGoals,
@@ -8,14 +7,27 @@ import {
   getProjects,
   getSprints,
 } from '../api'
-import { t } from '../i18n'
+import { t, tf } from '../i18n'
 import Icon from '../components/Icon'
+import {
+  Badge,
+  Button,
+  Card,
+  Chip,
+  ConfirmDialog,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  Progress,
+  Select,
+} from '../ui'
 
 function daysLabel(days) {
   if (days == null) return t('Sem data alvo')
-  if (days < 0) return t('Atrasado há {n}d', { n: Math.abs(days) })
+  if (days < 0) return tf('Atrasado há {n}d', { n: Math.abs(days) })
   if (days === 0) return t('Vence hoje')
-  return t('Faltam {n}d', { n: days })
+  return tf('Faltam {n}d', { n: days })
 }
 
 export default function Goals() {
@@ -30,6 +42,8 @@ export default function Goals() {
   const [epicId, setEpicId] = useState('')
   const [sprintId, setSprintId] = useState('')
   const [error, setError] = useState('')
+  const [confirmId, setConfirmId] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     getProjects()
@@ -76,117 +90,159 @@ export default function Goals() {
     }
   }
 
-  const onDelete = async (id) => {
-    const res = await Swal.fire({
-      title: t('Excluir este goal?'),
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: t('Excluir'),
-      cancelButtonText: t('Cancelar'),
-    })
-    if (!res.isConfirmed) return
+  const confirmDelete = async () => {
+    if (confirmId == null) return
+    setDeleting(true)
     try {
-      await deleteGoal(id)
+      await deleteGoal(confirmId)
+      setConfirmId(null)
       load()
     } catch (e) {
       setError(e.response?.data?.detail || String(e.message || e))
+      setConfirmId(null)
+    } finally {
+      setDeleting(false)
     }
   }
 
+  const projectOptions = projects.map((p) => ({
+    value: String(p.id),
+    label: `${p.key} · ${p.name}`,
+  }))
+  const epicOptions = [
+    { value: 'ANY', label: t('Épico: qualquer') },
+    ...epics.map((e) => ({ value: String(e.id), label: e.name })),
+  ]
+  const sprintOptions = [
+    { value: 'ANY', label: t('Sprint: qualquer') },
+    ...sprints.map((s) => ({ value: String(s.id), label: s.name })),
+  ]
+
   return (
-    <div>
-      <h1 className="page-title">{t('Goals')}</h1>
-      <p className="subtitle">{t('Objetivos com progresso e contagem regressiva.')}</p>
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Goals')}
+        description={t('Objetivos com progresso e contagem regressiva.')}
+      />
 
-      {error && <div className="banner">{error}</div>}
+      {error && (
+        <div role="alert" className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+          {error}
+        </div>
+      )}
 
-      <div className="toolbar">
-        <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.key} · {p.name}
-            </option>
-          ))}
-        </select>
-        <input
-          placeholder={t('Nome do goal (ex.: entregar onda-1)')}
-          value={name}
-          style={{ minWidth: 220 }}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-        <input
-          placeholder={t('Tag (ex.: onda-1)')}
-          value={tag}
-          style={{ width: 130 }}
-          onChange={(e) => setTag(e.target.value)}
-        />
-        <select value={epicId} onChange={(e) => setEpicId(e.target.value)}>
-          <option value="">{t('Épico: qualquer')}</option>
-          {epics.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.name}
-            </option>
-          ))}
-        </select>
-        <select value={sprintId} onChange={(e) => setSprintId(e.target.value)}>
-          <option value="">{t('Sprint: qualquer')}</option>
-          {sprints.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <button onClick={onCreate}>{t('+ Criar goal')}</button>
-      </div>
+      <Card>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Field label={t('Projeto')}>
+            <Select
+              value={projectId}
+              onValueChange={setProjectId}
+              options={projectOptions}
+              placeholder={t('Projeto')}
+            />
+          </Field>
+          <Field label={t('Nome do goal')} className="sm:col-span-2 xl:col-span-2">
+            <Input
+              placeholder={t('Nome do goal (ex.: entregar onda-1)')}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </Field>
+          <Field label={t('Data alvo')}>
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </Field>
+          <Field label={t('Tag')}>
+            <Input
+              placeholder={t('Tag (ex.: onda-1)')}
+              value={tag}
+              onChange={(e) => setTag(e.target.value)}
+            />
+          </Field>
+          <Field label={t('Épico')}>
+            <Select
+              value={epicId || 'ANY'}
+              onValueChange={(value) => setEpicId(value === 'ANY' ? '' : value)}
+              options={epicOptions}
+            />
+          </Field>
+          <Field label={t('Sprint')}>
+            <Select
+              value={sprintId || 'ANY'}
+              onValueChange={(value) => setSprintId(value === 'ANY' ? '' : value)}
+              options={sprintOptions}
+            />
+          </Field>
+        </div>
+        <div className="mt-3 flex justify-end">
+          <Button onClick={onCreate}>{t('+ Criar goal')}</Button>
+        </div>
+      </Card>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: 14,
-          marginTop: 12,
+      {goals.length === 0 ? (
+        <Card padding="none">
+          <EmptyState
+            icon={<Icon name="target" size={20} />}
+            title={t('Nenhum goal ainda.')}
+          />
+        </Card>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {goals.map((g) => {
+            const p = g.progress || { total: 0, done: 0, pct: 0, daysLeft: null }
+            const filters = [
+              g.tag ? `#${g.tag}` : null,
+              g.epic || null,
+              g.sprint || null,
+            ].filter(Boolean)
+            return (
+              <Card key={g.id}>
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="min-w-0 text-lg font-semibold text-fg">{g.name}</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconOnly
+                    aria-label={t('Excluir')}
+                    title={t('Excluir')}
+                    onClick={() => setConfirmId(g.id)}
+                  >
+                    <Icon name="close" size={14} className="text-danger" />
+                  </Button>
+                </div>
+
+                {filters.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {filters.map((f) => <Chip key={f}>{f}</Chip>)}
+                  </div>
+                )}
+
+                {g.description && <p className="mt-2 text-sm text-fg-muted">{g.description}</p>}
+
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Progress value={p.pct} className="min-w-24 flex-1" label={g.name} />
+                  <Badge>{p.pct}% · {p.done}/{p.total}</Badge>
+                  <Badge variant={p.daysLeft != null && p.daysLeft < 0 ? 'danger' : 'neutral'}>
+                    {daysLabel(p.daysLeft)}
+                  </Badge>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={confirmId != null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmId(null)
         }}
-      >
-        {goals.map((g) => {
-          const p = g.progress || { total: 0, done: 0, pct: 0, daysLeft: null }
-          const filters = [
-            g.tag ? `#${g.tag}` : null,
-            g.epic || null,
-            g.sprint || null,
-          ].filter(Boolean)
-          return (
-            <div key={g.id} className="card" style={{ minHeight: 130 }}>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <div style={{ fontWeight: 700, fontSize: 16, flex: 1 }}>{g.name}</div>
-                <button
-                  className="ghost sm"
-                  title={t('Excluir')}
-                  onClick={() => onDelete(g.id)}
-                >
-                  <Icon name="close" size={13} />
-                </button>
-              </div>
-              {filters.length > 0 && (
-                <div className="row" style={{ flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
-                  {filters.map((f) => <span key={f} className="chip">{f}</span>)}
-                </div>
-              )}
-              {g.description && <div style={{ fontSize: 13, marginTop: 4 }}>{g.description}</div>}
-              <div className="row" style={{ marginTop: 10 }}>
-                <div className="progress" style={{ flex: 1 }}>
-                  <span style={{ width: `${p.pct}%` }} />
-                </div>
-                <span className="chip">{p.pct}% · {p.done}/{p.total}</span>
-                <span className={p.daysLeft != null && p.daysLeft < 0 ? 'chip danger' : 'chip'}>
-                  {daysLabel(p.daysLeft)}
-                </span>
-              </div>
-            </div>
-          )
-        })}
-        {goals.length === 0 && <div className="muted">{t('Nenhum goal ainda.')}</div>}
-      </div>
+        title={t('Excluir este goal?')}
+        confirmLabel={t('Excluir')}
+        cancelLabel={t('Cancelar')}
+        tone="danger"
+        loading={deleting}
+        onConfirm={confirmDelete}
+      />
     </div>
   )
 }

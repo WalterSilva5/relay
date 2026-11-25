@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getPendingTodos, snoozeTodo } from '../api'
 import { t, tf } from '../i18n'
+import Icon from './Icon.jsx'
+import { Button } from '../ui/index.js'
 
 // Lembrete periódico (só na interface) de TODOs cujo horário já chegou.
 export default function PendingTodosReminder() {
@@ -35,39 +37,41 @@ export default function PendingTodosReminder() {
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        right: 20,
-        bottom: 20,
-        zIndex: 1000,
-        background: 'var(--card, #fff)',
-        border: '1px solid var(--warning, #d97706)',
-        borderRadius: 10,
-        padding: '10px 12px',
-        boxShadow: '0 6px 20px rgba(20,22,60,0.18)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        maxWidth: 420,
-      }}
+      role="status"
+      className="fixed bottom-4 right-4 z-40 flex w-80 max-w-[calc(100vw_-_2rem)] flex-col gap-2 rounded-lg border border-warning/40 bg-elevated p-3 shadow-lg"
     >
-      <span style={{ fontWeight: 600 }}>
-        ⏰ {tf('{n} tarefa(s) pendente(s)', { n: pending.count })}
-      </span>
-      <button
-        onClick={() => {
-          setDismissed(true)
-          navigate('/todos')
-        }}
-      >
-        {t('Ver')}
-      </button>
-      <button className="ghost" onClick={snoozeAll}>
-        {t('Adiar 10min')}
-      </button>
-      <button className="ghost" onClick={() => setDismissed(true)} title={t('Dispensar')}>
-        ✕
-      </button>
+      <div className="flex items-center gap-2">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-warning-soft text-warning">
+          <Icon name="calendar" size={15} />
+        </span>
+        <span className="min-w-0 flex-1 text-sm font-semibold text-fg">
+          {tf('{n} tarefa(s) pendente(s)', { n: pending.count })}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          aria-label={t('Dispensar')}
+          title={t('Dispensar')}
+          onClick={() => setDismissed(true)}
+        >
+          <Icon name="close" size={14} />
+        </Button>
+      </div>
+      <div className="flex items-center justify-end gap-1.5">
+        <Button variant="secondary" size="sm" onClick={snoozeAll}>
+          {t('Adiar 10min')}
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => {
+            setDismissed(true)
+            navigate('/todos')
+          }}
+        >
+          {t('Ver')}
+        </Button>
+      </div>
     </div>
   )
 }

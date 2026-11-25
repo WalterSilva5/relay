@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { getKbNotes, createKbNote, updateKbNote, deleteKbNote, kbAsk } from '../api'
 import { t } from '../i18n'
 import Icon from '../components/Icon'
+import {
+  Badge, Button, Card, CardHeader, EmptyState, Field, Input, PageHeader, SearchInput,
+  Textarea, Toolbar,
+} from '../ui'
 
 const EMPTY = { title: '', body: '' }
 
@@ -13,18 +17,24 @@ export default function Base() {
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState(null)
   const [asking, setAsking] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const load = () => getKbNotes(q ? { q } : {}).then(setNotes).catch((e) => setError(String(e.message || e)))
+  const load = () =>
+    getKbNotes(q ? { q } : {})
+      .then(setNotes)
+      .catch((e) => setError(String(e.message || e)))
+
   useEffect(() => {
     load()
   }, [q])
 
   const openNew = () => { setSel(null); setForm(EMPTY) }
-  const openNote = (n) => { setSel(n.id); setForm({ title: n.title, body: n.body }) }
+  const openNote = (n) => { setSel(n.id); setForm({ title: n.title || '', body: n.body || '' }) }
 
   const save = async () => {
-    if (!form.title.trim()) return
+    if (!form.title.trim() || saving) return
+    setSaving(true)
     try {
       if (sel) await updateKbNote(sel, form)
       else {
@@ -34,17 +44,23 @@ export default function Base() {
       load()
     } catch (e) {
       setError(e.response?.data?.detail || String(e.message || e))
+    } finally {
+      setSaving(false)
     }
   }
 
   const remove = async (id) => {
-    await deleteKbNote(id)
-    if (sel === id) openNew()
-    load()
+    try {
+      await deleteKbNote(id)
+      if (sel === id) openNew()
+      load()
+    } catch (e) {
+      setError(e.response?.data?.detail || String(e.message || e))
+    }
   }
 
   const ask = async () => {
-    if (!question.trim()) return
+    if (!question.trim() || asking) return
     setAsking(true)
     setAnswer(null)
     try {
@@ -60,69 +76,138 @@ export default function Base() {
   const current = notes.find((n) => n.id === sel)
 
   return (
-    <div>
-      <h1 className="page-title">{t('Base de conhecimento')}</h1>
-      <p className="subtitle">{t('Notas com backlinks [[título]] e perguntas respondidas pela IA sobre as suas notas.')}</p>
-      {error && <div className="banner">{error}</div>}
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Base de conhecimento')}
+        description={t('Notas com backlinks [[título]] e perguntas respondidas pela IA sobre as suas notas.')}
+      />
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="toolbar">
-          <input style={{ flex: 1 }} placeholder={t('Pergunte à sua base...')} value={question}
-            onChange={(e) => setQuestion(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ask()} />
-          <button onClick={ask} disabled={asking}>{asking ? t('Pensando...') : t('Perguntar à IA')}</button>
+      {error && (
+        <div role="alert" className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+          {error}
         </div>
-        {answer && (
-          <div style={{ marginTop: 10, fontSize: 13 }}>
-            <div style={{ whiteSpace: 'pre-wrap' }}>{answer.answer}</div>
+      )}
+
+      <Toolbar
+        actions={(
+          <Button onClick={ask} loading={asking} disabled={asking}>
+            {asking ? t('Pensando...') : t('Perguntar à IA')}
+          </Button>
+        )}
+      >
+        <Input
+          className="w-full sm:w-96"
+          placeholder={t('Pergunte à sua base...')}
+          aria-label={t('Pergunte à sua base...')}
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && ask()}
+        />
+      </Toolbar>
+
+      {answer && (
+        <Card>
+          <div className="space-y-2 text-sm text-fg">
+            <div className="whitespace-pre-wrap">{answer.answer}</div>
             {answer.sources?.length > 0 && (
-              <div className="muted" style={{ marginTop: 6 }}>
+              <p className="text-xs text-fg-muted">
                 {t('Fontes')}: {answer.sources.map((sc) => sc.title).join(', ')}
-              </div>
+              </p>
             )}
           </div>
-        )}
-      </div>
+        </Card>
+      )}
 
-      <div className="row" style={{ gap: 16, alignItems: 'flex-start' }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div className="toolbar" style={{ marginBottom: 8 }}>
-            <input style={{ flex: 1 }} placeholder={t('Buscar...')} value={q} onChange={(e) => setQ(e.target.value)} />
-            <button onClick={openNew}>{t('+ Nova')}</button>
-          </div>
-          <div className="card">
-            {notes.map((n) => (
-              <div key={n.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'center', padding: '4px 0' }}>
-                <span style={{ cursor: 'pointer', fontWeight: sel === n.id ? 700 : 400 }} onClick={() => openNote(n)}>
-                  {n.title}
+      <div className="grid items-start gap-4 lg:grid-cols-3">
+        <div className="space-y-3 lg:col-span-1">
+          <Toolbar actions={<Button onClick={openNew}>{t('+ Nova')}</Button>}>
+            <SearchInput
+              className="w-full sm:w-56"
+              placeholder={t('Buscar...')}
+              aria-label={t('Buscar...')}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+          </Toolbar>
+
+          <Card padding="none">
+            {notes.length === 0 ? (
+              <EmptyState
+                icon={<Icon name="book" size={20} />}
+                title={t('Nenhuma nota ainda.')}
+              />
+            ) : notes.map((n) => (
+              <div
+                key={n.id}
+                className={`flex items-center gap-1 border-b border-border px-2 last:border-b-0 ${sel === n.id ? 'bg-accent-soft' : ''}`}
+              >
+                <button
+                  type="button"
+                  onClick={() => openNote(n)}
+                  aria-current={sel === n.id ? 'true' : undefined}
+                  className="flex min-w-0 flex-1 items-center gap-1.5 rounded-sm px-1 py-2 text-left text-sm text-fg hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+                >
+                  <span className="truncate">{n.title}</span>
                   {n.backlinks?.length > 0 && (
-                    <span className="muted" style={{ fontSize: 11 }}> <Icon name="layers" size={10} />{n.backlinks.length}</span>
+                    <Badge variant="neutral" className="shrink-0">
+                      <Icon name="layers" size={10} /> {n.backlinks.length}
+                    </Badge>
                   )}
-                </span>
-                <button className="danger sm" title={t('Excluir')} onClick={() => remove(n.id)}>
-                  <Icon name="close" size={13} />
                 </button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  aria-label={t('Excluir')}
+                  title={t('Excluir')}
+                  onClick={() => remove(n.id)}
+                >
+                  <Icon name="close" size={13} />
+                </Button>
               </div>
             ))}
-            {notes.length === 0 && <div className="muted">{t('Nenhuma nota ainda.')}</div>}
-          </div>
+          </Card>
         </div>
 
-        <div style={{ flex: 2, minWidth: 0 }}>
-          <div className="card">
-            <input style={{ width: '100%', fontWeight: 600 }} placeholder={t('Título da nota')} value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            <textarea rows={14} style={{ width: '100%', marginTop: 8 }} placeholder={t('Conteúdo... use [[título]] para linkar outra nota')}
-              value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
-            <div className="row" style={{ gap: 8, marginTop: 8 }}>
-              <button onClick={save}>{sel ? t('Salvar') : t('Criar nota')}</button>
-              {sel && <button className="ghost" onClick={openNew}>{t('+ Nova')}</button>}
-            </div>
-            {current?.backlinks?.length > 0 && (
-              <div className="muted" style={{ marginTop: 8, fontSize: 12 }}>
-                {t('Referenciada por')}: {current.backlinks.map((b) => b.title).join(', ')}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader
+              title={sel ? t('Editar nota') : t('Nova nota')}
+              description={t('Conteúdo... use [[título]] para linkar outra nota')}
+            />
+
+            <div className="mt-4 space-y-3">
+              <Field label={t('Título da nota')}>
+                <Input
+                  placeholder={t('Título da nota')}
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                />
+              </Field>
+
+              <Field label={t('Conteúdo')}>
+                <Textarea
+                  rows={14}
+                  placeholder={t('Conteúdo... use [[título]] para linkar outra nota')}
+                  value={form.body}
+                  onChange={(e) => setForm({ ...form, body: e.target.value })}
+                />
+              </Field>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={save} loading={saving} disabled={saving}>
+                  {sel ? t('Salvar') : t('Criar nota')}
+                </Button>
+                {sel && <Button variant="ghost" onClick={openNew}>{t('+ Nova')}</Button>}
               </div>
-            )}
-          </div>
+
+              {current?.backlinks?.length > 0 && (
+                <p className="text-xs text-fg-muted">
+                  {t('Referenciada por')}: {current.backlinks.map((b) => b.title).join(', ')}
+                </p>
+              )}
+            </div>
+          </Card>
         </div>
       </div>
     </div>

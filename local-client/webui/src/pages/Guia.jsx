@@ -1,5 +1,6 @@
 import { t } from '../i18n'
-import Icon from '../components/Icon'
+import { Card, PageHeader } from '../ui'
+import Icon from '../components/Icon.jsx'
 
 const SECTIONS = [
   {
@@ -71,25 +72,32 @@ const SECTIONS = [
 
 export default function Guia() {
   return (
-    <div>
-      <h1 className="page-title">{t('Como usar o Relay')}</h1>
-      <p className="subtitle">
-        {t('Gerencie tarefas com um board kanban e use agentes de IA como auxiliares dos desenvolvedores — eles ajudam a implementar, documentar e preparar código para revisão humana via API REST.')}
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-        {SECTIONS.map((s) => (
-          <div key={s.title} className="card" style={{ display: 'flex', gap: 14 }}>
-            {/^\d+$|^\?$/.test(s.icon) ? (
-              <div style={{ fontSize: 15, fontWeight: 800 }}>{s.icon}</div>
-            ) : (
-              <div className="muted"><Icon name={s.icon} size={18} /></div>
-            )}
-            <div>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>{t(s.title)}</div>
-              <div style={{ whiteSpace: 'pre-wrap' }}>{t(s.body)}</div>
-            </div>
-          </div>
-        ))}
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Como usar o Relay')}
+        description={t('Gerencie tarefas com um board kanban e use agentes de IA como auxiliares dos desenvolvedores — eles ajudam a implementar, documentar e preparar código para revisão humana via API REST.')}
+      />
+
+      <div className="space-y-3">
+        {SECTIONS.map((s) => {
+          const numero = /^\d+$|^\?$/.test(s.icon)
+
+          return (
+            <Card key={s.title} className="flex gap-3">
+              <span
+                className={`grid h-control w-control shrink-0 place-items-center rounded-full text-sm font-semibold ${
+                  numero ? 'bg-accent-soft text-accent' : 'bg-surface-2 text-fg-muted'
+                }`}
+              >
+                {numero ? s.icon : <Icon name={s.icon} size={18} />}
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-md font-semibold text-fg">{t(s.title)}</h2>
+                <p className="mt-1 whitespace-pre-wrap text-base text-fg">{t(s.body)}</p>
+              </div>
+            </Card>
+          )
+        })}
       </div>
     </div>
   )

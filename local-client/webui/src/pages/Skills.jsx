@@ -1,6 +1,21 @@
 import { useEffect, useState } from 'react'
 import { getSkills, getSkill, apiError } from '../api'
 import { t } from '../i18n'
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  PageHeader,
+  SearchInput,
+  Select,
+  Toolbar,
+  useToast,
+} from '../ui'
+
+// Radix Select não aceita item com valor vazio: "Todos" usa um sentinela.
+const TODAS = '__all__'
 
 export default function Skills() {
   const [skills, setSkills] = useState([])
@@ -9,6 +24,7 @@ export default function Skills() {
   const [cat, setCat] = useState('')
   const [preview, setPreview] = useState(null)
   const [status, setStatus] = useState('')
+  const toast = useToast()
 
   useEffect(() => {
     getSkills()
@@ -32,7 +48,7 @@ export default function Skills() {
   const copy = () => {
     if (preview?.content && navigator.clipboard) {
       navigator.clipboard.writeText(preview.content)
-      setStatus(t('Copiado!'))
+      toast({ title: t('Copiado!'), tone: 'success' })
     }
   }
 
@@ -54,59 +70,98 @@ export default function Skills() {
   })
 
   return (
-    <div>
-      <h1 className="page-title">{t('Skills')}</h1>
-      <p className="subtitle">{t('Skills são instruções que ensinam agentes de IA a interagir com o Relay.')}</p>
-      <p className="muted">{t('A instalação em .claude/skills/ é feita no app desktop (aba Skills). Aqui você visualiza, copia ou baixa o conteúdo.')}</p>
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Skills')}
+        description={t('Skills são instruções que ensinam agentes de IA a interagir com o Relay.')}
+      />
 
-      <div className="toolbar" style={{ marginBottom: 10, alignItems: 'center' }}>
-        <input
-          style={{ flex: 1, minWidth: 180 }}
+      <p className="text-sm text-fg-muted">
+        {t('A instalação em .claude/skills/ é feita no app desktop (aba Skills). Aqui você visualiza, copia ou baixa o conteúdo.')}
+      </p>
+
+      {status && (
+        <p role="alert" className="text-sm text-danger">
+          {status}
+        </p>
+      )}
+
+      <Toolbar
+        actions={
+          <div className="w-full sm:w-44">
+            <Select
+              ariaLabel={t('Todos')}
+              value={cat || TODAS}
+              onValueChange={(value) => setCat(value === TODAS ? '' : value)}
+              options={[
+                { value: TODAS, label: t('Todos') },
+                ...Object.entries(categories).map(([value, label]) => ({ value, label })),
+              ]}
+            />
+          </div>
+        }
+      >
+        <SearchInput
+          className="sm:w-64"
+          aria-label={t('Buscar skills...')}
           placeholder={t('Buscar skills...')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <select value={cat} onChange={(e) => setCat(e.target.value)}>
-          <option value="">{t('Todos')}</option>
-          {Object.entries(categories).map(([k, label]) => (
-            <option key={k} value={k}>{label}</option>
-          ))}
-        </select>
-      </div>
-      {status && <p className="muted">{status}</p>}
+      </Toolbar>
 
       {preview && (
-        <div className="card" style={{ marginBottom: 10 }}>
-          <div className="row" style={{ gap: 8, alignItems: 'center', marginBottom: 8 }}>
-            <b>{preview.name}</b>
-            <span className="muted">{preview.filename}</span>
-            <span style={{ flex: 1 }} />
-            <button className="ghost sm" onClick={copy}>{t('Copiar')}</button>
-            <button className="ghost sm" onClick={download}>{t('Baixar SKILL.md')}</button>
-            <button className="ghost sm" onClick={() => setPreview(null)}>{t('Fechar preview')}</button>
-          </div>
-          <pre style={{ whiteSpace: 'pre-wrap', maxHeight: 300, overflowY: 'auto' }}>{preview.content}</pre>
-        </div>
+        <Card>
+          <CardHeader
+            className="flex-wrap"
+            title={preview.name}
+            description={preview.filename}
+            action={
+              <>
+                <Button variant="secondary" size="sm" onClick={copy}>
+                  {t('Copiar')}
+                </Button>
+                <Button variant="secondary" size="sm" onClick={download}>
+                  {t('Baixar SKILL.md')}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setPreview(null)}>
+                  {t('Fechar preview')}
+                </Button>
+              </>
+            }
+          />
+          <pre className="mt-3 max-h-72 overflow-y-auto whitespace-pre-wrap rounded-md bg-surface-2 p-3 font-mono text-sm text-fg">
+            {preview.content}
+          </pre>
+        </Card>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12 }}>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {visible.map((s) => (
-          <div key={s.id} className="card">
-            <div style={{ fontWeight: 700 }}>{s.name}</div>
-            <div style={{ margin: '4px 0' }}>
-              <span className="chip accent">{s.categoryLabel || s.category}</span>
+          <Card key={s.id} className="flex flex-col gap-2">
+            <div className="min-w-0">
+              <h3 className="text-md font-semibold text-fg">{s.name}</h3>
+              <div className="mt-1">
+                <Badge variant="accent">{s.categoryLabel || s.category}</Badge>
+              </div>
             </div>
-            <div style={{ fontSize: 13 }}>{s.description}</div>
-            {(s.tags?.length > 0) && (
-              <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{s.tags.join(' · ')}</div>
+
+            <p className="text-sm text-fg-muted">{s.description}</p>
+
+            {s.tags?.length > 0 && (
+              <p className="text-xs text-fg-subtle">{s.tags.join(' · ')}</p>
             )}
-            <div style={{ marginTop: 8 }}>
-              <button className="ghost sm" onClick={() => openPreview(s.id)}>{t('Ver conteúdo')}</button>
+
+            <div className="mt-auto pt-1">
+              <Button variant="secondary" size="sm" onClick={() => openPreview(s.id)}>
+                {t('Ver conteúdo')}
+              </Button>
             </div>
-          </div>
+          </Card>
         ))}
       </div>
-      {visible.length === 0 && <div className="muted" style={{ marginTop: 10 }}>{t('Nada aqui ainda.')}</div>}
+
+      {visible.length === 0 && <EmptyState title={t('Nada aqui ainda.')} />}
     </div>
   )
 }

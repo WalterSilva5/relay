@@ -1,7 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getTechLinks, saveTechLinks } from '../api-techlinks'
 import { t } from '../i18n'
-import Icon from '../components/Icon'
+import {
+  Button,
+  Card,
+  ConfirmDialog,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  SectionTitle,
+  useToast,
+} from '../ui'
+import Icon from '../components/Icon.jsx'
 
 const vazio = () => ({ nome: '', url: '', categoria: 'Notícias', descricao: '' })
 
@@ -9,8 +20,9 @@ export default function TechLinks() {
   const [links, setLinks] = useState([])
   const [form, setForm] = useState(vazio())
   const [editando, setEditando] = useState(null) // índice em edição, ou null
+  const [removendo, setRemovendo] = useState(null) // índice aguardando confirmação
   const [erro, setErro] = useState('')
-  const [salvo, setSalvo] = useState(false)
+  const toast = useToast()
 
   const carregar = () =>
     getTechLinks()
@@ -29,8 +41,7 @@ export default function TechLinks() {
       const d = await saveTechLinks(nova)
       setLinks(d.links || nova)
       setErro('')
-      setSalvo(true)
-      setTimeout(() => setSalvo(false), 2000)
+      toast({ title: t('Salvo!'), tone: 'success' })
     } catch (e) {
       setErro(e.response?.data?.detail || String(e.message || e))
     }
@@ -72,8 +83,23 @@ export default function TechLinks() {
   }
 
   const aoRemover = (i) => {
-    if (!window.confirm(t('Remover este atalho?'))) return
-    persistir(links.filter((_, j) => j !== i))
+    setRemovendo(i)
+  }
+
+  const confirmarRemocao = async () => {
+    if (removendo === null) return
+    await persistir(links.filter((_, j) => j !== removendo))
+    setRemovendo(null)
+  }
+
+  const copiar = async (url) => {
+    if (!navigator.clipboard) return
+    try {
+      await navigator.clipboard.writeText(url)
+      toast({ title: t('Copiado!'), tone: 'success' })
+    } catch (e) {
+      setErro(e.response?.data?.detail || String(e.message || e))
+    }
   }
 
   const mudar = (i, campo, valor) =>
@@ -94,123 +120,141 @@ export default function TechLinks() {
   }, [links])
 
   return (
-    <div>
-      <h1 className="page-title">{t('Novidades de tecnologia')}</h1>
-      <p className="subtitle">
-        {t('Clique num cartão para abrir no navegador.')}
-      </p>
-      {erro && <div className="banner">{erro}</div>}
-      {salvo && <p className="muted">{t('Salvo!')}</p>}
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Novidades de tecnologia')}
+        description={t('Clique num cartão para abrir no navegador.')}
+      />
 
-      <div className="toolbar" style={{ alignItems: 'flex-end' }}>
-        <label className="muted">
-          {t('Nome')}
-          <br />
-          <input
-            value={form.nome}
-            onChange={(e) => setForm({ ...form, nome: e.target.value })}
-            placeholder="daily.dev"
-          />
-        </label>
-        <label className="muted">
-          {t('URL')}
-          <br />
-          <input
-            value={form.url}
-            onChange={(e) => setForm({ ...form, url: e.target.value })}
-            placeholder="https://…"
-          />
-        </label>
-        <label className="muted">
-          {t('Categoria')}
-          <br />
-          <input
-            value={form.categoria}
-            onChange={(e) => setForm({ ...form, categoria: e.target.value })}
-            placeholder={t("Notícias")}
-          />
-        </label>
-        <label className="muted">
-          {t('Descrição')}
-          <br />
-          <input
-            value={form.descricao}
-            onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-            placeholder={t("O que tem de bom aqui")}
-          />
-        </label>
-        <button onClick={aoAdicionar}>+ {t('Adicionar atalho')}</button>
-      </div>
+      {erro && (
+        <p role="alert" className="text-sm text-danger">
+          {erro}
+        </p>
+      )}
 
-      {links.length === 0 && <p className="muted">{t('Nenhum atalho salvo ainda.')}</p>}
+      <Card>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Field label={t('Nome')}>
+            <Input
+              value={form.nome}
+              onChange={(e) => setForm({ ...form, nome: e.target.value })}
+              placeholder="daily.dev"
+            />
+          </Field>
+          <Field label={t('URL')}>
+            <Input
+              value={form.url}
+              onChange={(e) => setForm({ ...form, url: e.target.value })}
+              placeholder="https://…"
+            />
+          </Field>
+          <Field label={t('Categoria')}>
+            <Input
+              value={form.categoria}
+              onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+              placeholder={t('Notícias')}
+            />
+          </Field>
+          <Field label={t('Descrição')}>
+            <Input
+              value={form.descricao}
+              onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+              placeholder={t('O que tem de bom aqui')}
+            />
+          </Field>
+        </div>
+
+        <div className="mt-3">
+          <Button onClick={aoAdicionar}>
+            <Icon name="plus" size={14} /> {t('Adicionar atalho')}
+          </Button>
+        </div>
+      </Card>
+
+      {links.length === 0 && <EmptyState title={t('Nenhum atalho salvo ainda.')} />}
 
       {grupos.map(([cat, itens]) => (
-        <div key={cat} style={{ marginBottom: 18 }}>
-          <h2 className="section-title">{cat}</h2>
-          <div className="projects-grid">
+        <section key={cat} className="space-y-2">
+          <SectionTitle>{cat}</SectionTitle>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {itens.map(([i, l]) => (
-              <div key={i} className="card card-tight">
+              <Card key={i} padding="sm" className="flex flex-col gap-2">
                 {editando === i ? (
-                  <>
-                    <input
-                      value={l.nome}
-                      onChange={(e) => mudar(i, 'nome', e.target.value)}
-                      placeholder={t("Nome")}
-                      style={{ width: '100%', marginBottom: 6 }}
-                    />
-                    <input
-                      value={l.url}
-                      onChange={(e) => mudar(i, 'url', e.target.value)}
-                      placeholder="https://…"
-                      style={{ width: '100%', marginBottom: 6 }}
-                    />
-                    <input
-                      value={l.categoria || ''}
-                      onChange={(e) => mudar(i, 'categoria', e.target.value)}
-                      placeholder={t("Categoria")}
-                      style={{ width: '100%', marginBottom: 6 }}
-                    />
-                    <input
-                      value={l.descricao || ''}
-                      onChange={(e) => mudar(i, 'descricao', e.target.value)}
-                      placeholder={t("Descrição")}
-                      style={{ width: '100%', marginBottom: 6 }}
-                    />
-                    <div className="row">
-                      <button onClick={() => aoSalvarEdicao(i)}>{t('Salvar')}</button>
-                      <button className="ghost" onClick={() => { setEditando(null); carregar() }}>
+                  <div className="space-y-2">
+                    <Field label={t('Nome')}>
+                      <Input value={l.nome} onChange={(e) => mudar(i, 'nome', e.target.value)} placeholder={t('Nome')} />
+                    </Field>
+                    <Field label={t('URL')}>
+                      <Input value={l.url} onChange={(e) => mudar(i, 'url', e.target.value)} placeholder="https://…" />
+                    </Field>
+                    <Field label={t('Categoria')}>
+                      <Input value={l.categoria || ''} onChange={(e) => mudar(i, 'categoria', e.target.value)} placeholder={t('Categoria')} />
+                    </Field>
+                    <Field label={t('Descrição')}>
+                      <Input value={l.descricao || ''} onChange={(e) => mudar(i, 'descricao', e.target.value)} placeholder={t('Descrição')} />
+                    </Field>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" onClick={() => aoSalvarEdicao(i)}>
+                        {t('Salvar')}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => { setEditando(null); carregar() }}>
                         {t('Cancelar')}
-                      </button>
+                      </Button>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <>
-                    <div className="row" style={{ justifyContent: 'space-between' }}>
-                      <strong>{l.nome}</strong>
-                      <button
-                        className="icon-btn"
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="min-w-0 text-md font-semibold text-fg">{l.nome}</h3>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        aria-label={t('Remover atalho')}
+                        title={t('Remover atalho')}
                         onClick={() => aoRemover(i)}
-                        title={t("Remover atalho")}
                       >
                         <Icon name="close" size={14} />
-                      </button>
+                      </Button>
                     </div>
-                    {l.descricao && (
-                      <p className="muted" style={{ margin: '6px 0' }}>{l.descricao}</p>
-                    )}
-                    <a href={l.url} target="_blank" rel="noreferrer">
+
+                    {l.descricao && <p className="text-sm text-fg-muted">{l.descricao}</p>}
+
+                    <a
+                      href={l.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="truncate text-sm text-accent hover:underline"
+                    >
                       {l.url}
                     </a>
-                    <div style={{ marginTop: 8 }}>
-                      <button className="ghost sm" onClick={() => setEditando(i)}>{t('Editar')}</button>
+
+                    <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
+                      <Button variant="secondary" size="sm" onClick={() => setEditando(i)}>
+                        {t('Editar')}
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => copiar(l.url)}>
+                        <Icon name="clipboard" size={14} /> {t('Copiar')}
+                      </Button>
                     </div>
                   </>
                 )}
-              </div>
+              </Card>
             ))}
           </div>
-        </div>
+        </section>
       ))}
+
+      <ConfirmDialog
+        open={removendo !== null}
+        onOpenChange={(open) => { if (!open) setRemovendo(null) }}
+        title={t('Remover este atalho?')}
+        description={removendo !== null ? links[removendo]?.nome : undefined}
+        confirmLabel={t('Remover atalho')}
+        tone="danger"
+        onConfirm={confirmarRemocao}
+      />
     </div>
   )
 }

@@ -15,6 +15,10 @@ import {
 import { getActiveProjectId } from '../components/ProjectSelector.jsx'
 import { t, tf } from '../i18n'
 import Icon from '../components/Icon'
+import {
+  Badge, Button, Card, CardHeader, DataTable, Dialog, EmptyState, Field, Input,
+  PageHeader, Select, Skeleton, Textarea, Toolbar, useToast,
+} from '../ui'
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const mondayOf = (d) => {
@@ -30,14 +34,14 @@ const addDays = (d, n) => {
 }
 
 const HELP = {
-  fatos: 'Um fato por linha: o que foi feito, o PR ou card e o que prova. Ex.: "buscar operador · `13993`, PR `#8902` · kit de 42 cenários, 215 testes".',
+  fatos: 'Um fato por linha: o que foi feito, o PR ou card e o que prova. Ex.: "buscar operador · `13993`, PR `\u00238902` · kit de 42 cenários, 215 testes".',
   frase: 'Uma frase curta, terceira pessoa, sem número de card. Ex.: "Bom progresso na tesouraria com cuidado nos testes de contrato."',
   codigo: 'O que o PR faz em linguagem de negócio, o que muda de comportamento e o que foi testado. Ex.: "Dois caminhos passam a carregar o operador; nada muda com a flag desligada; validado com 42 cenários por rota."',
   p1: 'Entrega: o que foi feito na semana e o efeito no módulo. Ex.: "Fez as correções necessárias para os bugs do módulo e manteve os testes cobrindo os casos."',
   p2: 'Reconhecimento ou UM ponto de atenção, nunca lista. Ex.: "Melhorou nas revisões em relação à semana passada, apontando a causa antes do merge."',
   p3: 'Próximos passos: foco da semana, validar em ambiente, manter o time informado. Ex.: "Na semana atual o foco deve ser concluir a gravação e validar em ambiente."',
-  evidencias: 'Fatos secos que sustentam o comentário (não vão ao formulário). Ex.: "PR `#8902` mergeado em 09/11; suíte 2.933 sem classe vermelha nova."',
-  proxima: 'Focos da próxima semana em tópicos curtos. Ex.: "Concluir os ajustes do `#8994` e acompanhar as entregas abertas até o merge."',
+  evidencias: 'Fatos secos que sustentam o comentário (não vão ao formulário). Ex.: "PR `\u00238902` mergeado em 09/11; suíte 2.933 sem classe vermelha nova."',
+  proxima: 'Focos da próxima semana em tópicos curtos. Ex.: "Concluir os ajustes do `\u00238994` e acompanhar as entregas abertas até o merge."',
 }
 
 const STOP = new Set('de da do das dos em no na nos nas ao aos e o a os as um uma uns umas que se com por para como mais foi era são ter tem isso este esta isto ela ele eles elas seu sua seus suas'.split(' '))
@@ -86,17 +90,8 @@ function validar(form) {
   return { erros, avisos }
 }
 
-function Campo({ titulo, ajuda, children }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{titulo}</div>
-      <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{ajuda}</div>
-      {children}
-    </div>
-  )
-}
-
-const inputStyle = { width: '100%' }
+const ERRO_CLASSE = 'rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger'
+const AVISO_CLASSE = 'rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-sm text-warning'
 
 export default function Reviews() {
   const [projeto, setProjeto] = useState(null)
@@ -104,7 +99,6 @@ export default function Reviews() {
   const [reviews, setReviews] = useState([])
   const [filtroPessoa, setFiltroPessoa] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('')
-  const [selId, setSelId] = useState(null)
   const [form, setForm] = useState(null)
   const [fatos, setFatos] = useState([])
   const [blocos, setBlocos] = useState(['', '', ''])
@@ -115,7 +109,14 @@ export default function Reviews() {
   const [mostraPrevia, setMostraPrevia] = useState(false)
   const [cardsPessoa, setCardsPessoa] = useState([])
   const [erroAcao, setErroAcao] = useState('')
+  const [carregandoLista, setCarregandoLista] = useState(false)
+  const [criando, setCriando] = useState(false)
+  const [enviando, setEnviando] = useState(false)
+  const [reabrindo, setReabrindo] = useState(false)
+  const [duplicando, setDuplicando] = useState(false)
+  const [carregandoPrevia, setCarregandoPrevia] = useState(false)
   const timer = useRef(null)
+  const toast = useToast()
 
   // projeto ativo (mesmo padrão da página Time)
   useEffect(() => {
@@ -134,7 +135,12 @@ export default function Reviews() {
     const params = {}
     if (pessoa) params.person = pessoa
     if (status) params.status = status
-    setReviews(await getReviews(pid, params))
+    setCarregandoLista(true)
+    try {
+      setReviews(await getReviews(pid, params))
+    } finally {
+      setCarregandoLista(false)
+    }
   }
   useEffect(() => {
     if (!projeto) return
@@ -150,7 +156,6 @@ export default function Reviews() {
   }
 
   const abrir = (r) => {
-    setSelId(r.id)
     setForm({ ...r })
     setFatos(fatosParaTabela(r.factsMd))
     const b = blocosComentario(r.commentMd)
@@ -200,47 +205,73 @@ export default function Reviews() {
   const novo = async () => {
     const pessoa = filtroPessoa || membros[0] || ''
     if (!pessoa) { setErro(t('Cadastre um responsável no Time antes de criar reviews.')); return }
-    const seg = mondayOf(new Date())
-    const sex = addDays(seg, 4)
-    let avaliador = ''
-    try { avaliador = localStorage.getItem('relay.reviews.evaluator') || '' } catch {}
-    const r = await createReview(projeto.id, {
-      personName: pessoa, evaluator: avaliador || membros[0] || '',
-      periodStart: iso(seg), periodEnd: iso(sex),
-    })
-    try { localStorage.setItem('relay.reviews.evaluator', r.evaluator) } catch {}
-    setReviews((rs) => [r, ...rs])
-    abrir(r)
+    setCriando(true)
+    try {
+      const seg = mondayOf(new Date())
+      const sex = addDays(seg, 4)
+      let avaliador = ''
+      try { avaliador = localStorage.getItem('relay.reviews.evaluator') || '' } catch {}
+      const r = await createReview(projeto.id, {
+        personName: pessoa, evaluator: avaliador || membros[0] || '',
+        periodStart: iso(seg), periodEnd: iso(sex),
+      })
+      try { localStorage.setItem('relay.reviews.evaluator', r.evaluator) } catch {}
+      setReviews((rs) => [r, ...rs])
+      abrir(r)
+    } catch (e) { setErro(e?.response?.data?.detail || String(e.message || e)) }
+    finally { setCriando(false) }
   }
 
   const duplicar = async () => {
-    const r = await duplicateReview(projeto.id, form.id)
-    setReviews((rs) => [r, ...rs])
-    abrir(r)
+    setDuplicando(true)
+    try {
+      const r = await duplicateReview(projeto.id, form.id)
+      setReviews((rs) => [r, ...rs])
+      abrir(r)
+      toast?.({ title: t('Review duplicado.'), tone: 'success' })
+    } catch (e) { setErro(e?.response?.data?.detail || String(e.message || e)) }
+    finally { setDuplicando(false) }
   }
 
   const enviar = async () => {
     setErroAcao('')
+    setEnviando(true)
     try {
       const r = await sendReview(projeto.id, form.id)
       setForm(r)
       setReviews((rs) => rs.map((x) => (x.id === r.id ? r : x)))
+      toast?.({ title: t('Review marcado como enviado.'), tone: 'success' })
     } catch (e) { setErroAcao(e?.response?.data?.detail || String(e.message || e)) }
+    finally { setEnviando(false) }
   }
 
   const reabrir = async () => {
     setErroAcao('')
-    const r = await reopenReview(projeto.id, form.id)
-    setForm(r)
-    setReviews((rs) => rs.map((x) => (x.id === r.id ? r : x)))
+    setReabrindo(true)
+    try {
+      const r = await reopenReview(projeto.id, form.id)
+      setForm(r)
+      setReviews((rs) => rs.map((x) => (x.id === r.id ? r : x)))
+      toast?.({ title: t('Rascunho reaberto.'), tone: 'success' })
+    } catch (e) { setErroAcao(e?.response?.data?.detail || String(e.message || e)) }
+    finally { setReabrindo(false) }
   }
 
   const verPrevia = async () => {
+    setCarregandoPrevia(true)
     try {
       const txt = await (await fetch(reviewExportUrl(projeto.id, form.id))).text()
       setPrevia(txt)
     } catch (e) { setPrevia(String(e.message || e)) }
+    finally { setCarregandoPrevia(false) }
     setMostraPrevia(true)
+  }
+
+  const copiarCodigo = async (tk) => {
+    try {
+      await navigator.clipboard.writeText(tk.code || String(tk.id))
+      toast?.({ title: t('Código copiado.'), tone: 'success' })
+    } catch { /* área de transferência indisponível */ }
   }
 
   const { erros, avisos } = useMemo(() => (form ? validar({ ...form, commentMd: blocos.filter((b) => b.trim()).join('\n\n') }) : { erros: [], avisos: [] }), [form, blocos])
@@ -257,169 +288,455 @@ export default function Reviews() {
     return { lista, anterior, repetidos }
   }, [form, reviews, fatos, blocos])
 
-  if (!projeto) return <div>{erro ? <div className="banner">{erro}</div> : <div className="muted">{t('Carregando...')}</div>}</div>
-  const travado = form && form.status !== 'DRAFT'
-
-  return (
-    <div>
-      <h1 className="page-title">{t('Reviews semanais')}</h1>
-      <p className="subtitle">{projeto.key} · {projeto.name} — {t('avaliação por pessoa, no formato do vault.')}</p>
-      {erro && <div className="banner">{erro}</div>}
-
-      <div className="toolbar" style={{ flexWrap: 'wrap', marginBottom: 10 }}>
-        <select value={filtroPessoa} onChange={(e) => aplicarFiltros(e.target.value, filtroStatus)}>
-          <option value="">{t('Todas as pessoas')}</option>
-          {nomes.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-        <select value={filtroStatus} onChange={(e) => aplicarFiltros(filtroPessoa, e.target.value)}>
-          <option value="">{t('Todos os status')}</option>
-          <option value="DRAFT">{t('Rascunho')}</option>
-          <option value="SENT">{t('Enviado')}</option>
-        </select>
-        <button onClick={novo}>+ {t('Novo review')}</button>
-        <span className="muted" style={{ fontSize: 11 }}>{salvando ? t('Salvando rascunho…') : salvoEm ? tf('Rascunho salvo às {h}', { h: salvoEm }) : ''}</span>
-      </div>
-
-      <div className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
-        <div className="card" style={{ flex: '0 0 300px' }}>
-          <div className="section-title">{t('Reviews')}</div>
-          {reviews.map((r) => (
-            <div key={r.id} onClick={() => abrir(r)} style={{ cursor: 'pointer', padding: '6px 4px', borderLeft: selId === r.id ? '3px solid var(--accent)' : '3px solid transparent', paddingLeft: 6 }}>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>{r.personName} <span className="muted">· {r.periodStart?.slice(5).replace('-', '/')}–{r.periodEnd?.slice(5).replace('-', '/')}</span></div>
-              <div className="muted" style={{ fontSize: 11 }}>
-                {r.techScore ?? 'N'}·{t('téc')} / {r.softScore ?? 'N'}·{t('comp')}{' '}
-                <span className={r.status === 'SENT' ? 'chip success' : 'chip'}>{r.status === 'SENT' ? t('Enviado') : t('Rascunho')}</span>
-              </div>
-            </div>
-          ))}
-          {reviews.length === 0 && <div className="muted">{t('Nenhum review.')}</div>}
-        </div>
-
-        {form && (
-          <div className="card" style={{ flex: 1, minWidth: 0 }}>
-            <div className="row" style={{ gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-              <strong style={{ marginRight: 'auto' }}>{form.personName} · {form.periodStart}–{form.periodEnd}</strong>
-              {form.status === 'DRAFT' ? (
-                <button disabled={erros.length > 0} title={erros.join('\n')} onClick={enviar}>{t('Marcar como enviado')}</button>
-              ) : (
-                <button className="ghost" onClick={reabrir}>{t('Reabrir rascunho')}</button>
-              )}
-              <button className="ghost" onClick={duplicar} title={t('Copia notas e estrutura para a próxima semana')}>{t('Duplicar da semana anterior')}</button>
-              <a href={reviewExportUrl(projeto.id, form.id)} target="_blank" rel="noreferrer" style={{ pointerEvents: erros.length ? 'none' : 'auto', opacity: erros.length ? 0.4 : 1 }}>
-                <button disabled={erros.length > 0} title={erros.join('\n') || t('Baixa o .md no formato do vault')}>{t('Exportar .md')}</button>
-              </a>
-              <button className="ghost" onClick={verPrevia}>{t('Pré-visualizar')}</button>
-            </div>
-            {erros.length > 0 && <div className="banner">{erros.map((e, i) => <div key={i}>{e}</div>)}</div>}
-            {avisos.length > 0 && <div className="banner" style={{ background: 'var(--warning-soft)', color: 'var(--warning)' }}>{avisos.map((a, i) => <div key={i}>{a}</div>)}</div>}
-            {erroAcao && <div className="banner">{erroAcao}</div>}
-
-            <div className="row" style={{ gap: 16, alignItems: 'flex-start' }}>
-              <div style={{ flex: 3, minWidth: 0 }}>
-                <Campo titulo={t('Contexto — pessoa, semana, notas')} ajuda={t('Notas de 1 a 5 (vazio = N). O avaliador sai no cabeçalho do arquivo.')}>
-                  <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                    <input style={{ ...inputStyle, flex: 1 }} value={form.personName} disabled={travado} onChange={(e) => set('personName', e.target.value)} placeholder={t('Pessoa')} />
-                    <input type="date" value={form.periodStart || ''} disabled={travado} onChange={(e) => set('periodStart', e.target.value)} />
-                    <input type="date" value={form.periodEnd || ''} disabled={travado} onChange={(e) => set('periodEnd', e.target.value)} />
-                  </div>
-                  <div className="row" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                    <label className="muted" style={{ fontSize: 12 }}>{t('Técnica')} <input type="number" min="1" max="5" style={{ width: 60 }} value={form.techScore ?? ''} disabled={travado} onChange={(e) => set('techScore', e.target.value === '' ? null : Number(e.target.value))} /></label>
-                    <label className="muted" style={{ fontSize: 12 }}>{t('Comportamental')} <input type="number" min="1" max="5" style={{ width: 60 }} value={form.softScore ?? ''} disabled={travado} onChange={(e) => set('softScore', e.target.value === '' ? null : Number(e.target.value))} /></label>
-                    <input style={{ ...inputStyle, flex: 1 }} value={form.evaluator || ''} disabled={travado} onChange={(e) => set('evaluator', e.target.value)} placeholder={t('Avaliador')} />
-                  </div>
-                </Campo>
-
-                <Campo titulo={t('Em uma frase (obrigatório, até 200 caracteres)')} ajuda={HELP.frase}>
-                  <input style={inputStyle} maxLength={200} value={form.summaryOneLine || ''} disabled={travado} onChange={(e) => set('summaryOneLine', e.target.value)} placeholder={t('Resumo da semana em uma frase')} />
-                  <div className="muted" style={{ fontSize: 10 }}>{(form.summaryOneLine || '').length}/200</div>
-                </Campo>
-
-                <Campo titulo={t('Fatos — o que / PR ou card / evidência')} ajuda={HELP.fatos}>
-                  {fatos.map((f, i) => (
-                    <div key={i} className="row" style={{ gap: 4, marginBottom: 4 }}>
-                      <input style={{ ...inputStyle, flex: 2 }} value={f.what} disabled={travado} onChange={(e) => { const c = [...fatos]; c[i] = { ...c[i], what: e.target.value }; setFatos(c) }} placeholder={t('O que')} />
-                      <input style={{ ...inputStyle, flex: 1 }} value={f.ref} disabled={travado} onChange={(e) => { const c = [...fatos]; c[i] = { ...c[i], ref: e.target.value }; setFatos(c) }} placeholder={t('PR ou card')} />
-                      <input style={{ ...inputStyle, flex: 2 }} value={f.evidence} disabled={travado} onChange={(e) => { const c = [...fatos]; c[i] = { ...c[i], evidence: e.target.value }; setFatos(c) }} placeholder={t('Evidência')} />
-                      {!travado && (
-                        <button className="danger sm" title={t('Remover')} onClick={() => setFatos(fatos.filter((_, j) => j !== i))}>
-                          <Icon name="close" size={13} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  {!travado && <button className="ghost sm" onClick={() => setFatos([...fatos, { what: '', ref: '', evidence: '' }])}>+ {t('Adicionar linha')}</button>}
-                </Campo>
-
-                <Campo titulo={t('Como aparece no código')} ajuda={HELP.codigo}>
-                  <textarea rows={3} style={inputStyle} value={form.codeMd || ''} disabled={travado} onChange={(e) => set('codeMd', e.target.value)} />
-                </Campo>
-
-                <Campo titulo={t('Comentário final — 3 blocos (entrega / reconhecimento ou atenção / próximos passos)')} ajuda={t('Terceira pessoa, frases curtas, sem jargão. Um único ponto de atenção ou um reconhecimento.')}>
-                  <div className="muted" style={{ fontSize: 11, marginBottom: 2 }}>1. {t('Entrega')} — {HELP.p1}</div>
-                  <textarea rows={3} style={inputStyle} value={blocos[0]} disabled={travado} onChange={(e) => setBlocos([e.target.value, blocos[1], blocos[2]])} />
-                  <div className="muted" style={{ fontSize: 11, margin: '6px 0 2px' }}>2. {t('Reconhecimento ou atenção')} — {HELP.p2}</div>
-                  <textarea rows={3} style={inputStyle} value={blocos[1]} disabled={travado} onChange={(e) => setBlocos([blocos[0], e.target.value, blocos[2]])} />
-                  <div className="muted" style={{ fontSize: 11, margin: '6px 0 2px' }}>3. {t('Próximos passos')} — {HELP.p3}</div>
-                  <textarea rows={3} style={inputStyle} value={blocos[2]} disabled={travado} onChange={(e) => setBlocos([blocos[0], blocos[1], e.target.value])} />
-                </Campo>
-
-                <Campo titulo={t('Evidências internas (não vão para o formulário)')} ajuda={HELP.evidencias}>
-                  <textarea rows={3} style={inputStyle} value={form.evidenceMd || ''} disabled={travado} onChange={(e) => set('evidenceMd', e.target.value)} />
-                </Campo>
-
-                <Campo titulo={t('Próxima semana (proposta)')} ajuda={HELP.proxima}>
-                  <textarea rows={2} style={inputStyle} value={form.nextWeekMd || ''} disabled={travado} onChange={(e) => set('nextWeekMd', e.target.value)} placeholder={t('Um foco por linha')} />
-                </Campo>
-
-                {mostraPrevia && (
-                  <div className="card card-tight" style={{ marginTop: 8 }}>
-                    <div className="section-title">{t('Pré-visualização do .md')}</div>
-                    <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, marginTop: 6 }}>{previa}</pre>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <div className="card" style={{ marginBottom: 8 }}>
-                  <div className="section-title">{t('Histórico — nota anterior')}</div>
-                  {historico.anterior ? (
-                    <div style={{ fontSize: 12, marginTop: 4 }}>
-                      <div>{t('Anterior')}: {historico.anterior.periodStart}–{historico.anterior.periodEnd} · {historico.anterior.techScore ?? 'N'}·{t('téc')} / {historico.anterior.softScore ?? 'N'}·{t('comp')}</div>
-                      {historico.repetidos.length > 0 && (
-                        <div className="muted" style={{ marginTop: 4 }}>{t('Pontos que se repetem')}: {historico.repetidos.join(', ')}</div>
-                      )}
-                    </div>
-                  ) : <div className="muted" style={{ fontSize: 12 }}>{t('Sem review anterior desta pessoa.')}</div>}
-                  {historico.lista.length > 1 && (
-                    <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>
-                      {historico.lista.filter((r) => r.id !== form.id).slice(0, 5).map((r) => (
-                        <div key={r.id} style={{ cursor: 'pointer' }} onClick={() => abrir(r)}>
-                          • {r.periodStart}–{r.periodEnd} · {r.techScore ?? 'N'}/{r.softScore ?? 'N'} ·{' '}
-                          <span className={r.status === 'SENT' ? 'chip success' : 'chip'}>
-                            {r.status === 'SENT' ? t('Enviado') : t('Rascunho')}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="card">
-                  <div className="section-title">{t('Cards da pessoa no período')}</div>
-                  <div className="muted" style={{ fontSize: 11, margin: '2px 0 6px' }}>{t('Só para referência — clique para copiar o código.')}</div>
-                  {cardsPessoa.slice(0, 12).map((tk) => (
-                    <div key={tk.id} style={{ fontSize: 12, cursor: 'pointer', padding: '2px 0' }} title={t('Copiar código')}
-                      onClick={() => { try { navigator.clipboard.writeText(tk.code || String(tk.id)) } catch {} }}>
-                      <b>{tk.code}</b> · {tk.title} <span className="muted">({tk.colName})</span>
-                    </div>
-                  ))}
-                  {cardsPessoa.length === 0 && <div className="muted" style={{ fontSize: 12 }}>{t('Nenhum card no período.')}</div>}
-                  {cardsPessoa.length > 12 && <div className="muted" style={{ fontSize: 11 }}>+{cardsPessoa.length - 12}…</div>}
-                </div>
-              </div>
-            </div>
+  if (!projeto) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title={t('Reviews semanais')}
+          description={t('avaliação por pessoa, no formato do vault.')}
+        />
+        {erro ? (
+          <div role="alert" className={ERRO_CLASSE}>{erro}</div>
+        ) : (
+          <div className="space-y-3" aria-busy="true">
+            <Skeleton h="h-10" />
+            <Skeleton h="h-64" />
           </div>
         )}
       </div>
+    )
+  }
+  const travado = form && form.status !== 'DRAFT'
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Reviews semanais')}
+        description={`${projeto.key} · ${projeto.name} — ${t('avaliação por pessoa, no formato do vault.')}`}
+      />
+
+      {erro && <div role="alert" className={ERRO_CLASSE}>{erro}</div>}
+
+      <Toolbar
+        actions={(
+          <>
+            <Button onClick={novo} loading={criando}>+ {t('Novo review')}</Button>
+            <span className="text-xs text-fg-muted" aria-live="polite">
+              {salvando ? t('Salvando rascunho…') : salvoEm ? tf('Rascunho salvo às {h}', { h: salvoEm }) : ''}
+            </span>
+          </>
+        )}
+      >
+        <div className="w-48">
+          <Select
+            value={filtroPessoa || 'all'}
+            onValueChange={(v) => aplicarFiltros(v === 'all' ? '' : v, filtroStatus)}
+            ariaLabel={t('Todas as pessoas')}
+            options={[
+              { value: 'all', label: t('Todas as pessoas') },
+              ...nomes.map((n) => ({ value: n, label: n })),
+            ]}
+          />
+        </div>
+        <div className="w-40">
+          <Select
+            value={filtroStatus || 'all'}
+            onValueChange={(v) => aplicarFiltros(filtroPessoa, v === 'all' ? '' : v)}
+            ariaLabel={t('Todos os status')}
+            options={[
+              { value: 'all', label: t('Todos os status') },
+              { value: 'DRAFT', label: t('Rascunho') },
+              { value: 'SENT', label: t('Enviado') },
+            ]}
+          />
+        </div>
+      </Toolbar>
+
+      <DataTable
+        columns={[
+          {
+            key: 'person',
+            header: t('Pessoa'),
+            render: (r) => <span className="font-medium text-fg">{r.personName}</span>,
+          },
+          {
+            key: 'period',
+            header: t('Período'),
+            hideOnMobile: true,
+            render: (r) => <span className="tabular-nums text-fg-muted">{r.periodStart}–{r.periodEnd}</span>,
+          },
+          {
+            key: 'scores',
+            header: t('Notas'),
+            hideOnMobile: true,
+            render: (r) => (
+              <span className="tabular-nums text-fg-muted">
+                {r.techScore ?? 'N'}·{t('téc')} / {r.softScore ?? 'N'}·{t('comp')}
+              </span>
+            ),
+          },
+          {
+            key: 'status',
+            header: t('Status'),
+            align: 'right',
+            render: (r) => (
+              <Badge variant={r.status === 'SENT' ? 'success' : 'neutral'}>
+                {r.status === 'SENT' ? t('Enviado') : t('Rascunho')}
+              </Badge>
+            ),
+          },
+        ]}
+        rows={reviews}
+        rowKey={(r) => r.id}
+        onRowClick={abrir}
+        loading={carregandoLista}
+        empty={<EmptyState title={t('Nenhum review.')} />}
+      />
+
+      {form && (
+        <Card padding="lg" className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-lg font-semibold text-fg">
+                {form.personName} · {form.periodStart}–{form.periodEnd}
+              </h2>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <Badge variant={form.status === 'SENT' ? 'success' : 'neutral'}>
+                  {form.status === 'SENT' ? t('Enviado') : t('Rascunho')}
+                </Badge>
+                {salvando && <span className="text-xs text-fg-muted">{t('Salvando rascunho…')}</span>}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {form.status === 'DRAFT' ? (
+                <Button
+                  onClick={enviar}
+                  loading={enviando}
+                  disabled={erros.length > 0}
+                  title={erros.join('\n')}
+                >
+                  {t('Marcar como enviado')}
+                </Button>
+              ) : (
+                <Button variant="secondary" onClick={reabrir} loading={reabrindo}>{t('Reabrir rascunho')}</Button>
+              )}
+              <Button
+                variant="secondary"
+                onClick={duplicar}
+                loading={duplicando}
+                title={t('Copia notas e estrutura para a próxima semana')}
+              >
+                {t('Duplicar da semana anterior')}
+              </Button>
+              <Button
+                as="a"
+                variant="secondary"
+                href={reviewExportUrl(projeto.id, form.id)}
+                target="_blank"
+                rel="noreferrer"
+                disabled={erros.length > 0}
+                title={erros.join('\n') || t('Baixa o .md no formato do vault')}
+              >
+                {t('Exportar .md')}
+              </Button>
+              <Button variant="ghost" onClick={verPrevia} loading={carregandoPrevia}>{t('Pré-visualizar')}</Button>
+            </div>
+          </div>
+
+          {erros.length > 0 && (
+            <div role="alert" className={ERRO_CLASSE}>
+              {erros.map((e, i) => <div key={i}>{e}</div>)}
+            </div>
+          )}
+          {avisos.length > 0 && (
+            <div role="status" className={AVISO_CLASSE}>
+              {avisos.map((a, i) => <div key={i}>{a}</div>)}
+            </div>
+          )}
+          {erroAcao && <div role="alert" className={ERRO_CLASSE}>{erroAcao}</div>}
+
+          <div className="grid gap-6 xl:grid-cols-3">
+            <div className="space-y-5 xl:col-span-2">
+              <section className="space-y-2">
+                <h3 className="text-sm font-semibold text-fg">{t('Contexto — pessoa, semana, notas')}</h3>
+                <p className="text-xs text-fg-muted">
+                  {t('Notas de 1 a 5 (vazio = N). O avaliador sai no cabeçalho do arquivo.')}
+                </p>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <Field label={t('Pessoa')}>
+                    <Input
+                      value={form.personName}
+                      disabled={travado}
+                      onChange={(e) => set('personName', e.target.value)}
+                      placeholder={t('Pessoa')}
+                    />
+                  </Field>
+                  <Field label={t('Início')}>
+                    <Input
+                      type="date"
+                      value={form.periodStart || ''}
+                      disabled={travado}
+                      onChange={(e) => set('periodStart', e.target.value)}
+                    />
+                  </Field>
+                  <Field label={t('Fim')}>
+                    <Input
+                      type="date"
+                      value={form.periodEnd || ''}
+                      disabled={travado}
+                      onChange={(e) => set('periodEnd', e.target.value)}
+                    />
+                  </Field>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <Field label={t('Técnica')}>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="5"
+                      value={form.techScore ?? ''}
+                      disabled={travado}
+                      onChange={(e) => set('techScore', e.target.value === '' ? null : Number(e.target.value))}
+                    />
+                  </Field>
+                  <Field label={t('Comportamental')}>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="5"
+                      value={form.softScore ?? ''}
+                      disabled={travado}
+                      onChange={(e) => set('softScore', e.target.value === '' ? null : Number(e.target.value))}
+                    />
+                  </Field>
+                  <Field label={t('Avaliador')}>
+                    <Input
+                      value={form.evaluator || ''}
+                      disabled={travado}
+                      onChange={(e) => set('evaluator', e.target.value)}
+                      placeholder={t('Avaliador')}
+                    />
+                  </Field>
+                </div>
+              </section>
+
+              <Field
+                label={t('Em uma frase (obrigatório, até 200 caracteres)')}
+                hint={HELP.frase}
+                counter={`${(form.summaryOneLine || '').length}/200`}
+              >
+                <Input
+                  maxLength={200}
+                  value={form.summaryOneLine || ''}
+                  disabled={travado}
+                  onChange={(e) => set('summaryOneLine', e.target.value)}
+                  placeholder={t('Resumo da semana em uma frase')}
+                />
+              </Field>
+
+              <section className="space-y-2">
+                <h3 className="text-sm font-semibold text-fg">{t('Fatos — o que / PR ou card / evidência')}</h3>
+                <p className="text-xs text-fg-muted">{HELP.fatos}</p>
+                {fatos.map((f, i) => (
+                  <div key={i} className="grid gap-2 sm:grid-cols-6">
+                    <div className="sm:col-span-2">
+                      <Input
+                        value={f.what}
+                        disabled={travado}
+                        onChange={(e) => { const c = [...fatos]; c[i] = { ...c[i], what: e.target.value }; setFatos(c) }}
+                        placeholder={t('O que')}
+                        aria-label={t('O que')}
+                      />
+                    </div>
+                    <div className="sm:col-span-1">
+                      <Input
+                        value={f.ref}
+                        disabled={travado}
+                        onChange={(e) => { const c = [...fatos]; c[i] = { ...c[i], ref: e.target.value }; setFatos(c) }}
+                        placeholder={t('PR ou card')}
+                        aria-label={t('PR ou card')}
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Input
+                        value={f.evidence}
+                        disabled={travado}
+                        onChange={(e) => { const c = [...fatos]; c[i] = { ...c[i], evidence: e.target.value }; setFatos(c) }}
+                        placeholder={t('Evidência')}
+                        aria-label={t('Evidência')}
+                      />
+                    </div>
+                    {!travado && (
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        iconOnly
+                        aria-label={t('Remover')}
+                        title={t('Remover')}
+                        onClick={() => setFatos(fatos.filter((_, j) => j !== i))}
+                      >
+                        <Icon name="close" size={14} />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {!travado && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setFatos([...fatos, { what: '', ref: '', evidence: '' }])}
+                  >
+                    + {t('Adicionar linha')}
+                  </Button>
+                )}
+              </section>
+
+              <Field label={t('Como aparece no código')} hint={HELP.codigo}>
+                <Textarea
+                  rows={3}
+                  value={form.codeMd || ''}
+                  disabled={travado}
+                  onChange={(e) => set('codeMd', e.target.value)}
+                />
+              </Field>
+
+              <section className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-fg">
+                    {t('Comentário final — 3 blocos (entrega / reconhecimento ou atenção / próximos passos)')}
+                  </h3>
+                  <p className="text-xs text-fg-muted">
+                    {t('Terceira pessoa, frases curtas, sem jargão. Um único ponto de atenção ou um reconhecimento.')}
+                  </p>
+                </div>
+                <Field label={`1. ${t('Entrega')}`} hint={HELP.p1}>
+                  <Textarea
+                    rows={3}
+                    value={blocos[0]}
+                    disabled={travado}
+                    onChange={(e) => setBlocos([e.target.value, blocos[1], blocos[2]])}
+                  />
+                </Field>
+                <Field label={`2. ${t('Reconhecimento ou atenção')}`} hint={HELP.p2}>
+                  <Textarea
+                    rows={3}
+                    value={blocos[1]}
+                    disabled={travado}
+                    onChange={(e) => setBlocos([blocos[0], e.target.value, blocos[2]])}
+                  />
+                </Field>
+                <Field label={`3. ${t('Próximos passos')}`} hint={HELP.p3}>
+                  <Textarea
+                    rows={3}
+                    value={blocos[2]}
+                    disabled={travado}
+                    onChange={(e) => setBlocos([blocos[0], blocos[1], e.target.value])}
+                  />
+                </Field>
+              </section>
+
+              <Field label={t('Evidências internas (não vão para o formulário)')} hint={HELP.evidencias}>
+                <Textarea
+                  rows={3}
+                  value={form.evidenceMd || ''}
+                  disabled={travado}
+                  onChange={(e) => set('evidenceMd', e.target.value)}
+                />
+              </Field>
+
+              <Field label={t('Próxima semana (proposta)')} hint={HELP.proxima}>
+                <Textarea
+                  rows={2}
+                  value={form.nextWeekMd || ''}
+                  disabled={travado}
+                  onChange={(e) => set('nextWeekMd', e.target.value)}
+                  placeholder={t('Um foco por linha')}
+                />
+              </Field>
+            </div>
+
+            <aside className="space-y-4">
+              <Card variant="flat">
+                <CardHeader title={t('Histórico — nota anterior')} />
+                {historico.anterior ? (
+                  <div className="mt-3 space-y-2 text-sm text-fg">
+                    <p className="tabular-nums">
+                      {t('Anterior')}: {historico.anterior.periodStart}–{historico.anterior.periodEnd} · {historico.anterior.techScore ?? 'N'}·{t('téc')} / {historico.anterior.softScore ?? 'N'}·{t('comp')}
+                    </p>
+                    {historico.repetidos.length > 0 && (
+                      <p className="text-xs text-fg-muted">
+                        {t('Pontos que se repetem')}: {historico.repetidos.join(', ')}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-fg-muted">{t('Sem review anterior desta pessoa.')}</p>
+                )}
+                {historico.lista.length > 1 && (
+                  <div className="mt-3 space-y-1 border-t border-border pt-3">
+                    {historico.lista.filter((r) => r.id !== form.id).slice(0, 5).map((r) => (
+                      <Button
+                        key={r.id}
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        onClick={() => abrir(r)}
+                      >
+                        <span className="min-w-0 flex-1 truncate text-left tabular-nums">
+                          {r.periodStart}–{r.periodEnd} · {r.techScore ?? 'N'}/{r.softScore ?? 'N'}
+                        </span>
+                        <Badge variant={r.status === 'SENT' ? 'success' : 'neutral'}>
+                          {r.status === 'SENT' ? t('Enviado') : t('Rascunho')}
+                        </Badge>
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </Card>
+
+              <Card variant="flat">
+                <CardHeader
+                  title={t('Cards da pessoa no período')}
+                  description={t('Só para referência — clique para copiar o código.')}
+                />
+                {cardsPessoa.length === 0 ? (
+                  <p className="mt-3 text-sm text-fg-muted">{t('Nenhum card no período.')}</p>
+                ) : (
+                  <div className="mt-2 space-y-1">
+                    {cardsPessoa.slice(0, 12).map((tk) => (
+                      <Button
+                        key={tk.id}
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start"
+                        title={t('Copiar código')}
+                        onClick={() => copiarCodigo(tk)}
+                      >
+                        <Badge className="shrink-0">{tk.code}</Badge>
+                        <span className="min-w-0 flex-1 truncate text-left">{tk.title}</span>
+                        <span className="shrink-0 text-xs text-fg-muted">({tk.colName})</span>
+                      </Button>
+                    ))}
+                    {cardsPessoa.length > 12 && (
+                      <p className="text-xs text-fg-muted">+{cardsPessoa.length - 12}…</p>
+                    )}
+                  </div>
+                )}
+              </Card>
+            </aside>
+          </div>
+        </Card>
+      )}
+
+      <Dialog
+        open={mostraPrevia}
+        onOpenChange={setMostraPrevia}
+        title={t('Pré-visualização do .md')}
+        size="xl"
+        footer={<Button onClick={() => setMostraPrevia(false)}>{t('Fechar')}</Button>}
+      >
+        <pre className="whitespace-pre-wrap text-sm text-fg">{previa}</pre>
+      </Dialog>
     </div>
   )
 }

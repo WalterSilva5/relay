@@ -13,6 +13,10 @@ import {
 } from '../api'
 import { t } from '../i18n'
 import Icon from '../components/Icon'
+import {
+  Button, Card, Chip, DataTable, EmptyState, Field, Input, PageHeader, Progress, SectionTitle,
+  Select, Spinner, Textarea, Toolbar,
+} from '../ui'
 
 const TEXT_ACTIONS = ['explain', 'exercises', 'quiz', 'flashcards']
 const TOPIC_REQUIRED = [...TEXT_ACTIONS, 'diagnose']
@@ -37,6 +41,9 @@ const STATUS_LABELS = {
   PULADO: 'Pulado',
 }
 
+const categoryLabel = (c) => t(CATEGORY_LABELS[c] || c)
+const statusLabel = (s) => t(STATUS_LABELS[s] || s)
+
 export default function Estudos() {
   const [plans, setPlans] = useState([])
   const [title, setTitle] = useState('')
@@ -53,6 +60,7 @@ export default function Estudos() {
   const fileRef = useRef(null)
   const [attachedFiles, setAttachedFiles] = useState([])
   const [creating, setCreating] = useState(false)
+  const [addingTopic, setAddingTopic] = useState(false)
 
   // Assistente de estudo (aplica-se ao plano expandido)
   const [assistTopic, setAssistTopic] = useState('')
@@ -319,7 +327,8 @@ export default function Estudos() {
   }
 
   const onAddTopic = async (planId) => {
-    if (!topicTitle.trim()) return
+    if (!topicTitle.trim() || addingTopic) return
+    setAddingTopic(true)
     try {
       await addTopic(planId, { title: topicTitle.trim(), weight: 1 })
       setTopicTitle('')
@@ -328,6 +337,8 @@ export default function Estudos() {
       load()
     } catch (e) {
       setError(e.response?.data?.detail || String(e.message || e))
+    } finally {
+      setAddingTopic(false)
     }
   }
 
@@ -342,311 +353,395 @@ export default function Estudos() {
     }
   }
 
+  // Opções montadas no render para o t() refletir o idioma já carregado.
+  const categoryOptions = CATEGORIES.map((c) => ({ value: c, label: categoryLabel(c) }))
+  const statusOptions = STATUSES.map((s) => ({ value: s, label: statusLabel(s) }))
+
   return (
-    <div>
-      <h1 className="page-title">{t("Estudos")}</h1>
-      <p className="subtitle">{t("Planos de estudo e acompanhamento de tópicos.")}</p>
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Estudos')}
+        description={t('Planos de estudo e acompanhamento de tópicos.')}
+      />
 
-      {error && <div className="banner">{error}</div>}
+      {error && (
+        <div role="alert" className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+          {error}
+        </div>
+      )}
 
-      <div className="toolbar" style={{ flexWrap: 'wrap' }}>
-        <input
-          placeholder={t("Título do plano")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <select value={category} onChange={(e) => setCategory(e.target.value)}>
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {t(CATEGORY_LABELS[c] || c)}
-            </option>
-          ))}
-        </select>
-        <input
-          placeholder={t("Descrição (opcional)")}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <input
-          placeholder={t("Vault dos docs (pasta, opcional)")}
-          value={vaultNew}
-          onChange={(e) => setVaultNew(e.target.value)}
-          title={t("Pasta onde os docs gerados pelo assistente serão salvos")}
-        />
+      <Card>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Field label={t('Título do plano')}>
+            <Input
+              placeholder={t('Título do plano')}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </Field>
+          <Field label={t('Categoria')}>
+            <Select
+              value={category}
+              onValueChange={setCategory}
+              options={categoryOptions}
+              ariaLabel={t('Categoria')}
+            />
+          </Field>
+          <Field label={t('Descrição (opcional)')}>
+            <Input
+              placeholder={t('Descrição (opcional)')}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </Field>
+          <Field label={t('Vault dos docs (pasta, opcional)')} hint={t('Pasta onde os docs gerados pelo assistente serão salvos')}>
+            <Input
+              placeholder={t('Vault dos docs (pasta, opcional)')}
+              title={t('Pasta onde os docs gerados pelo assistente serão salvos')}
+              value={vaultNew}
+              onChange={(e) => setVaultNew(e.target.value)}
+            />
+          </Field>
+        </div>
+
         <input
           ref={fileRef}
           type="file"
           multiple
           accept=".txt,.md,.markdown,.pdf,.docx,.epub"
-          style={{ display: 'none' }}
+          className="hidden"
           onChange={onPickFiles}
         />
-        <button className="ghost row" onClick={() => fileRef.current?.click()}>
-          <Icon name="plus" size={14} /> {t('📎 Anexar arquivos').replace('📎 ', '')}
-        </button>
-        <button disabled={creating} onClick={onCreatePlan}>
-          {creating ? t('Criando...') : t('+ Criar plano')}
-        </button>
-      </div>
 
-      {attachedFiles.length > 0 && (
-        <div className="muted" style={{ marginBottom: 6 }}>
-          {t('Anexos (usados como contexto):')}{' '}
-          {attachedFiles.map((f, i) => (
-            <span key={i} className="chip" style={{ marginRight: 6 }}>
-              {f.name}{' '}
-              <a style={{ cursor: 'pointer' }} onClick={() => removeAttached(i)}><Icon name="close" size={12} /></a>
-            </span>
-          ))}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => fileRef.current?.click()}>
+            <Icon name="plus" size={14} /> {t('📎 Anexar arquivos').replace('📎 ', '')}
+          </Button>
+          <Button onClick={onCreatePlan} loading={creating} disabled={creating}>
+            {creating ? t('Criando...') : t('+ Criar plano')}
+          </Button>
         </div>
-      )}
-      {creating && attachedFiles.length > 0 && (
-        <div className="muted" style={{ marginBottom: 10 }}>
-          {t('Lendo os arquivos e montando os tópicos com IA — pode levar alguns segundos.')}
-        </div>
-      )}
 
-      {plans.map((p) => (
-        <div key={p.id} className="card">
-          <div className="row" onClick={() => onToggle(p.id)} style={{ cursor: 'pointer' }}>
-            <div>
-              <strong>{p.title}</strong>
-              <span className="muted"> · {t(CATEGORY_LABELS[p.category] || p.category)}</span>
-            </div>
-            <span className="muted">
-              {p.doneTopics}/{p.totalTopics}
-            </span>
-          </div>
-
-          <div className="progress" style={{ marginTop: 8 }}>
-            <span style={{ width: `${p.progress}%` }} />
-          </div>
-          <div className="muted" style={{ marginTop: 4 }}>
-            {p.progress}% · {t(STATUS_LABELS[p.status] || p.status)}
-          </div>
-
-          {expandedId === p.id && (
-            <div style={{ marginTop: 12 }}>
-              {topics.map((tp) => (
-                <div key={tp.id} className="row">
-                  <span>{tp.title}</span>
-                  <span className="row" style={{ gap: 8 }}>
-                    <select
-                      value={tp.status}
-                      onChange={(e) => onChangeStatus(tp.id, e.target.value, p.id)}
-                    >
-                      {STATUSES.map((s) => (
-                        <option key={s} value={s}>
-                          {t(STATUS_LABELS[s] || s)}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="muted">
-                      {tp.loggedHours}h / {tp.estimateHours}h
-                    </span>
-                  </span>
-                </div>
-              ))}
-              {topics.length === 0 && <div className="muted">{t("Nenhum tópico ainda.")}</div>}
-
-              <div className="toolbar" style={{ marginTop: 8 }}>
-                <input
-                  placeholder={t("Novo tópico")}
-                  value={topicTitle}
-                  onChange={(e) => setTopicTitle(e.target.value)}
-                />
-                <button className="ghost" onClick={() => onAddTopic(p.id)}>
-                  {t("+ Adicionar tópico")}
+        {attachedFiles.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-fg-muted">
+            <span>{t('Anexos (usados como contexto):')}</span>
+            {attachedFiles.map((f, i) => (
+              <Chip key={i}>
+                {f.name}
+                <button
+                  type="button"
+                  aria-label={`${t('Excluir')} ${f.name}`}
+                  onClick={() => removeAttached(i)}
+                  className="ml-1 inline-flex items-center rounded-full text-fg-muted hover:text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+                >
+                  <Icon name="close" size={12} />
                 </button>
-              </div>
+              </Chip>
+            ))}
+          </div>
+        )}
 
-              {/* Assistente de estudo (sob demanda) */}
-              <div
-                style={{
-                  marginTop: 14,
-                  paddingTop: 12,
-                  borderTop: '1px solid var(--border)',
-                }}
+        {creating && attachedFiles.length > 0 && (
+          <p className="mt-3 text-sm text-fg-muted">
+            {t('Lendo os arquivos e montando os tópicos com IA — pode levar alguns segundos.')}
+          </p>
+        )}
+      </Card>
+
+      {plans.map((p) => {
+        const expanded = expandedId === p.id
+        return (
+          <Card key={p.id} padding="none">
+            <div className="space-y-3 p-4">
+              <button
+                type="button"
+                onClick={() => onToggle(p.id)}
+                aria-expanded={expanded}
+                className="flex w-full flex-wrap items-start justify-between gap-2 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
               >
-                <div className="section-title">{t("Assistente de estudo")}</div>
-                <div className="muted" style={{ margin: '4px 0 8px' }}>
-                  {t("Escolha um tópico e clique numa ação. A IA gera sob demanda.")}
-                </div>
-
-                <div className="toolbar" style={{ flexWrap: 'wrap' }}>
-                  <select value={assistTopic} onChange={(e) => setAssistTopic(e.target.value)}>
-                    <option value="">{t("— Plano inteiro —")}</option>
-                    {topics.map((tp) => (
-                      <option key={tp.id} value={tp.title}>
-                        {tp.title}
-                      </option>
-                    ))}
-                  </select>
-                  <button disabled={assistBusy} onClick={() => runAssist('explain', p)}>
-                    {t("Explicar")}
-                  </button>
-                  <button disabled={assistBusy} onClick={() => runAssist('exercises', p)}>
-                    {t("Exercícios")}
-                  </button>
-                  <button disabled={assistBusy} onClick={() => runAssist('quiz', p)}>
-                    {t("Quiz")}
-                  </button>
-                  <button disabled={assistBusy} onClick={() => runAssist('flashcards', p)}>
-                    {t("Flashcards")}
-                  </button>
-                  <button
-                    className="row"
-                    disabled={assistBusy}
-                    onClick={() => runAssist('diagnose', p)}
-                    title={t("Travou? Descobre qual pré-requisito está faltando e monta a base.")}
-                  >
-                    <Icon name="target" size={14} />
-                    {t("🧭 Diagnosticar base").replace('🧭 ', '')}
-                  </button>
-                  <button
-                    className="ghost"
-                    disabled={assistBusy}
-                    onClick={() => startRoadmap(p)}
-                  >
-                    {t("Montar roadmap")}
-                  </button>
-                </div>
-                <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
-                  {t("Para o diagnóstico, selecione o tópico e descreva onde você trava no campo de dúvida abaixo.")}
-                </div>
-
-                {roadmapQuestions && (
-                  <div className="card" style={{ marginTop: 8 }}>
-                    <strong>{t("Complemente o contexto")}</strong>
-                    <div className="muted" style={{ margin: '4px 0 8px' }}>
-                      {t("Responda para a IA montar um roadmap sob medida (deixe em branco o que não quiser responder).")}
-                    </div>
-                    {roadmapQuestions.map((q, i) => (
-                      <div key={i} style={{ marginBottom: 8 }}>
-                        <div style={{ fontSize: 13, marginBottom: 2 }}>{q}</div>
-                        <input
-                          style={{ width: '100%' }}
-                          value={roadmapAnswers[i] || ''}
-                          onChange={(e) => setRoadmapAnswers({ ...roadmapAnswers, [i]: e.target.value })}
-                        />
-                      </div>
-                    ))}
-                    <textarea
-                      placeholder={t("Outras informações relevantes (opcional)")}
-                      style={{ width: '100%', minHeight: 50 }}
-                      value={roadmapExtra}
-                      onChange={(e) => setRoadmapExtra(e.target.value)}
-                    />
-                    <div className="row" style={{ gap: 6, marginTop: 8 }}>
-                      <button disabled={assistBusy} onClick={() => generateRoadmap(p)}>
-                        {assistBusy ? t('Gerando...') : t('Gerar roadmap')}
-                      </button>
-                      <button className="ghost" disabled={assistBusy} onClick={cancelRoadmap}>
-                        {t('Cancelar')}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="toolbar" style={{ marginTop: 8 }}>
-                  <input
-                    placeholder={t("Tirar dúvida sobre o tópico... (ou descreva onde trava p/ diagnóstico)")}
-                    value={assistAsk}
-                    onChange={(e) => setAssistAsk(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && runAssist('ask', p)}
+                <span className="min-w-0">
+                  <span className="break-words text-md font-semibold text-fg">{p.title}</span>
+                  <span className="break-words text-sm text-fg-muted"> · {t(CATEGORY_LABELS[p.category] || p.category)}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  <span className="text-sm tabular-nums text-fg-muted">{p.doneTopics}/{p.totalTopics}</span>
+                  <Icon
+                    name="chevronLeft"
+                    size={16}
+                    className={`text-fg-subtle transition-transform ${expanded ? '-rotate-90' : 'rotate-180'}`}
                   />
-                  <button className="ghost" disabled={assistBusy} onClick={() => runAssist('ask', p)}>
-                    {t("Perguntar")}
-                  </button>
-                </div>
+                </span>
+              </button>
 
-                {assistBusy && <div className="muted" style={{ marginTop: 8 }}>{t("Pensando...")}</div>}
-
-                {assistSuggested.length > 0 && (
-                  <div className="card card-tight" style={{ marginTop: 8 }}>
-                    <div className="section-title">
-                      {suggestedKind === 'prereqs' ? t("Pré-requisitos sugeridos") : t("Tópicos sugeridos")}
-                    </div>
-                    {assistSuggested.map((tp, i) => (
-                      <div key={i} className="row">
-                        <span>{tp.title}</span>
-                        {tp.estimate_hours ? (
-                          <span className="muted">~{tp.estimate_hours}h</span>
-                        ) : null}
-                      </div>
-                    ))}
-                    <button style={{ marginTop: 8 }} onClick={() => addSuggested(p)}>
-                      {t("+ Adicionar ao plano")}
-                    </button>
-                  </div>
-                )}
-
-                {assistOutput && !assistBusy && (
-                  <>
-                    <div
-                      className="card card-tight"
-                      style={{ marginTop: 8, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}
-                    >
-                      {assistOutput}
-                    </div>
-                    <div className="row" style={{ gap: 6, marginTop: 8 }}>
-                      <button
-                        className="ghost"
-                        disabled={savingDoc || !p.docsPath}
-                        title={p.docsPath ? t('Salva o texto acima como .md no vault do plano') : t('Vincule o vault do plano para salvar')}
-                        onClick={() => saveOutputDoc({ ...p }, t('Estudo'))}
-                      >
-                        {savingDoc ? '…' : t('Salvar no vault')}
-                      </button>
-                      {savedDoc && (
-                        <span className="muted row" style={{ fontSize: 11 }}>
-                          <Icon name="check" size={12} /> {savedDoc}
-                        </span>
-                      )}
-                      {!p.docsPath && (
-                        <span className="muted" style={{ fontSize: 11 }}>{t('Vincule o vault abaixo para salvar.')}</span>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {/* Vault de docs do plano */}
-                <div className="card card-tight" style={{ marginTop: 8 }}>
-                  <div className="section-title">{t("Vault de estudos")}</div>
-                  <div className="muted" style={{ margin: '4px 0 8px', fontSize: 12 }}>
-                    {t("Pasta onde os docs gerados são salvos (.md).")}
-                  </div>
-                  <div className="toolbar">
-                    <input
-                      placeholder="/home/usuario/.../estudos"
-                      value={vaultPath}
-                      onChange={(e) => setVaultPath(e.target.value)}
-                      style={{ flex: 1 }}
-                    />
-                    <button className="ghost" disabled={vaultSaving} onClick={() => saveVaultPath(p)}>
-                      {vaultSaving ? '…' : t('Vincular')}
-                    </button>
-                  </div>
-                  {p.docsPath && (
-                    <div className="muted" style={{ marginTop: 4, fontSize: 11 }}>
-                      {t('Atual')}: {p.docsPath}
-                    </div>
-                  )}
-                  {planDocs.length > 0 && (
-                    <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-                      {planDocs.slice(0, 8).map((d) => (
-                        <div key={d.name} className="row"><Icon name="book" size={12} /> {d.name}</div>
-                      ))}
-                      {planDocs.length > 8 && <div>+{planDocs.length - 8}…</div>}
-                    </div>
-                  )}
-                </div>
+              <Progress value={p.progress} label={p.title} />
+              <div className="text-xs text-fg-muted">
+                {p.progress}% · {t(STATUS_LABELS[p.status] || p.status)}
               </div>
             </div>
-          )}
-        </div>
-      ))}
-      {plans.length === 0 && <div className="muted">{t("Nenhum plano de estudo ainda.")}</div>}
+
+            {expanded && (
+              <div className="space-y-4 border-t border-border p-4">
+                <DataTable
+                  dense
+                  columns={[
+                    { key: 'title', header: t('Tópico') },
+                    {
+                      key: 'status',
+                      header: t('Status'),
+                      render: (tp) => (
+                        <Select
+                          size="sm"
+                          value={tp.status}
+                          onValueChange={(v) => onChangeStatus(tp.id, v, p.id)}
+                          options={statusOptions}
+                          ariaLabel={`${t('Status')} ${tp.title}`}
+                        />
+                      ),
+                    },
+                    {
+                      key: 'hours',
+                      header: t('Horas'),
+                      align: 'right',
+                      render: (tp) => (
+                        <span className="whitespace-nowrap text-xs tabular-nums text-fg-muted">
+                          {tp.loggedHours}h / {tp.estimateHours}h
+                        </span>
+                      ),
+                    },
+                  ]}
+                  rows={topics}
+                  rowKey={(tp) => tp.id}
+                  empty={t('Nenhum tópico ainda.')}
+                />
+
+                <Toolbar
+                  actions={(
+                    <Button variant="secondary" onClick={() => onAddTopic(p.id)} loading={addingTopic} disabled={addingTopic}>
+                      {t('+ Adicionar tópico')}
+                    </Button>
+                  )}
+                >
+                  <Input
+                    className="w-full sm:w-64"
+                    placeholder={t('Novo tópico')}
+                    aria-label={t('Novo tópico')}
+                    value={topicTitle}
+                    onChange={(e) => setTopicTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && onAddTopic(p.id)}
+                  />
+                </Toolbar>
+
+                {/* Assistente de estudo (sob demanda) */}
+                <div className="space-y-3 border-t border-border pt-4">
+                  <div>
+                    <SectionTitle>{t('Assistente de estudo')}</SectionTitle>
+                    <p className="mt-1 text-sm text-fg-muted">
+                      {t('Escolha um tópico e clique numa ação. A IA gera sob demanda.')}
+                    </p>
+                  </div>
+
+                  <Toolbar>
+                    <Select
+                      className="w-full sm:w-56"
+                      value={assistTopic || '__all__'}
+                      onValueChange={(v) => setAssistTopic(v === '__all__' ? '' : v)}
+                      ariaLabel={t('Tópico')}
+                      options={[
+                        { value: '__all__', label: t('— Plano inteiro —') },
+                        ...Array.from(new Set(topics.map((tp) => tp.title).filter(Boolean)))
+                          .map((title) => ({ value: title, label: title })),
+                      ]}
+                    />
+                    <Button size="sm" disabled={assistBusy} onClick={() => runAssist('explain', p)}>
+                      {t('Explicar')}
+                    </Button>
+                    <Button size="sm" disabled={assistBusy} onClick={() => runAssist('exercises', p)}>
+                      {t('Exercícios')}
+                    </Button>
+                    <Button size="sm" disabled={assistBusy} onClick={() => runAssist('quiz', p)}>
+                      {t('Quiz')}
+                    </Button>
+                    <Button size="sm" disabled={assistBusy} onClick={() => runAssist('flashcards', p)}>
+                      {t('Flashcards')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={assistBusy}
+                      onClick={() => runAssist('diagnose', p)}
+                      title={t('Travou? Descobre qual pré-requisito está faltando e monta a base.')}
+                    >
+                      <Icon name="target" size={14} />
+                      {t('🧭 Diagnosticar base').replace('🧭 ', '')}
+                    </Button>
+                    <Button size="sm" variant="ghost" disabled={assistBusy} onClick={() => startRoadmap(p)}>
+                      {t('Montar roadmap')}
+                    </Button>
+                  </Toolbar>
+
+                  <p className="text-xs text-fg-muted">
+                    {t('Para o diagnóstico, selecione o tópico e descreva onde você trava no campo de dúvida abaixo.')}
+                  </p>
+
+                  {roadmapQuestions && (
+                    <Card variant="flat">
+                      <SectionTitle>{t('Complemente o contexto')}</SectionTitle>
+                      <p className="mt-1 text-sm text-fg-muted">
+                        {t('Responda para a IA montar um roadmap sob medida (deixe em branco o que não quiser responder).')}
+                      </p>
+                      <div className="mt-3 space-y-3">
+                        {roadmapQuestions.map((q, i) => (
+                          <Field key={i} label={q}>
+                            <Input
+                              value={roadmapAnswers[i] || ''}
+                              onChange={(e) => setRoadmapAnswers({ ...roadmapAnswers, [i]: e.target.value })}
+                            />
+                          </Field>
+                        ))}
+                        <Field label={t('Outras informações relevantes (opcional)')}>
+                          <Textarea
+                            rows={3}
+                            placeholder={t('Outras informações relevantes (opcional)')}
+                            value={roadmapExtra}
+                            onChange={(e) => setRoadmapExtra(e.target.value)}
+                          />
+                        </Field>
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <Button onClick={() => generateRoadmap(p)} loading={assistBusy} disabled={assistBusy}>
+                          {assistBusy ? t('Gerando...') : t('Gerar roadmap')}
+                        </Button>
+                        <Button variant="ghost" disabled={assistBusy} onClick={cancelRoadmap}>
+                          {t('Cancelar')}
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
+
+                  <Toolbar
+                    actions={(
+                      <Button variant="ghost" disabled={assistBusy} onClick={() => runAssist('ask', p)}>
+                        {t('Perguntar')}
+                      </Button>
+                    )}
+                  >
+                    <Input
+                      className="w-full sm:w-96"
+                      placeholder={t('Tirar dúvida sobre o tópico... (ou descreva onde trava p/ diagnóstico)')}
+                      aria-label={t('Perguntar')}
+                      value={assistAsk}
+                      onChange={(e) => setAssistAsk(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && runAssist('ask', p)}
+                    />
+                  </Toolbar>
+
+                  {assistBusy && (
+                    <p className="flex items-center gap-2 text-sm text-fg-muted">
+                      <Spinner size="xs" /> {t('Pensando...')}
+                    </p>
+                  )}
+
+                  {assistSuggested.length > 0 && (
+                    <Card variant="flat">
+                      <SectionTitle>
+                        {suggestedKind === 'prereqs' ? t('Pré-requisitos sugeridos') : t('Tópicos sugeridos')}
+                      </SectionTitle>
+                      <ul className="mt-2 divide-y divide-border">
+                        {assistSuggested.map((tp, i) => (
+                          <li key={i} className="flex items-center justify-between gap-2 py-1.5 text-sm">
+                            <span className="min-w-0 break-words">{tp.title}</span>
+                            {tp.estimate_hours ? (
+                              <span className="shrink-0 text-xs text-fg-muted">~{tp.estimate_hours}h</span>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                      <Button className="mt-3" size="sm" onClick={() => addSuggested(p)}>
+                        {t('+ Adicionar ao plano')}
+                      </Button>
+                    </Card>
+                  )}
+
+                  {assistOutput && !assistBusy && (
+                    <>
+                        <Card variant="flat">
+                          <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-fg">{assistOutput}</div>
+                        </Card>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          loading={savingDoc}
+                          disabled={savingDoc || !p.docsPath}
+                          title={p.docsPath ? t('Salva o texto acima como .md no vault do plano') : t('Vincule o vault do plano para salvar')}
+                          onClick={() => saveOutputDoc({ ...p }, t('Estudo'))}
+                        >
+                          {savingDoc ? '…' : t('Salvar no vault')}
+                        </Button>
+                        {savedDoc && (
+                          <span className="flex min-w-0 items-center gap-1 break-all text-xs text-success">
+                            <Icon name="check" size={12} /> {savedDoc}
+                          </span>
+                        )}
+                        {!p.docsPath && (
+                          <span className="text-xs text-fg-muted">{t('Vincule o vault abaixo para salvar.')}</span>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Vault de docs do plano */}
+                  <Card variant="flat">
+                    <SectionTitle>{t('Vault de estudos')}</SectionTitle>
+                    <p className="mt-1 text-xs text-fg-muted">
+                      {t('Pasta onde os docs gerados são salvos (.md).')}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Input
+                        className="w-full sm:w-80"
+                        placeholder="/home/usuario/.../estudos"
+                        aria-label={t('Vault de estudos')}
+                        value={vaultPath}
+                        onChange={(e) => setVaultPath(e.target.value)}
+                      />
+                      <Button
+                        variant="secondary"
+                        loading={vaultSaving}
+                        disabled={vaultSaving}
+                        onClick={() => saveVaultPath(p)}
+                      >
+                        {vaultSaving ? '…' : t('Vincular')}
+                      </Button>
+                    </div>
+                    {p.docsPath && (
+                      <p className="mt-2 break-all text-xs text-fg-muted">
+                        {t('Atual')}: {p.docsPath}
+                      </p>
+                    )}
+                    {planDocs.length > 0 && (
+                      <div className="mt-2 space-y-1 text-xs text-fg-muted">
+                        {planDocs.slice(0, 8).map((d) => (
+                          <div key={d.name} className="flex items-center gap-1.5">
+                            <Icon name="book" size={12} /> <span className="break-all">{d.name}</span>
+                          </div>
+                        ))}
+                        {planDocs.length > 8 && <div>+{planDocs.length - 8}…</div>}
+                      </div>
+                    )}
+                  </Card>
+                </div>
+              </div>
+            )}
+          </Card>
+        )
+      })}
+
+      {plans.length === 0 && (
+        <Card>
+          <EmptyState
+            icon={<Icon name="book" size={20} />}
+            title={t('Nenhum plano de estudo ainda.')}
+          />
+        </Card>
+      )}
     </div>
   )
 }

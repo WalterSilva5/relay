@@ -11,7 +11,22 @@ import {
   apiError,
 } from '../api'
 import { t } from '../i18n'
-import Icon from '../components/Icon'
+import {
+  Badge,
+  Button,
+  Card,
+  ConfirmDialog,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  SearchInput,
+  Select,
+  Textarea,
+  Toolbar,
+  useToast,
+} from '../ui'
+import Icon from '../components/Icon.jsx'
 
 const KINDS = [
   ['fact', 'Fato'],
@@ -21,6 +36,9 @@ const KINDS = [
   ['procedure', 'Procedimento'],
   ['context', 'Contexto'],
 ]
+
+// Radix Select não aceita item com valor vazio: o "todos" usa um sentinela.
+const TODOS = '__all__'
 
 const EMPTY = { title: '', kind: 'fact', summary: '', tags: '', importance: 0.5, content: '' }
 
@@ -34,6 +52,8 @@ export default function Memoria() {
   const [answer, setAnswer] = useState('')
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
+  const [confirmar, setConfirmar] = useState(false)
+  const toast = useToast()
 
   const load = async (kind = kindFilter, query = '') => {
     try {
@@ -102,7 +122,7 @@ export default function Memoria() {
       }
       load(kindFilter, '')
       getMemoryStats().then(setStats).catch(() => {})
-      setStatus(t('Salvo'))
+      toast({ title: t('Salvo'), tone: 'success' })
     } catch (e) {
       setStatus(apiError(e))
     } finally {
@@ -112,14 +132,18 @@ export default function Memoria() {
 
   const remove = async () => {
     if (!sel) return
-    if (!window.confirm(t('Excluir esta memória?'))) return
+    setBusy(true)
     try {
       await deleteMemoryEntry(sel)
       newEntry()
       load(kindFilter, '')
       getMemoryStats().then(setStats).catch(() => {})
+      setConfirmar(false)
     } catch (e) {
       setStatus(apiError(e))
+      setConfirmar(false)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -162,84 +186,175 @@ export default function Memoria() {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
   return (
-    <div>
-      <h1 className="page-title">{t('Memória agentic')}</h1>
-      <p className="subtitle">{t('Fatos, decisões e contexto do workspace com busca semântica para agentes e IA.')}</p>
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Memória agentic')}
+        description={t('Fatos, decisões e contexto do workspace com busca semântica para agentes e IA.')}
+      />
+
       {stats && (
-        <p className="muted">
-          {t('Total')}: {stats.total} · {t('Com embedding')}: {stats.withEmbedding}
-          {stats.byKind ? ' · ' + Object.entries(stats.byKind).map(([k, v]) => `${k}=${v}`).join(', ') : ''}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="accent">
+            {t('Total')}: {stats.total}
+          </Badge>
+          <Badge>
+            {t('Com embedding')}: {stats.withEmbedding}
+          </Badge>
+          {stats.byKind
+            ? Object.entries(stats.byKind).map(([k, v]) => (
+                <Badge key={k} variant="outline">
+                  {k}={v}
+                </Badge>
+              ))
+            : null}
+        </div>
       )}
 
-      <div className="toolbar" style={{ marginBottom: 10, alignItems: 'center' }}>
-        <input
-          style={{ flex: 1, minWidth: 200 }}
+      <Toolbar
+        actions={
+          <>
+            <Button onClick={search} disabled={busy}>
+              {t('Buscar')}
+            </Button>
+            <Button variant="secondary" onClick={ask} disabled={busy}>
+              {t('Perguntar à IA')}
+            </Button>
+          </>
+        }
+      >
+        <SearchInput
+          className="sm:w-80"
+          aria-label={t('Buscar ou perguntar à memória...')}
           placeholder={t('Buscar ou perguntar à memória...')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && search()}
         />
-        <button onClick={search} disabled={busy}>{t('Buscar')}</button>
-        <button className="ghost" onClick={ask} disabled={busy}>{t('Perguntar à IA')}</button>
-      </div>
-      {answer && <div className="card" style={{ whiteSpace: 'pre-wrap', marginBottom: 10 }}>{answer}</div>}
+      </Toolbar>
 
-      <div className="row" style={{ gap: 12, alignItems: 'stretch' }}>
-        <div style={{ flex: '0 0 280px', minWidth: 220 }}>
-          <div className="toolbar" style={{ marginBottom: 8 }}>
-            <select value={kindFilter} onChange={(e) => { setKindFilter(e.target.value); load(e.target.value, '') }}>
-              <option value="">{t('Todos os tipos')}</option>
-              {KINDS.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
-            </select>
-            <button className="ghost row" onClick={newEntry}>
-              <Icon name="plus" size={14} /> {t('Nova')}
-            </button>
-          </div>
-          <div style={{ maxHeight: 480, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {entries.map((n) => (
-              <div
-                key={n.id}
-                className="card card-tight"
-                style={{ cursor: 'pointer', borderColor: sel === n.id ? 'var(--accent)' : undefined }}
-                onClick={() => openEntry(n.id)}
+      {answer && (
+        <Card variant="flat" role="status" className="whitespace-pre-wrap text-sm text-fg">
+          {answer}
+        </Card>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="flex flex-col gap-3 lg:col-span-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <Select
+                ariaLabel={t('Todos os tipos')}
+                value={kindFilter || TODOS}
+                onValueChange={(value) => {
+                  const kind = value === TODOS ? '' : value
+                  setKindFilter(kind)
+                  load(kind, '')
+                }}
+                options={[
+                  { value: TODOS, label: t('Todos os tipos') },
+                  ...KINDS.map(([value, label]) => ({ value, label: t(label) })),
+                ]}
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-danger hover:bg-danger-soft"
+                disabled={!sel || busy}
+                onClick={() => setConfirmar(true)}
               >
-                <span className="chip">{n.kind}</span>{' '}
-                {n.title || t('(sem título)')}
-                {n.score != null && <span className="muted"> · {n.score}</span>}
-              </div>
-            ))}
-            {entries.length === 0 && <div className="muted">{t('Nada aqui ainda.')}</div>}
+                {t('Excluir selecionada')}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={newEntry}>
+                <Icon name="plus" size={14} /> {t('Nova')}
+              </Button>
+            </div>
           </div>
-          <button className="ghost" style={{ marginTop: 8 }} onClick={remove} disabled={!sel}>{t('Excluir selecionada')}</button>
-        </div>
 
-        <div style={{ flex: 1, minWidth: 260 }}>
-          <input style={{ width: '100%', marginBottom: 8 }} placeholder={t('Título')} value={form.title} onChange={set('title')} />
-          <div className="toolbar" style={{ marginBottom: 8 }}>
-            <select value={form.kind} onChange={set('kind')}>
-              {KINDS.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
-            </select>
-            <label className="muted">{t('Importância')}</label>
-            <input
-              type="number" min="0" max="1" step="0.1" style={{ width: 70 }}
-              value={form.importance} onChange={set('importance')}
-            />
-            <input style={{ flex: 1 }} placeholder={t('tags separadas por vírgula')} value={form.tags} onChange={set('tags')} />
+          <div className="flex max-h-96 flex-col gap-1 overflow-y-auto">
+            {entries.map((n) => (
+              <button
+                key={n.id}
+                type="button"
+                onClick={() => openEntry(n.id)}
+                aria-current={sel === n.id ? 'true' : undefined}
+                className={`flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-sm transition-colors ${
+                  sel === n.id
+                    ? 'border-accent bg-accent-soft text-fg'
+                    : 'border-transparent text-fg hover:bg-surface-2'
+                }`}
+              >
+                <Badge variant="outline">{n.kind}</Badge>
+                <span className="min-w-0 flex-1 truncate">{n.title || t('(sem título)')}</span>
+                {n.score != null && <span className="shrink-0 text-xs text-fg-subtle">{n.score}</span>}
+              </button>
+            ))}
+            {entries.length === 0 && <EmptyState className="py-6" title={t('Nada aqui ainda.')} />}
           </div>
-          <input style={{ width: '100%', marginBottom: 8 }} placeholder={t('Resumo curto (opcional)')} value={form.summary} onChange={set('summary')} />
-          <textarea
-            style={{ width: '100%', minHeight: 220 }}
-            placeholder={t('Conteúdo da memória...')}
-            value={form.content}
-            onChange={set('content')}
-          />
-          <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
-            <button onClick={save} disabled={busy}>{t('Salvar')}</button>
-            {status && <span className="muted">{status}</span>}
+
+        </Card>
+
+        <Card className="space-y-3 lg:col-span-2">
+          <Field label={t('Título')}>
+            <Input value={form.title} onChange={set('title')} />
+          </Field>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={t('Tipo')}>
+              <Select
+                value={form.kind}
+                onValueChange={(value) => setForm((f) => ({ ...f, kind: value }))}
+                options={KINDS.map(([value, label]) => ({ value, label: t(label) }))}
+              />
+            </Field>
+
+            <Field label={t('Importância')}>
+              <Input
+                type="number"
+                min="0"
+                max="1"
+                step="0.1"
+                value={form.importance}
+                onChange={set('importance')}
+              />
+            </Field>
           </div>
-        </div>
+
+          <Field label={t('tags separadas por vírgula')}>
+            <Input value={form.tags} onChange={set('tags')} />
+          </Field>
+
+          <Field label={t('Resumo curto (opcional)')}>
+            <Input value={form.summary} onChange={set('summary')} />
+          </Field>
+
+          <Field label={t('Conteúdo da memória...')}>
+            <Textarea rows={10} value={form.content} onChange={set('content')} />
+          </Field>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={save} disabled={busy}>
+              {t('Salvar')}
+            </Button>
+            {status && (
+              <p role="alert" className="text-sm text-danger">
+                {status}
+              </p>
+            )}
+          </div>
+        </Card>
       </div>
+
+      <ConfirmDialog
+        open={confirmar}
+        onOpenChange={setConfirmar}
+        title={t('Excluir esta memória?')}
+        confirmLabel={t('Excluir')}
+        tone="danger"
+        loading={busy}
+        onConfirm={remove}
+      />
     </div>
   )
 }

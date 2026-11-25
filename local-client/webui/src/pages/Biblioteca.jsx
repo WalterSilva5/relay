@@ -22,9 +22,19 @@ import {
 } from '../api'
 import { t } from '../i18n'
 import Icon from '../components/Icon'
+import {
+  Badge, Button, Card, CardHeader, Checkbox, DataTable, Field, Input,
+  PageHeader, SearchInput, SectionTitle, Select, Tabs, Textarea, Toolbar, useToast,
+} from '../ui'
 
 const EMPTY_SNIPPET = { title: '', kind: 'SNIPPET', language: '', tags: '', content: '' }
 const EMPTY_RUNBOOK = { title: '', category: '', command: '', description: '' }
+
+const ALL_KIND = [
+  { value: 'ALL', label: 'Todos' },
+  { value: 'SNIPPET', label: 'Snippet' },
+  { value: 'PROMPT', label: 'Prompt' },
+]
 
 function copy(text) {
   if (navigator.clipboard) navigator.clipboard.writeText(text || '')
@@ -36,6 +46,12 @@ function SnippetsTab() {
   const [kind, setKind] = useState('')
   const [form, setForm] = useState(EMPTY_SNIPPET)
   const [editing, setEditing] = useState(null)
+  const toast = useToast()
+
+  const kindOptions = [
+    { value: 'SNIPPET', label: t('Snippet') },
+    { value: 'PROMPT', label: t('Prompt') },
+  ]
 
   const load = () =>
     getSnippets({ ...(kind ? { kind } : {}), ...(q ? { q } : {}) }).then(setItems).catch(() => {})
@@ -55,69 +71,150 @@ function SnippetsTab() {
 
   const startEdit = (s) => {
     setEditing(s.id)
-    setForm({ title: s.title, kind: s.kind, language: s.language, tags: s.tags, content: s.content })
+    setForm({
+      title: s.title || '',
+      kind: s.kind || 'SNIPPET',
+      language: s.language || '',
+      tags: s.tags || '',
+      content: s.content || '',
+    })
+  }
+
+  const copyItem = (s) => {
+    copy(s.content)
+    useSnippet(s.id)
+    toast({ title: t('Copiado!'), tone: 'success' })
   }
 
   return (
-    <div>
-      <div className="card">
-        <div className="toolbar">
-          <input placeholder={t('Título')} value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
-            <option value="SNIPPET">{t('Snippet')}</option>
-            <option value="PROMPT">{t('Prompt')}</option>
-          </select>
-          <input placeholder={t('Linguagem (ex.: bash, python)')} value={form.language}
-            onChange={(e) => setForm({ ...form, language: e.target.value })} />
-          <input placeholder={t('Tags separadas por vírgula')} value={form.tags}
-            onChange={(e) => setForm({ ...form, tags: e.target.value })} />
+    <div className="space-y-4">
+      <Card>
+        <CardHeader title={editing ? t('Editar') : t('Novo item')} />
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Field label={t('Título')}>
+            <Input
+              placeholder={t('Título')}
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+            />
+          </Field>
+          <Field label={t('Tipo')}>
+            <Select
+              value={form.kind}
+              onValueChange={(v) => setForm({ ...form, kind: v })}
+              options={kindOptions}
+              ariaLabel={t('Tipo')}
+            />
+          </Field>
+          <Field label={t('Linguagem')}>
+            <Input
+              placeholder={t('Linguagem (ex.: bash, python)')}
+              value={form.language}
+              onChange={(e) => setForm({ ...form, language: e.target.value })}
+            />
+          </Field>
+          <Field label={t('Tags')}>
+            <Input
+              placeholder={t('Tags separadas por vírgula')}
+              value={form.tags}
+              onChange={(e) => setForm({ ...form, tags: e.target.value })}
+            />
+          </Field>
         </div>
-        <textarea rows={5} placeholder={t('Conteúdo...')} value={form.content} style={{ width: '100%', marginTop: 8 }}
-          onChange={(e) => setForm({ ...form, content: e.target.value })} />
-        <div className="row" style={{ gap: 8, marginTop: 8 }}>
-          <button onClick={save}>{editing ? t('Salvar') : t('+ Novo')}</button>
+
+        <Field label={t('Conteúdo')} className="mt-3">
+          <Textarea
+            rows={5}
+            placeholder={t('Conteúdo...')}
+            value={form.content}
+            onChange={(e) => setForm({ ...form, content: e.target.value })}
+          />
+        </Field>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button onClick={save}>{editing ? t('Salvar') : t('+ Novo')}</Button>
           {editing && (
-            <button className="ghost" onClick={() => { setEditing(null); setForm(EMPTY_SNIPPET) }}>
+            <Button variant="ghost" onClick={() => { setEditing(null); setForm(EMPTY_SNIPPET) }}>
               {t('Cancelar')}
-            </button>
+            </Button>
           )}
         </div>
-      </div>
+      </Card>
 
-      <div className="toolbar" style={{ marginTop: 16 }}>
-        <input placeholder={t('Buscar...')} value={q} onChange={(e) => setQ(e.target.value)} />
-        <select value={kind} onChange={(e) => setKind(e.target.value)}>
-          <option value="">{t('Todos')}</option>
-          <option value="SNIPPET">{t('Snippet')}</option>
-          <option value="PROMPT">{t('Prompt')}</option>
-        </select>
-      </div>
+      <Toolbar>
+        <SearchInput
+          className="w-full sm:w-64"
+          placeholder={t('Buscar...')}
+          aria-label={t('Buscar...')}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <Select
+          className="w-full sm:w-40"
+          value={kind || 'ALL'}
+          onValueChange={(v) => setKind(v === 'ALL' ? '' : v)}
+          options={ALL_KIND.map((o) => ({ ...o, label: t(o.label) }))}
+          ariaLabel={t('Tipo')}
+        />
+      </Toolbar>
 
-      <div className="card" style={{ marginTop: 12 }}>
-        {items.map((s) => (
-          <div key={s.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600 }} className="row">
-                <Icon name={s.kind === 'SNIPPET' ? 'clipboard' : 'chat'} size={13} />
-                <span>{s.title}</span>
-                <span className="muted" style={{ fontSize: 12 }}>
-                  {[s.language, s.tags].filter(Boolean).join(' · ')}
-                </span>
+      <DataTable
+        columns={[
+          {
+            key: 'title',
+            header: t('Título'),
+            render: (s) => (
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 font-medium text-fg">
+                  <Icon name={s.kind === 'SNIPPET' ? 'clipboard' : 'chat'} size={13} />
+                  <span className="truncate">{s.title}</span>
+                </div>
+                {(s.language || s.tags) && (
+                  <div className="text-xs text-fg-muted">
+                    {[s.language, s.tags].filter(Boolean).join(' · ')}
+                  </div>
+                )}
               </div>
-              <pre style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap', fontSize: 12, opacity: 0.8, maxHeight: 60, overflow: 'hidden' }}>{s.content}</pre>
-            </div>
-            <div className="row" style={{ gap: 6 }}>
-              <button onClick={() => { copy(s.content); useSnippet(s.id) }}>{t('Copiar')}</button>
-              <button className="ghost sm" title={t('Editar')} onClick={() => startEdit(s)}>✎</button>
-              <button className="danger sm" title={t('Excluir')} onClick={() => deleteSnippet(s.id).then(load)}>
-                <Icon name="close" size={13} />
-              </button>
-            </div>
-          </div>
-        ))}
-        {items.length === 0 && <div className="muted">{t('Nada aqui ainda.')}</div>}
-      </div>
+            ),
+          },
+          {
+            key: 'content',
+            header: t('Conteúdo'),
+            hideOnMobile: true,
+            render: (s) => (
+              <pre className="line-clamp-2 whitespace-pre-wrap break-words font-mono text-xs text-fg-muted">
+                {s.content}
+              </pre>
+            ),
+          },
+          {
+            key: 'actions',
+            header: '',
+            align: 'right',
+            render: (s) => (
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                <Button variant="secondary" size="sm" onClick={() => copyItem(s)}>{t('Copiar')}</Button>
+                <Button variant="ghost" size="sm" title={t('Editar')} onClick={() => startEdit(s)}>
+                  {t('Editar')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  aria-label={t('Excluir')}
+                  title={t('Excluir')}
+                  onClick={() => deleteSnippet(s.id).then(load)}
+                >
+                  <Icon name="close" size={13} />
+                </Button>
+              </div>
+            ),
+          },
+        ]}
+        rows={items}
+        rowKey={(s) => s.id}
+        empty={t('Nada aqui ainda.')}
+      />
     </div>
   )
 }
@@ -127,6 +224,7 @@ function RunbooksTab() {
   const [q, setQ] = useState('')
   const [form, setForm] = useState(EMPTY_RUNBOOK)
   const [editing, setEditing] = useState(null)
+  const toast = useToast()
 
   const load = () => getRunbooks(q ? { q } : {}).then(setItems).catch(() => {})
   useEffect(() => {
@@ -143,59 +241,127 @@ function RunbooksTab() {
   }
   const startEdit = (r) => {
     setEditing(r.id)
-    setForm({ title: r.title, category: r.category, command: r.command, description: r.description })
+    setForm({
+      title: r.title || '',
+      category: r.category || '',
+      command: r.command || '',
+      description: r.description || '',
+    })
+  }
+
+  const copyCommand = (r) => {
+    copy(r.command)
+    useRunbook(r.id)
+    toast({ title: t('Copiado!'), tone: 'success' })
   }
 
   return (
-    <div>
-      <div className="card">
-        <div className="toolbar">
-          <input placeholder={t('Título')} value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <input placeholder={t('Categoria (ex.: setup, deploy)')} value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })} />
+    <div className="space-y-4">
+      <Card>
+        <CardHeader title={editing ? t('Editar') : t('Novo item')} />
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <Field label={t('Título')}>
+            <Input
+              placeholder={t('Título')}
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+            />
+          </Field>
+          <Field label={t('Categoria')}>
+            <Input
+              placeholder={t('Categoria (ex.: setup, deploy)')}
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+            />
+          </Field>
         </div>
-        <textarea rows={2} placeholder={t('Comando(s)...')} value={form.command} style={{ width: '100%', marginTop: 8, fontFamily: 'monospace' }}
-          onChange={(e) => setForm({ ...form, command: e.target.value })} />
-        <textarea rows={2} placeholder={t('Descrição (opcional)')} value={form.description} style={{ width: '100%', marginTop: 8 }}
-          onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <div className="row" style={{ gap: 8, marginTop: 8 }}>
-          <button onClick={save}>{editing ? t('Salvar') : t('+ Novo')}</button>
+
+        <Field label={t('Comando(s)')} className="mt-3">
+          <Textarea
+            rows={2}
+            className="font-mono"
+            placeholder={t('Comando(s)...')}
+            value={form.command}
+            onChange={(e) => setForm({ ...form, command: e.target.value })}
+          />
+        </Field>
+
+        <Field label={t('Descrição (opcional)')} className="mt-3">
+          <Textarea
+            rows={2}
+            placeholder={t('Descrição (opcional)')}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+        </Field>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button onClick={save}>{editing ? t('Salvar') : t('+ Novo')}</Button>
           {editing && (
-            <button className="ghost" onClick={() => { setEditing(null); setForm(EMPTY_RUNBOOK) }}>
+            <Button variant="ghost" onClick={() => { setEditing(null); setForm(EMPTY_RUNBOOK) }}>
               {t('Cancelar')}
-            </button>
+            </Button>
           )}
         </div>
-      </div>
+      </Card>
 
-      <div className="toolbar" style={{ marginTop: 16 }}>
-        <input placeholder={t('Buscar...')} value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
+      <Toolbar>
+        <SearchInput
+          className="w-full sm:w-64"
+          placeholder={t('Buscar...')}
+          aria-label={t('Buscar...')}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </Toolbar>
 
-      <div className="card" style={{ marginTop: 12 }}>
-        {items.map((r) => (
-          <div key={r.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600 }} className="row">
-                <Icon name="settings" size={13} />
-                <span>{r.title}</span>
-                {r.category && <span className="muted" style={{ fontSize: 12 }}>{r.category}</span>}
+      <DataTable
+        columns={[
+          {
+            key: 'title',
+            header: t('Título'),
+            render: (r) => (
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-1.5 font-medium text-fg">
+                  <Icon name="settings" size={13} />
+                  <span className="truncate">{r.title}</span>
+                  {r.category && <span className="text-xs font-normal text-fg-muted">{r.category}</span>}
+                </div>
+                <code className="block break-all text-xs text-fg-muted">{r.command}</code>
+                {r.description && <p className="text-xs text-fg-muted">{r.description}</p>}
               </div>
-              <code style={{ fontSize: 12, opacity: 0.85 }}>{r.command}</code>
-              {r.description && <div className="muted" style={{ fontSize: 12 }}>{r.description}</div>}
-            </div>
-            <div className="row" style={{ gap: 6 }}>
-              <button onClick={() => { copy(r.command); useRunbook(r.id) }}>{t('Copiar comando')}</button>
-              <button className="ghost sm" title={t('Editar')} onClick={() => startEdit(r)}>✎</button>
-              <button className="danger sm" title={t('Excluir')} onClick={() => deleteRunbook(r.id).then(load)}>
-                <Icon name="close" size={13} />
-              </button>
-            </div>
-          </div>
-        ))}
-        {items.length === 0 && <div className="muted">{t('Nada aqui ainda.')}</div>}
-      </div>
+            ),
+          },
+          {
+            key: 'actions',
+            header: '',
+            align: 'right',
+            render: (r) => (
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                <Button variant="secondary" size="sm" onClick={() => copyCommand(r)}>
+                  {t('Copiar comando')}
+                </Button>
+                <Button variant="ghost" size="sm" title={t('Editar')} onClick={() => startEdit(r)}>
+                  {t('Editar')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  aria-label={t('Excluir')}
+                  title={t('Excluir')}
+                  onClick={() => deleteRunbook(r.id).then(load)}
+                >
+                  <Icon name="close" size={13} />
+                </Button>
+              </div>
+            ),
+          },
+        ]}
+        rows={items}
+        rowKey={(r) => r.id}
+        empty={t('Nada aqui ainda.')}
+      />
     </div>
   )
 }
@@ -207,6 +373,7 @@ function ImportTab() {
   const [projects, setProjects] = useState([])
   const [projectId, setProjectId] = useState('')
   const [status, setStatus] = useState('')
+  const [scanning, setScanning] = useState(false)
 
   useEffect(() => {
     getProjects().then((ps) => {
@@ -216,7 +383,8 @@ function ImportTab() {
   }, [])
 
   const scan = async () => {
-    if (!path.trim()) return
+    if (!path.trim() || scanning) return
+    setScanning(true)
     setStatus(t('Varrendo...'))
     try {
       const r = await scanTodos({ path: path.trim() })
@@ -227,6 +395,8 @@ function ImportTab() {
       setStatus(`${t('Encontrados')}: ${r.count}`)
     } catch (e) {
       setStatus(e.response?.data?.detail || String(e.message || e))
+    } finally {
+      setScanning(false)
     }
   }
 
@@ -241,38 +411,59 @@ function ImportTab() {
   }
 
   return (
-    <div>
-      <p className="subtitle">{t('Varre uma pasta por TODO/FIXME/HACK/XXX e cria tarefas no projeto escolhido.')}</p>
-      <div className="card">
-        <div className="toolbar">
-          <input style={{ flex: 1 }} placeholder={t('Pasta do repositório...')} value={path}
-            onChange={(e) => setPath(e.target.value)} />
-          <button onClick={scan}>{t('Varrer')}</button>
+    <div className="space-y-4">
+      <p className="text-sm text-fg-muted">
+        {t('Varre uma pasta por TODO/FIXME/HACK/XXX e cria tarefas no projeto escolhido.')}
+      </p>
+
+      <div className="space-y-3">
+        <Toolbar
+          actions={<Button onClick={scan} loading={scanning} disabled={scanning}>{t('Varrer')}</Button>}
+        >
+          <Input
+            className="w-full sm:w-96"
+            placeholder={t('Pasta do repositório...')}
+            aria-label={t('Pasta do repositório...')}
+            value={path}
+            onChange={(e) => setPath(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && scan()}
+          />
+        </Toolbar>
+
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label={t('Projeto:')} className="w-full sm:w-64">
+            <Select
+              value={projectId}
+              onValueChange={setProjectId}
+              ariaLabel={t('Projeto:')}
+              options={projects.map((p) => ({ value: String(p.id), label: `${p.key} — ${p.name}` }))}
+            />
+          </Field>
+          <Button onClick={doImport} disabled={!items.length}>{t('Importar selecionados')}</Button>
         </div>
-        <div className="toolbar" style={{ marginTop: 8 }}>
-          <span>{t('Projeto:')}</span>
-          <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.key} — {p.name}</option>
-            ))}
-          </select>
-          <button onClick={doImport} disabled={!items.length}>{t('Importar selecionados')}</button>
-        </div>
-        {status && <div className="muted" style={{ marginTop: 8 }}>{status}</div>}
+
+        {status && <p className="text-sm text-fg-muted">{status}</p>}
       </div>
 
       {items.length > 0 && (
-        <div className="card" style={{ marginTop: 12, maxHeight: 400, overflow: 'auto' }}>
-          {items.map((it, i) => (
-            <label key={i} className="row" style={{ gap: 8, padding: '4px 0', cursor: 'pointer' }}>
-              <input type="checkbox" checked={!!selected[i]}
-                onChange={(e) => setSelected({ ...selected, [i]: e.target.checked })} />
-              <span style={{ fontSize: 13 }}>
-                <b>[{it.marker}]</b> <span className="muted">{it.file}:{it.line}</span> — {it.text}
-              </span>
-            </label>
-          ))}
-        </div>
+        <Card padding="none" className="max-h-96 overflow-y-auto">
+          <ul className="divide-y divide-border">
+            {items.map((it, i) => (
+              <li key={i} className="px-3 py-2">
+                <Checkbox
+                  checked={!!selected[i]}
+                  onCheckedChange={(v) => setSelected({ ...selected, [i]: Boolean(v) })}
+                  label={(
+                    <span className="break-words">
+                      <Badge variant="outline">{it.marker}</Badge>{' '}
+                      <span className="text-fg-muted">{it.file}:{it.line}</span> — {it.text}
+                    </span>
+                  )}
+                />
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
     </div>
   )
@@ -294,7 +485,7 @@ function TriageTab() {
   }, [])
 
   const run = async () => {
-    if (!text.trim()) return
+    if (!text.trim() || loading) return
     setLoading(true)
     setStatus(t('Triando...'))
     setTriage(null)
@@ -320,38 +511,60 @@ function TriageTab() {
   }
 
   return (
-    <div>
-      <p className="subtitle">{t('Cole um stacktrace/relato. A IA classifica e você cria uma tarefa BUG.')}</p>
-      <div className="card">
-        <textarea rows={6} placeholder={t('Cole aqui o stacktrace ou a descrição do problema...')}
-          value={text} style={{ width: '100%', fontFamily: 'monospace' }}
-          onChange={(e) => setText(e.target.value)} />
-        <div className="row" style={{ gap: 8, marginTop: 8 }}>
-          <button onClick={run} disabled={loading}>{t('Triar com IA')}</button>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <p className="text-sm text-fg-muted">
+        {t('Cole um stacktrace/relato. A IA classifica e você cria uma tarefa BUG.')}
+      </p>
+
+      <Card>
+        <Field label={t('Relato')}>
+          <Textarea
+            rows={6}
+            className="font-mono"
+            placeholder={t('Cole aqui o stacktrace ou a descrição do problema...')}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+        </Field>
+        <Button className="mt-3" onClick={run} loading={loading} disabled={loading}>
+          {t('Triar com IA')}
+        </Button>
+      </Card>
 
       {triage && (
-        <div className="card" style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 600 }}>{triage.title}</div>
-          <div className="muted" style={{ margin: '4px 0' }}>
-            {t('Severidade')}: <b>{triage.severity}</b> · {t('Prioridade')}: <b>{triage.priority}</b>
+        <Card>
+          <h3 className="break-words text-md font-semibold text-fg">{triage.title}</h3>
+          <div className="mt-3 space-y-2 text-sm text-fg">
+            <p className="text-fg-muted">
+              {t('Severidade')}: <b className="text-fg">{triage.severity}</b> · {t('Prioridade')}:{' '}
+              <b className="text-fg">{triage.priority}</b>
+            </p>
+            {triage.summary && <p>{triage.summary}</p>}
+            {triage.probable_cause && (
+              <p><b>{t('Causa provável')}:</b> {triage.probable_cause}</p>
+            )}
+            {triage.steps?.length > 0 && (
+              <ul className="list-disc space-y-1 pl-5">
+                {triage.steps.map((s, i) => <li key={i}>{s}</li>)}
+              </ul>
+            )}
           </div>
-          {triage.summary && <div>{triage.summary}</div>}
-          {triage.probable_cause && <div style={{ marginTop: 4 }}><b>{t('Causa provável')}:</b> {triage.probable_cause}</div>}
-          {triage.steps?.length > 0 && (
-            <ul>{triage.steps.map((s, i) => <li key={i}>{s}</li>)}</ul>
-          )}
-          <div className="row" style={{ gap: 8, marginTop: 8, alignItems: 'center' }}>
-            <span>{t('Projeto:')}</span>
-            <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-              {projects.map((p) => <option key={p.id} value={p.id}>{p.key} — {p.name}</option>)}
-            </select>
-            <button onClick={createTask}>{t('Criar tarefa BUG')}</button>
+
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <Field label={t('Projeto:')} className="w-full sm:w-64">
+              <Select
+                value={projectId}
+                onValueChange={setProjectId}
+                ariaLabel={t('Projeto:')}
+                options={projects.map((p) => ({ value: String(p.id), label: `${p.key} — ${p.name}` }))}
+              />
+            </Field>
+            <Button onClick={createTask}>{t('Criar tarefa BUG')}</Button>
           </div>
-        </div>
+        </Card>
       )}
-      {status && <div className="muted" style={{ marginTop: 8 }}>{status}</div>}
+
+      {status && <p className="text-sm text-fg-muted">{status}</p>}
     </div>
   )
 }
@@ -381,48 +594,94 @@ function CodeReviewTab() {
     }
   }
 
+  const severityVariant = (severity) => {
+    if (severity === 'HIGH') return 'danger'
+    if (severity === 'MEDIUM') return 'warning'
+    return 'neutral'
+  }
+
   return (
-    <div>
-      <p className="subtitle">{t('Aponte um repositório e uma base (branch/ref). A IA revisa o diff.')}</p>
-      <div className="card">
-        <input style={{ width: '100%' }} placeholder={t('Pasta do repositório...')} value={path}
-          onChange={(e) => setPath(e.target.value)} />
-        <div className="toolbar" style={{ marginTop: 8 }}>
-          <input style={{ flex: 1 }} placeholder={t('Base (ex.: main, HEAD~1) — vazio = alterações locais')} value={base}
-            onChange={(e) => setBase(e.target.value)} />
-          <input style={{ width: 140 }} placeholder={t('Tarefa (ex.: PROJ-1)')} value={taskCode}
-            onChange={(e) => setTaskCode(e.target.value)} />
+    <div className="space-y-4">
+      <p className="text-sm text-fg-muted">
+        {t('Aponte um repositório e uma base (branch/ref). A IA revisa o diff.')}
+      </p>
+
+      <Card>
+        <Field label={t('Pasta do repositório...')}>
+          <Input
+            placeholder={t('Pasta do repositório...')}
+            value={path}
+            onChange={(e) => setPath(e.target.value)}
+          />
+        </Field>
+
+        <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <Field label={t('Base')}>
+            <Input
+              placeholder={t('Base (ex.: main, HEAD~1) — vazio = alterações locais')}
+              value={base}
+              onChange={(e) => setBase(e.target.value)}
+            />
+          </Field>
+          <Field label={t('Tarefa')}>
+            <Input
+              placeholder={t('Tarefa (ex.: PROJ-1)')}
+              value={taskCode}
+              onChange={(e) => setTaskCode(e.target.value)}
+            />
+          </Field>
         </div>
-        <div className="row" style={{ gap: 8, marginTop: 8 }}>
-          <button onClick={() => run(false)} disabled={loading}>{loading ? t('Revisando...') : t('Revisar com IA')}</button>
-          <button className="ghost" onClick={() => run(true)} disabled={loading || !taskCode.trim()}>{t('Revisar e comentar na tarefa')}</button>
-          {status && <span className="muted">{status}</span>}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button onClick={() => run(false)} loading={loading} disabled={loading}>
+            {loading ? t('Revisando...') : t('Revisar com IA')}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => run(true)}
+            disabled={loading || !taskCode.trim()}
+          >
+            {t('Revisar e comentar na tarefa')}
+          </Button>
+          {status && <span className="text-sm text-fg-muted">{status}</span>}
         </div>
-      </div>
+      </Card>
 
       {review && (
-        <div className="card" style={{ marginTop: 12, fontSize: 13 }}>
-          {review.summary && <p style={{ marginTop: 0 }}>{review.summary}</p>}
+        <Card>
+          {review.summary && <p className="text-sm text-fg">{review.summary}</p>}
+
           {review.issues?.length > 0 && (
-            <div>
-              <b>{t('Problemas')}</b>
-              <ul style={{ margin: '2px 0 8px' }}>
+            <div className="mt-3">
+              <SectionTitle>{t('Problemas')}</SectionTitle>
+              <ul className="mt-2 space-y-2 text-sm">
                 {review.issues.map((it, i) => (
-                  <li key={i}>
-                    <span className={it.severity === 'HIGH' ? 'chip danger' : it.severity === 'MEDIUM' ? 'chip warn' : 'chip'}>
-                      {it.severity}
-                    </span>{' '}
-                    {it.file && <code>{it.file}</code>} — {it.note}
+                  <li key={i} className="flex flex-wrap items-start gap-2">
+                    <Badge variant={severityVariant(it.severity)}>{it.severity}</Badge>
+                    <span className="min-w-0 break-words">
+                      {it.file && <code className="text-xs text-fg-muted">{it.file}</code>}
+                      {it.file ? ' — ' : ''}
+                      {it.note}
+                    </span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
+
           {review.suggestions?.length > 0 && (
-            <div><b>{t('Sugestões')}</b><ul style={{ margin: '2px 0' }}>{review.suggestions.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
+            <div className="mt-3">
+              <SectionTitle>{t('Sugestões')}</SectionTitle>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                {review.suggestions.map((x, i) => <li key={i}>{x}</li>)}
+              </ul>
+            </div>
           )}
-          {review.truncated && <div className="muted">{t('(diff truncado para revisão)')}</div>}
-        </div>
+
+          {review.truncated && (
+            <p className="mt-2 text-xs text-fg-muted">{t('(diff truncado para revisão)')}</p>
+          )}
+        </Card>
       )}
     </div>
   )
@@ -449,56 +708,94 @@ function GitTab() {
     }
   }
 
-  return (
+  const fileList = (title, files) => files?.length > 0 && (
     <div>
-      <p className="subtitle">{t('Estado do repositório: branch, mudanças, commits e PRs (via gh).')}</p>
-      <div className="card">
-        <div className="toolbar">
-          <input style={{ flex: 1 }} placeholder={t('Pasta do repositório...')} value={path}
-            onChange={(e) => setPath(e.target.value)} />
-          <button onClick={load} disabled={loading}>{loading ? t('Carregando...') : t('Atualizar')}</button>
-        </div>
-        {status && <div className="muted" style={{ marginTop: 8 }}>{status}</div>}
-      </div>
+      <SectionTitle>{title}</SectionTitle>
+      <ul className="mt-1 space-y-1 text-xs">
+        {files.map((x, i) => <li key={i} className="break-all"><code>{x}</code></li>)}
+      </ul>
+    </div>
+  )
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-fg-muted">
+        {t('Estado do repositório: branch, mudanças, commits e PRs (via gh).')}
+      </p>
+
+      <Card>
+        <Toolbar
+          actions={(
+            <Button onClick={load} loading={loading} disabled={loading}>
+              {loading ? t('Carregando...') : t('Atualizar')}
+            </Button>
+          )}
+        >
+          <Input
+            className="w-full sm:w-96"
+            placeholder={t('Pasta do repositório...')}
+            aria-label={t('Pasta do repositório...')}
+            value={path}
+            onChange={(e) => setPath(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && load()}
+          />
+        </Toolbar>
+        {status && <p className="mt-3 text-sm text-fg-muted">{status}</p>}
+      </Card>
 
       {st && (
-        <div className="card" style={{ marginTop: 12, fontSize: 13 }}>
-          <div className="row" style={{ gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <b className="row"><Icon name="layers" size={13} /> {st.branch}</b>
-            <span className="muted">↑{st.ahead} ↓{st.behind}</span>
-            <span className={st.clean ? 'chip success' : 'chip warn'}>
-              {st.clean ? t('Limpo') : t('Com alterações')}
+        <Card>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="flex items-center gap-1.5 font-semibold text-fg">
+              <Icon name="layers" size={13} /> {st.branch}
             </span>
+            <span className="text-sm text-fg-muted">↑{st.ahead} ↓{st.behind}</span>
+            <Badge variant={st.clean ? 'success' : 'warning'}>
+              {st.clean ? t('Limpo') : t('Com alterações')}
+            </Badge>
           </div>
 
           {(st.staged?.length > 0 || st.unstaged?.length > 0 || st.untracked?.length > 0) && (
-            <div style={{ marginTop: 8 }}>
-              {st.staged?.length > 0 && <div><b>{t('Staged')}</b><ul style={{ margin: '2px 0 6px' }}>{st.staged.map((x, i) => <li key={i}><code>{x}</code></li>)}</ul></div>}
-              {st.unstaged?.length > 0 && <div><b>{t('Não-staged')}</b><ul style={{ margin: '2px 0 6px' }}>{st.unstaged.map((x, i) => <li key={i}><code>{x}</code></li>)}</ul></div>}
-              {st.untracked?.length > 0 && <div><b>{t('Não rastreados')}</b><ul style={{ margin: '2px 0 6px' }}>{st.untracked.map((x, i) => <li key={i}><code>{x}</code></li>)}</ul></div>}
+            <div className="mt-3 space-y-3">
+              {fileList(t('Staged'), st.staged)}
+              {fileList(t('Não-staged'), st.unstaged)}
+              {fileList(t('Não rastreados'), st.untracked)}
             </div>
           )}
 
           {st.prs?.length > 0 && (
-            <div style={{ marginTop: 8 }}>
-              <b>{t('Pull requests')}</b>
-              <ul style={{ margin: '2px 0 6px' }}>
+            <div className="mt-3">
+              <SectionTitle>{t('Pull requests')}</SectionTitle>
+              <ul className="mt-1 space-y-1 text-sm">
                 {st.prs.map((p) => (
-                  <li key={p.number}><a href={p.url} target="_blank" rel="noreferrer">#{p.number}</a> {p.title} <span className="muted">({p.branch})</span></li>
+                  <li key={p.number}>
+                    <a
+                      href={p.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      #{p.number}
+                    </a>{' '}
+                    {p.title} <span className="text-xs text-fg-muted">({p.branch})</span>
+                  </li>
                 ))}
               </ul>
             </div>
           )}
 
-          <div style={{ marginTop: 8 }}>
-            <b>{t('Commits recentes')}</b>
-            <ul style={{ margin: '2px 0' }}>
+          <div className="mt-3">
+            <SectionTitle>{t('Commits recentes')}</SectionTitle>
+            <ul className="mt-1 space-y-1 text-sm">
               {st.commits.map((c, i) => (
-                <li key={i}><code>{c.hash}</code> {c.subject} <span className="muted">— {c.author}, {c.when}</span></li>
+                <li key={i} className="break-words">
+                  <code className="text-xs text-fg-muted">{c.hash}</code> {c.subject}{' '}
+                  <span className="text-xs text-fg-muted">— {c.author}, {c.when}</span>
+                </li>
               ))}
             </ul>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   )
@@ -548,46 +845,101 @@ function TimeTab() {
   }
 
   return (
-    <div>
-      <p className="subtitle">{t('Cronômetro e registro de tempo por tarefa. Total da semana e por tarefa.')}</p>
-      <div className="card">
-        <div className="toolbar">
-          <input placeholder={t('Tarefa (ex.: PROJ-1)')} value={taskCode} onChange={(e) => setTaskCode(e.target.value)} style={{ width: 140 }} />
-          <input placeholder={t('Nota (opcional)')} value={note} onChange={(e) => setNote(e.target.value)} style={{ flex: 1 }} />
-        </div>
-        <div className="row" style={{ gap: 12, marginTop: 10, alignItems: 'center' }}>
-          <span style={{ fontSize: 24, fontFamily: 'monospace' }}>{fmtDur(elapsed)}</span>
-          {!running
-            ? <button onClick={() => setRunning(true)}>{t('Iniciar')}</button>
-            : <button className="danger" onClick={stop}>{t('Parar e registrar')}</button>}
-          <span className="muted">|</span>
-          <input placeholder={t('min')} value={minutes} onChange={(e) => setMinutes(e.target.value)} style={{ width: 70 }} />
-          <button className="ghost" onClick={logManual}>{t('Registrar manual')}</button>
-        </div>
-      </div>
+    <div className="space-y-4">
+      <p className="text-sm text-fg-muted">
+        {t('Cronômetro e registro de tempo por tarefa. Total da semana e por tarefa.')}
+      </p>
 
-      <div className="card" style={{ marginTop: 12 }}>
-        <b>{t('Esta semana')}: {fmtDur(data.weekSeconds)}</b>
+      <Card>
+        <div className="grid gap-3 md:grid-cols-3">
+          <Field label={t('Tarefa')}>
+            <Input
+              placeholder={t('Tarefa (ex.: PROJ-1)')}
+              value={taskCode}
+              onChange={(e) => setTaskCode(e.target.value)}
+            />
+          </Field>
+          <Field label={t('Nota (opcional)')} className="md:col-span-2">
+            <Input
+              placeholder={t('Nota (opcional)')}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+            />
+          </Field>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-4">
+          <span className="font-mono text-2xl tabular-nums text-fg">{fmtDur(elapsed)}</span>
+          {!running
+            ? <Button onClick={() => setRunning(true)}>{t('Iniciar')}</Button>
+            : <Button variant="danger" onClick={stop}>{t('Parar e registrar')}</Button>}
+          <span aria-hidden="true" className="text-fg-subtle">|</span>
+          <div className="w-24">
+            <Input
+              placeholder={t('min')}
+              aria-label={t('min')}
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+            />
+          </div>
+          <Button variant="ghost" onClick={logManual}>{t('Registrar manual')}</Button>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title={`${t('Esta semana')}: ${fmtDur(data.weekSeconds)}`}
+        />
         {data.weekByTask.length > 0 && (
-          <ul style={{ margin: '6px 0' }}>
+          <ul className="mt-3 space-y-1 text-sm">
             {data.weekByTask.map((r) => (
               <li key={r.taskCode}><b>{r.taskCode}</b> — {fmtDur(r.seconds)}</li>
             ))}
           </ul>
         )}
-      </div>
+      </Card>
 
-      <div className="card" style={{ marginTop: 12 }}>
-        <b>{t('Registros recentes')}</b>
-        {data.logs.map((l) => (
-          <div key={l.id} className="row" style={{ justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', fontSize: 13 }}>
-            <span>{fmtDur(l.seconds)} {l.taskCode && <b>· {l.taskCode}</b>} {l.note && <span className="muted">— {l.note}</span>}</span>
-            <button className="danger sm" title={t('Excluir')} onClick={() => deleteTimeLog(l.id).then(load)}>
-              <Icon name="close" size={13} />
-            </button>
-          </div>
-        ))}
-        {data.logs.length === 0 && <div className="muted">{t('Nenhum registro ainda.')}</div>}
+      <div>
+        <SectionTitle className="mb-2">{t('Registros recentes')}</SectionTitle>
+        <DataTable
+          columns={[
+            {
+              key: 'seconds',
+              header: t('Duração'),
+              render: (l) => <span className="tabular-nums">{fmtDur(l.seconds)}</span>,
+            },
+            {
+              key: 'taskCode',
+              header: t('Tarefa'),
+              render: (l) => (l.taskCode ? <Badge variant="outline">{l.taskCode}</Badge> : '—'),
+            },
+            {
+              key: 'note',
+              header: t('Nota'),
+              render: (l) => <span className="text-fg-muted">{l.note || '—'}</span>,
+            },
+            {
+              key: 'actions',
+              header: '',
+              align: 'right',
+              render: (l) => (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  aria-label={t('Excluir')}
+                  title={t('Excluir')}
+                  onClick={() => deleteTimeLog(l.id).then(load)}
+                >
+                  <Icon name="close" size={13} />
+                </Button>
+              ),
+            },
+          ]}
+          rows={data.logs}
+          rowKey={(l) => l.id}
+          empty={t('Nenhum registro ainda.')}
+        />
       </div>
     </div>
   )
@@ -596,30 +948,23 @@ function TimeTab() {
 export default function Biblioteca() {
   const [tab, setTab] = useState('snippets')
   const tabs = [
-    ['snippets', t('Snippets & Prompts')],
-    ['runbooks', t('Runbooks')],
-    ['import', t('Importar do código')],
-    ['triage', t('Triagem de bugs')],
-    ['review', t('Code review')],
-    ['git', t('Git')],
-    ['time', t('Tempo')],
+    { value: 'snippets', label: t('Snippets & Prompts'), content: <SnippetsTab /> },
+    { value: 'runbooks', label: t('Runbooks'), content: <RunbooksTab /> },
+    { value: 'import', label: t('Importar do código'), content: <ImportTab /> },
+    { value: 'triage', label: t('Triagem de bugs'), content: <TriageTab /> },
+    { value: 'review', label: t('Code review'), content: <CodeReviewTab /> },
+    { value: 'git', label: t('Git'), content: <GitTab /> },
+    { value: 'time', label: t('Tempo'), content: <TimeTab /> },
   ]
+
   return (
-    <div>
-      <h1 className="page-title">{t('Biblioteca')}</h1>
-      <p className="subtitle">{t('Snippets, prompts, comandos e importação de TODO/FIXME')}</p>
-      <div className="row" style={{ gap: 8, marginBottom: 12 }}>
-        {tabs.map(([k, label]) => (
-          <button key={k} className={tab === k ? '' : 'ghost'} onClick={() => setTab(k)}>{label}</button>
-        ))}
-      </div>
-      {tab === 'snippets' && <SnippetsTab />}
-      {tab === 'runbooks' && <RunbooksTab />}
-      {tab === 'import' && <ImportTab />}
-      {tab === 'triage' && <TriageTab />}
-      {tab === 'review' && <CodeReviewTab />}
-      {tab === 'git' && <GitTab />}
-      {tab === 'time' && <TimeTab />}
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Biblioteca')}
+        description={t('Snippets, prompts, comandos e importação de TODO/FIXME')}
+      />
+
+      <Tabs tabs={tabs} value={tab} onValueChange={setTab} ariaLabel={t('Biblioteca')} />
     </div>
   )
 }

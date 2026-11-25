@@ -10,15 +10,25 @@ import {
   importProjectDaily,
 } from '../api'
 import { t } from '../i18n'
+import Icon from './Icon.jsx'
+import {
+  Badge, Button, Card, EmptyState, Input, SearchInput, SectionTitle, Select, Textarea, Toolbar,
+} from '../ui'
 
 const KINDS = [
-  ['WORK', 'Trabalho', '#16a34a'],
-  ['BLOCKER', 'Bloqueio', '#dc2626'],
-  ['DECISION', 'Decisão', '#4f46e5'],
-  ['NOTE', 'Nota', '#6b7280'],
+  ['WORK', 'Trabalho'],
+  ['BLOCKER', 'Bloqueio'],
+  ['DECISION', 'Decisão'],
+  ['NOTE', 'Nota'],
 ]
-const KIND_COLOR = Object.fromEntries(KINDS.map(([k, , c]) => [k, c]))
 const KIND_LABEL = Object.fromEntries(KINDS.map(([k, l]) => [k, l]))
+const KIND_VARIANT = { WORK: 'success', BLOCKER: 'danger', DECISION: 'accent', NOTE: 'neutral' }
+const KIND_BORDER = {
+  WORK: 'border-success',
+  BLOCKER: 'border-danger',
+  DECISION: 'border-accent',
+  NOTE: 'border-border-strong',
+}
 
 function todayISO() {
   const d = new Date()
@@ -46,6 +56,8 @@ export default function ProjectDaily({ projectId, author }) {
   const [search, setSearch] = useState('')
 
   const [editing, setEditing] = useState(null)
+
+  const kindOptions = KINDS.map(([value, label]) => ({ value, label: t(label) }))
 
   const load = () => {
     const params = {}
@@ -148,7 +160,7 @@ export default function ProjectDaily({ projectId, author }) {
       const content = await file.text()
       const conf = await Swal.fire({
         title: t('Importar daily'),
-        html: `<p>${t('Importar')} <b>${file.name}</b>?</p><p class="muted">${t('Os registros do dia serão substituídos.')}</p>`,
+        html: `<p>${t('Importar')} <b>${file.name}</b>?</p><p>${t('Os registros do dia serão substituídos.')}</p>`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: t('Importar'),
@@ -179,47 +191,54 @@ export default function ProjectDaily({ projectId, author }) {
   const hasFilters = !!(filterFrom || filterTo || filterKind || filterAuthor.trim() || search.trim())
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {error && <div className="banner">{error}</div>}
-
-      {summary && (
-        <div className="card" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span className="muted" style={{ fontSize: 11, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase' }}>
-            {t('Resumo')}
-          </span>
-          <span style={{ fontSize: 13 }}>
-            <b>{summary.total}</b> {t('registro(s) em')} <b>{summary.days.length}</b> {t('dia(s)')}
-          </span>
-          {summary.totalMinutes > 0 && (
-            <span style={{ fontSize: 13 }}>
-              <b>{Math.round(summary.totalMinutes / 60 * 10) / 10}h</b> {t('registradas')}
-            </span>
-          )}
-          {KINDS.filter(([k]) => summary.byKind?.[k] > 0).map(([k, label, color]) => (
-            <span key={k} style={{ fontSize: 12, color, fontWeight: 600 }}>
-              {label}: {summary.byKind[k]}
-            </span>
-          ))}
-          {summary.days.slice(0, 6).map((d) => (
-            <span key={d.date} className="muted" style={{ fontSize: 11 }}>
-              {d.date}: {d.entries}
-            </span>
-          ))}
-          <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-            <button className="ghost" style={{ padding: '3px 9px', fontSize: 11 }} onClick={exportDay} title={t('Exportar o dia em markdown (formato do vault)')}>
-              ⬇ {t('Exportar .md')}
-            </button>
-            <button className="ghost" style={{ padding: '3px 9px', fontSize: 11 }} onClick={importDay} title={t('Importar um doc de daily (.md)')}>
-              ⬆ {t('Importar .md')}
-            </button>
-          </span>
+    <div className="space-y-4">
+      {error && (
+        <div role="alert" className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+          {error}
         </div>
       )}
 
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <strong>{t('Novo registro do dia')}</strong>
-        <textarea
+      {summary && (
+        <Card padding="sm">
+          <div className="flex flex-wrap items-center gap-4">
+            <SectionTitle>{t('Resumo')}</SectionTitle>
+            <span className="text-sm">
+              <b>{summary.total}</b> {t('registro(s) em')} <b>{summary.days.length}</b> {t('dia(s)')}
+            </span>
+            {summary.totalMinutes > 0 && (
+              <span className="text-sm">
+                <b>{Math.round(summary.totalMinutes / 60 * 10) / 10}h</b> {t('registradas')}
+              </span>
+            )}
+            {KINDS.filter(([k]) => summary.byKind?.[k] > 0).map(([k, label]) => (
+              <Badge key={k} variant={KIND_VARIANT[k] || 'neutral'}>
+                {label}: {summary.byKind[k]}
+              </Badge>
+            ))}
+            {summary.days.slice(0, 6).map((d) => (
+              <span key={d.date} className="text-xs text-fg-muted">
+                {d.date}: {d.entries}
+              </span>
+            ))}
+            <span className="ml-auto flex flex-wrap gap-1.5">
+              <Button variant="secondary" size="sm" onClick={exportDay} title={t('Exportar o dia em markdown (formato do vault)')}>
+                ⬇ {t('Exportar .md')}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={importDay} title={t('Importar um doc de daily (.md)')}>
+                ⬆ {t('Importar .md')}
+              </Button>
+            </span>
+          </div>
+        </Card>
+      )}
+
+      <Card>
+        <h3 className="text-md font-semibold">{t('Novo registro do dia')}</h3>
+
+        <Textarea
+          className="mt-3"
           rows={3}
+          aria-label={t('Novo registro do dia')}
           placeholder={t('O que você fez hoje neste projeto...')}
           value={body}
           onChange={(e) => setBody(e.target.value)}
@@ -227,127 +246,199 @@ export default function ProjectDaily({ projectId, author }) {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit()
           }}
         />
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ width: 150 }} />
-          <select value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: 130 }}>
-            {KINDS.map(([k, label]) => (
-              <option key={k} value={k}>{t(label)}</option>
-            ))}
-          </select>
-          <input
+
+        <div className="mt-2 flex flex-wrap items-end gap-2">
+          <Input
+            type="date"
+            aria-label={t('Data')}
+            title={t('Data')}
+            className="w-40"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+          <Select
+            value={kind}
+            onValueChange={setKind}
+            options={kindOptions}
+            className="w-36"
+            ariaLabel={t('Tipo')}
+          />
+          <Input
             type="number"
             min="0"
             placeholder={t('min')}
+            aria-label={t('min')}
+            className="w-24"
             value={minutes}
             onChange={(e) => setMinutes(e.target.value)}
-            style={{ width: 90 }}
           />
-          <input
+          <Input
             placeholder={t('Card (opcional)')}
+            aria-label={t('Card (opcional)')}
+            className="w-40"
             value={taskCode}
             onChange={(e) => setTaskCode(e.target.value)}
-            style={{ width: 140 }}
           />
-          <button onClick={submit} disabled={!body.trim()}>{t('Registrar')}</button>
-          <span className="muted" style={{ fontSize: 11 }}>{t('Ctrl+Enter para salvar')}</span>
+          <Button onClick={submit} disabled={!body.trim()}>{t('Registrar')}</Button>
+          <span className="text-xs text-fg-muted">{t('Ctrl+Enter para salvar')}</span>
         </div>
-      </div>
+      </Card>
 
-      <div className="card" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <input
-          placeholder={t('Buscar no texto...')}
+      <Toolbar
+        actions={(
+          <>
+            {hasFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setSearch(''); setFilterFrom(''); setFilterTo(''); setFilterKind(''); setFilterAuthor('') }}
+              >
+                {t('Limpar')}
+              </Button>
+            )}
+            <span className="text-xs text-fg-muted">{entries.length} {t('registro(s)')}</span>
+          </>
+        )}
+      >
+        <SearchInput
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ minWidth: 180, flex: '1 1 180px' }}
+          placeholder={t('Buscar no texto...')}
+          aria-label={t('Buscar no texto...')}
+          className="min-w-48 flex-1"
         />
-        <span className="muted" style={{ fontSize: 11, fontWeight: 700 }}>{t('De')}</span>
-        <input type="date" value={filterFrom} onChange={(e) => setFilterFrom(e.target.value)} style={{ width: 150 }} />
-        <span className="muted" style={{ fontSize: 11, fontWeight: 700 }}>{t('Até')}</span>
-        <input type="date" value={filterTo} onChange={(e) => setFilterTo(e.target.value)} style={{ width: 150 }} />
-        <select value={filterKind} onChange={(e) => setFilterKind(e.target.value)} style={{ width: 130 }}>
-          <option value="">{t('Todos os tipos')}</option>
-          {KINDS.map(([k, label]) => (
-            <option key={k} value={k}>{t(label)}</option>
-          ))}
-        </select>
-        <input
+        <span className="text-xs font-semibold text-fg-muted">{t('De')}</span>
+        <Input
+          type="date"
+          size="sm"
+          aria-label={t('De')}
+          className="w-40"
+          value={filterFrom}
+          onChange={(e) => setFilterFrom(e.target.value)}
+        />
+        <span className="text-xs font-semibold text-fg-muted">{t('Até')}</span>
+        <Input
+          type="date"
+          size="sm"
+          aria-label={t('Até')}
+          className="w-40"
+          value={filterTo}
+          onChange={(e) => setFilterTo(e.target.value)}
+        />
+        <Select
+          size="sm"
+          value={filterKind || '__all__'}
+          onValueChange={(v) => setFilterKind(v === '__all__' ? '' : v)}
+          options={[{ value: '__all__', label: t('Todos os tipos') }, ...kindOptions]}
+          className="w-40"
+          ariaLabel={t('Tipo')}
+        />
+        <Input
           placeholder={t('Autor')}
+          aria-label={t('Autor')}
+          size="sm"
+          className="w-32"
           value={filterAuthor}
           onChange={(e) => setFilterAuthor(e.target.value)}
-          style={{ width: 120 }}
         />
-        {hasFilters && (
-          <button
-            className="ghost"
-            onClick={() => { setSearch(''); setFilterFrom(''); setFilterTo(''); setFilterKind(''); setFilterAuthor('') }}
-          >
-            {t('Limpar')}
-          </button>
-        )}
-        <span className="muted" style={{ fontSize: 11, marginLeft: 'auto' }}>{entries.length} {t('registro(s)')}</span>
-      </div>
+      </Toolbar>
 
       {grouped.length === 0 && (
-        <div className="muted" style={{ fontSize: 13 }}>
-          {hasFilters ? t('Nenhum registro para esses filtros.') : t('Nenhum registro ainda. Escreva o primeiro acima.')}
-        </div>
+        <EmptyState
+          icon={<Icon name="clipboard" size={20} />}
+          title={hasFilters ? t('Nenhum registro para esses filtros.') : t('Nenhum registro ainda. Escreva o primeiro acima.')}
+        />
       )}
 
       {grouped.map(([day, items]) => (
-        <div className="card" key={day} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <strong style={{ fontFamily: 'monospace' }}>{day}</strong>
-            <span className="muted" style={{ fontSize: 11 }}>{items.length} {t('registro(s)')}</span>
+        <Card key={day} padding="sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <strong className="font-mono text-sm">{day}</strong>
+            <span className="text-xs text-fg-muted">{items.length} {t('registro(s)')}</span>
           </div>
 
-          {items.map((entry) => (
-            <div
-              key={entry.id}
-              style={{
-                borderLeft: `3px solid ${KIND_COLOR[entry.kind] || '#6b7280'}`,
-                paddingLeft: 10,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-              }}
-            >
-              {editing && editing.id === entry.id ? (
-                <>
-                  <textarea rows={3} value={editing.body} onChange={(e) => setEditing({ ...editing, body: e.target.value })} />
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <input type="date" value={editing.date} onChange={(e) => setEditing({ ...editing, date: e.target.value })} style={{ width: 150 }} />
-                    <select value={editing.kind} onChange={(e) => setEditing({ ...editing, kind: e.target.value })} style={{ width: 130 }}>
-                      {KINDS.map(([k, label]) => (
-                        <option key={k} value={k}>{t(label)}</option>
-                      ))}
-                    </select>
-                    <input type="number" min="0" placeholder={t('min')} value={editing.minutes ?? ''} onChange={(e) => setEditing({ ...editing, minutes: e.target.value })} style={{ width: 90 }} />
-                    <input placeholder={t('Card (opcional)')} value={editing.taskCode || ''} onChange={(e) => setEditing({ ...editing, taskCode: e.target.value })} style={{ width: 130 }} />
-                    <button onClick={saveEdit}>{t('Salvar')}</button>
-                    <button className="ghost" onClick={() => setEditing(null)}>{t('Cancelar')}</button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: KIND_COLOR[entry.kind] || '#6b7280', textTransform: 'uppercase' }}>
-                      {t(KIND_LABEL[entry.kind] || entry.kind)}
-                    </span>
-                    {entry.author && <span className="muted" style={{ fontSize: 11 }}>{entry.author}</span>}
-                    {entry.minutes ? <span className="muted" style={{ fontSize: 11 }}>{entry.minutes} {t('min')}</span> : null}
-                    {entry.taskCode && <span className="badge-type" style={{ fontSize: 10 }}>{entry.taskCode}</span>}
-                    <span className="muted" style={{ fontSize: 10, marginLeft: 'auto' }}>
-                      {entry.createdAt ? new Date(entry.createdAt).toLocaleTimeString() : ''}
-                    </span>
-                    <button className="ghost" style={{ padding: '1px 6px', fontSize: 10 }} onClick={() => setEditing({ ...entry })}>{t('Editar')}</button>
-                    <button className="ghost" style={{ padding: '1px 6px', fontSize: 10, color: 'var(--danger)' }} onClick={() => remove(entry)}>✕</button>
-                  </div>
-                  <div style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>{entry.body}</div>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
+          <div className="mt-2 space-y-2">
+            {items.map((entry) => (
+              <div key={entry.id} className={`flex flex-col gap-1 border-l-2 pl-2.5 ${KIND_BORDER[entry.kind] || 'border-border-strong'}`}>
+                {editing && editing.id === entry.id ? (
+                  <>
+                    <Textarea
+                      rows={3}
+                      aria-label={t('Editar registro')}
+                      value={editing.body}
+                      onChange={(e) => setEditing({ ...editing, body: e.target.value })}
+                    />
+                    <div className="flex flex-wrap items-end gap-1.5">
+                      <Input
+                        type="date"
+                        size="sm"
+                        aria-label={t('Data')}
+                        className="w-40"
+                        value={editing.date}
+                        onChange={(e) => setEditing({ ...editing, date: e.target.value })}
+                      />
+                      <Select
+                        size="sm"
+                        value={editing.kind}
+                        onValueChange={(v) => setEditing({ ...editing, kind: v })}
+                        options={kindOptions}
+                        className="w-36"
+                        ariaLabel={t('Tipo')}
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder={t('min')}
+                        aria-label={t('min')}
+                        size="sm"
+                        className="w-24"
+                        value={editing.minutes ?? ''}
+                        onChange={(e) => setEditing({ ...editing, minutes: e.target.value })}
+                      />
+                      <Input
+                        placeholder={t('Card (opcional)')}
+                        aria-label={t('Card (opcional)')}
+                        size="sm"
+                        className="w-36"
+                        value={editing.taskCode || ''}
+                        onChange={(e) => setEditing({ ...editing, taskCode: e.target.value })}
+                      />
+                      <Button size="sm" onClick={saveEdit}>{t('Salvar')}</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>{t('Cancelar')}</Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={KIND_VARIANT[entry.kind] || 'neutral'}>
+                        {t(KIND_LABEL[entry.kind] || entry.kind)}
+                      </Badge>
+                      {entry.author && <span className="text-xs text-fg-muted">{entry.author}</span>}
+                      {entry.minutes ? <span className="text-xs text-fg-muted">{entry.minutes} {t('min')}</span> : null}
+                      {entry.taskCode && <Badge variant="outline" size="sm">{entry.taskCode}</Badge>}
+                      <span className="ml-auto text-xs text-fg-muted">
+                        {entry.createdAt ? new Date(entry.createdAt).toLocaleTimeString() : ''}
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={() => setEditing({ ...entry })}>{t('Editar')}</Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        className="text-danger"
+                        aria-label={`${t('Excluir')} ${entry.date}`}
+                        title={t('Excluir')}
+                        onClick={() => remove(entry)}
+                      >
+                        <Icon name="close" size={14} />
+                      </Button>
+                    </div>
+                    <div className="whitespace-pre-wrap text-sm text-fg">{entry.body}</div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
       ))}
     </div>
   )

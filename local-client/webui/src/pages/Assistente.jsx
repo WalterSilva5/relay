@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { assistantChat, getAiProfiles } from '../api'
 import { t } from '../i18n'
+import Icon from '../components/Icon'
+import {
+  Button, Card, EmptyState, Input, PageHeader, Select, Spinner, Toolbar,
+} from '../ui'
 
 const SUGGESTIONS = [
   'Resuma o board e o que priorizar hoje',
@@ -78,89 +82,75 @@ export default function Assistente() {
   }
 
   return (
-    <div>
-      <h1 className="page-title">{t('Assistente')}</h1>
-      <p className="subtitle">
-        {profiles.length > 0
-          ? t(profiles.find((pf) => pf.id === profile)?.description || '')
-          : t(
-              'Converse com o assistente interno: ele lê o board, sugere prioridades, solicita revisões, cria TODOs e comenta tarefas.'
-            )}
-      </p>
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Assistente')}
+        description={
+          profiles.length > 0
+            ? t(profiles.find((pf) => pf.id === profile)?.description || '')
+            : t(
+                'Converse com o assistente interno: ele lê o board, sugere prioridades, solicita revisões, cria TODOs e comenta tarefas.'
+              )
+        }
+      />
 
-      {error && <div className="banner">{error}</div>}
+      {error && (
+        <div className="rounded-md border border-danger bg-danger-soft p-3 text-sm text-danger">
+          {error}
+        </div>
+      )}
 
-      <div
-        className="toolbar"
-        style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '12px 0' }}
-      >
-        {profiles.length > 0 && (
-          <select
-            value={profile}
-            onChange={(e) => pickProfile(e.target.value)}
-            disabled={loading}
-            title={t('Perfil do assistente: cada um tem foco e ferramentas próprias')}
-          >
-            {profiles.map((pf) => (
-              <option key={pf.id} value={pf.id}>
-                {pf.icon ? `${pf.icon} ` : ''}{t(pf.name)} — {t(pf.description)}
-              </option>
-            ))}
-          </select>
-        )}
-        {suggestions.map((s) => (
-          <button
+      <Toolbar
+        actions={suggestions.map((s) => (
+          <Button
             key={s}
-            className="ghost"
+            variant="secondary"
+            size="sm"
             onClick={() => send(s)}
             disabled={loading}
           >
             {t(s)}
-          </button>
+          </Button>
         ))}
-      </div>
+      >
+        {profiles.length > 0 && (
+          <div className="w-full sm:w-64">
+            <Select
+              value={profile}
+              onValueChange={pickProfile}
+              disabled={loading}
+              ariaLabel={t('Perfil do assistente: cada um tem foco e ferramentas próprias')}
+              options={profiles.map((pf) => ({
+                value: pf.id,
+                label: `${pf.icon ? `${pf.icon} ` : ''}${t(pf.name)} — ${t(pf.description)}`,
+              }))}
+            />
+          </div>
+        )}
+      </Toolbar>
 
-      <div className="card">
+      <Card className="flex flex-col gap-3">
         <div
           ref={scrollRef}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-            maxHeight: '55vh',
-            overflowY: 'auto',
-            paddingRight: 4,
-          }}
+          className="flex max-h-80 min-h-64 flex-col gap-3 overflow-y-auto"
         >
           {messages.length === 0 && !loading && (
-            <div className="muted">
-              {t(
+            <EmptyState
+              icon={<Icon name="brain" size={18} />}
+              title={t(
                 'Nenhuma mensagem ainda. Faça uma pergunta ou use uma sugestão acima.'
               )}
-            </div>
+            />
           )}
 
           {messages.map((m, i) => {
             const isUser = m.role === 'user'
             return (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  justifyContent: isUser ? 'flex-end' : 'flex-start',
-                }}
-              >
+              <div key={i} className={isUser ? 'flex justify-end' : 'flex justify-start'}>
                 <div
-                  style={{
-                    maxWidth: '78%',
-                    padding: '8px 12px',
-                    borderRadius: 12,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    background: isUser ? 'var(--accent)' : 'var(--card)',
-                    color: isUser ? '#fff' : 'inherit',
-                    border: isUser ? 'none' : '1px solid var(--border)',
-                  }}
+                  className={`max-w-xl whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-base ${
+                    isUser ? 'bg-accent-soft text-fg' : 'bg-surface-2 text-fg'
+                  }`}
                 >
                   {m.content}
                 </div>
@@ -169,40 +159,33 @@ export default function Assistente() {
           })}
 
           {loading && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <div
-                className="muted"
-                style={{
-                  maxWidth: '78%',
-                  padding: '8px 12px',
-                  borderRadius: 12,
-                  background: 'var(--card)',
-                  border: '1px solid var(--border)',
-                }}
-              >
+            <div className="flex justify-start">
+              <div className="flex max-w-xl items-center gap-2 rounded-lg bg-surface-2 px-3 py-2 text-base text-fg-muted">
+                <Spinner size="sm" />
                 {t('Pensando...')}
               </div>
             </div>
           )}
         </div>
 
-        <div
-          className="row"
-          style={{ display: 'flex', gap: 8, marginTop: 12 }}
-        >
-          <input
-            style={{ flex: 1 }}
-            placeholder={t('Escreva sua mensagem...')}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            disabled={loading}
-          />
-          <button onClick={() => send()} disabled={loading || !input.trim()}>
-            {t('Enviar')}
-          </button>
+        <div className="border-t border-border pt-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="min-w-48 flex-1">
+              <Input
+                placeholder={t('Escreva sua mensagem...')}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                disabled={loading}
+                aria-label={t('Escreva sua mensagem...')}
+              />
+            </div>
+            <Button onClick={() => send()} disabled={loading || !input.trim()}>
+              {t('Enviar')}
+            </Button>
+          </div>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

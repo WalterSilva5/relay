@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import Swal from 'sweetalert2'
 import {
   getWorkspaces, getProjects, getTeamWeekly, saveTeamNote, teamReportUrl,
 } from '../api'
@@ -7,6 +6,10 @@ import { getActiveProjectId } from '../components/ProjectSelector.jsx'
 import { t, tf } from '../i18n'
 import { isoLocal } from '../dateutil.js'
 import Icon from '../components/Icon'
+import {
+  Avatar, Badge, Button, Card, CardHeader, Checkbox, Chip, EmptyState, Field,
+  PageHeader, Progress, SectionTitle, Skeleton, Spinner, StatCard, Textarea, useToast,
+} from '../ui'
 
 const iso = (d) => isoLocal(d)
 const hoje = () => iso(new Date())
@@ -28,6 +31,7 @@ export default function Time() {
   const [previa, setPrevia] = useState('')
   const [anonimo, setAnonimo] = useState(false)
   const [carregando, setCarregando] = useState(false)
+  const { toast } = useToast()
 
   // projeto atual vem do seletor do menu (mesma chave do localStorage)
   useEffect(() => {
@@ -83,11 +87,10 @@ export default function Time() {
       }))
       setPrevia('')
     } catch (e) {
-      Swal.fire({
-        icon: 'error',
-        title: t('Falha ao salvar'),
-        text: typeof e?.response?.data?.detail === 'string' ? e.response.data.detail : String(e.message || e),
-      })
+      const detalhe = typeof e?.response?.data?.detail === 'string'
+        ? e.response.data.detail
+        : String(e.message || e)
+      toast({ title: t('Falha ao salvar'), description: detalhe, tone: 'danger' })
     } finally {
       setSalvando('')
     }
@@ -112,7 +115,7 @@ export default function Time() {
     try {
       const r = await fetch(teamReportUrl(projeto.id, dados.week.start, anonimo))
       await navigator.clipboard.writeText(await r.text())
-      Swal.fire({ icon: 'success', title: t('Relatório copiado'), timer: 1400, showConfirmButton: false })
+      toast({ title: t('Relatório copiado'), tone: 'success' })
     } catch {
       setErro(t('Não foi possível copiar.'))
     }
@@ -126,196 +129,269 @@ export default function Time() {
 
   if (!projeto && !erro) {
     return (
-      <div>
-        <h1 className="page-title">{t('Time')}</h1>
-        <p className="subtitle">{t('Carregando projeto…')}</p>
+      <div className="space-y-6">
+        <PageHeader title={t('Time')} description={t('Carregando projeto…')} />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => <Skeleton key={i} h="h-24" />)}
+        </div>
       </div>
     )
   }
 
   if (!projeto) {
     return (
-      <div>
-        <h1 className="page-title">{t('Time')}</h1>
-        {erro && <div className="banner">{erro}</div>}
-        <div className="card">{t('Escolha um projeto no menu lateral para acompanhar o time.')}</div>
+      <div className="space-y-6">
+        <PageHeader title={t('Time')} />
+        {erro && (
+          <div role="alert" className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+            {erro}
+          </div>
+        )}
+        <Card padding="none">
+          <EmptyState
+            icon={<Icon name="users" size={20} />}
+            title={t('Escolha um projeto no menu lateral para acompanhar o time.')}
+          />
+        </Card>
       </div>
     )
   }
 
-  return (
-    <div>
-      <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-        <div>
-          <h1 className="page-title" style={{ marginBottom: 2 }}>{t('Time')}</h1>
-          <p className="subtitle" style={{ margin: 0 }}>
-            {projeto.key} · {projeto.name} — {t('report semanal por membro, a partir do board + suas anotações')}
-          </p>
-        </div>
-        <div className="row" style={{ gap: 6, alignItems: 'center' }}>
-          <button className="ghost row" onClick={() => setSemana(somarDias(dados?.week?.start || semana, -7))} title={t('Semana anterior')}>
-            <Icon name="chevronLeft" size={14} />
-          </button>
-          <strong style={{ minWidth: 150, textAlign: 'center' }}>
-            {dados ? dados.week.label : '—'}
-          </strong>
-          <button className="ghost" onClick={() => setSemana(somarDias(dados?.week?.start || semana, 7))} title={t('Semana seguinte')}>›</button>
-          <button className="ghost" onClick={() => setSemana(hoje())}>{t('Hoje')}</button>
-        </div>
-      </div>
+  const campos = [
+    ['highlights', t('Como está trabalhando')],
+    ['service', t('Serviço/apoio (reviews, infra, suporte)')],
+    ['attention', t('Pontos de atenção (fatos)')],
+    ['nextStep', t('Próximo passo')],
+  ]
 
-      {erro && <div className="banner">{erro}</div>}
-      {carregando && <p className="muted">{t('Carregando…')}</p>}
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Time')}
+        description={`${projeto.key} · ${projeto.name} — ${t('report semanal por membro, a partir do board + suas anotações')}`}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                iconOnly
+                aria-label={t('Semana anterior')}
+                title={t('Semana anterior')}
+                onClick={() => setSemana(somarDias(dados?.week?.start || semana, -7))}
+              >
+                <Icon name="chevronLeft" size={16} />
+              </Button>
+              <strong className="min-w-40 text-center text-md font-semibold text-fg">
+                {dados ? dados.week.label : '—'}
+              </strong>
+              <Button
+                variant="ghost"
+                iconOnly
+                aria-label={t('Semana seguinte')}
+                title={t('Semana seguinte')}
+                onClick={() => setSemana(somarDias(dados?.week?.start || semana, 7))}
+              >
+                <Icon name="chevronLeft" size={16} className="rotate-180" />
+              </Button>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setSemana(hoje())}>
+              {t('Hoje')}
+            </Button>
+          </div>
+        }
+      />
+
+      {erro && (
+        <div role="alert" className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+          {erro}
+        </div>
+      )}
+      {carregando && (
+        <div className="flex items-center gap-2 text-sm text-fg-muted">
+          <Spinner size="sm" />
+          {t('Carregando…')}
+        </div>
+      )}
 
       {resumo && (
-        <div className="card" style={{ marginTop: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 }}>
-            {[
-              [t('Progresso do board'), `${resumo.done}/${resumo.cards}`, `${resumo.pct}%`],
-              [t('Concluídos no período'), resumo.doneInWeek, ''],
-              [t('Em aberto'), resumo.open, tf('{n} atrasado(s)', { n: resumo.overdue })],
-              [t('Sem responsável'), resumo.unassigned, ''],
-            ].map(([rotulo, valor, extra]) => (
-              <div key={rotulo}>
-                <div className="section-title" style={{ margin: 0 }}>{rotulo}</div>
-                <div style={{ fontSize: 22, fontWeight: 800 }}>{valor}</div>
-                {extra && <div className="muted" style={{ fontSize: 11 }}>{extra}</div>}
-              </div>
-            ))}
+        <section className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label={t('Progresso do board')}
+              value={`${resumo.done}/${resumo.cards}`}
+              hint={`${resumo.pct}%`}
+              icon={<Icon name="board" size={18} />}
+            />
+            <StatCard
+              label={t('Concluídos no período')}
+              value={resumo.doneInWeek}
+              icon={<Icon name="check" size={18} />}
+              tone="success"
+            />
+            <StatCard
+              label={t('Em aberto')}
+              value={resumo.open}
+              hint={tf('{n} atrasado(s)', { n: resumo.overdue })}
+              icon={<Icon name="activity" size={18} />}
+              tone={resumo.overdue > 0 ? 'warning' : 'accent'}
+            />
+            <StatCard
+              label={t('Sem responsável')}
+              value={resumo.unassigned}
+              icon={<Icon name="users" size={18} />}
+            />
           </div>
-          <div className="progress" style={{ marginTop: 12 }}>
-            <span className="ok" style={{ width: `${resumo.pct}%` }} />
-          </div>
+
+          <Progress value={resumo.pct} tone="success" label={t('Progresso do board')} />
+
           {resumo.byModule?.length > 0 && (
-            <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>
+            <p className="text-xs text-fg-muted">
               {t('Entregas por módulo no período:')} {resumo.byModule.map((m) => `${m.module} ${m.count}`).join(' · ')}
-            </div>
+            </p>
           )}
-        </div>
+        </section>
       )}
 
       {dados && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 12, marginTop: 12 }}>
-          {dados.members.map((m) => (
-            <div key={m.name} className="card">
-              <div className="row" style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <h3 style={{ margin: 0 }}>{m.name}</h3>
-                <span className="muted" style={{ fontSize: 11 }}>
-                  {tf('{n} entrega(s) no período', { n: m.deliveredCount })} · {tf('{n} em aberto', { n: m.open })}
-                </span>
-              </div>
-
-              <div style={{ marginTop: 8, fontSize: 12 }}>
-                <div className="section-title" style={{ margin: '0 0 3px' }}>
-                  {t('Entregas')}
-                </div>
-                {m.delivered.length === 0 ? (
-                  <span className="muted">{t('Nenhuma conclusão registrada nesta semana.')}</span>
-                ) : (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    {m.delivered.map((e) => (
-                      <span key={e.code} className="chip accent" title={`${e.title}${e.module ? ` · ${e.module}` : ''}`}>
-                        {e.code}{e.module ? ` · ${e.module}` : ''}
+        <section className="space-y-3">
+          {dados.members.length === 0 ? (
+            <Card padding="none">
+              <EmptyState
+                icon={<Icon name="users" size={20} />}
+                title={t('Nenhum membro com cards neste projeto.')}
+              />
+            </Card>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {dados.members.map((m) => (
+                <Card key={m.name}>
+                  <CardHeader
+                    title={(
+                      <span className="flex items-center gap-2">
+                        <Avatar name={m.name} size="sm" />
+                        <span className="truncate">{m.name}</span>
                       </span>
-                    ))}
-                  </div>
-                )}
+                    )}
+                    description={`${tf('{n} entrega(s) no período', { n: m.deliveredCount })} · ${tf('{n} em aberto', { n: m.open })}`}
+                  />
 
-                <div className="section-title" style={{ margin: '8px 0 3px' }}>
-                  {t('Em aberto por coluna')}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {m.byColumn.length === 0
-                    ? <span className="muted">{t('Nada em aberto.')}</span>
-                    : m.byColumn.map((c) => (
-                      <span key={c.name} style={{ fontSize: 11 }}>
-                        <b>{c.count}</b> <span className="muted">{c.name}</span>
-                      </span>
-                    ))}
-                  {m.overdue > 0 && (
-                    <span className="chip danger">
-                      {tf('{n} atrasado(s)', { n: m.overdue })}
-                    </span>
-                  )}
-                  {m.reviews > 0 && (
-                    <span className="muted" style={{ fontSize: 11 }}>· {tf('{n} revisão(ões)', { n: m.reviews })}</span>
-                  )}
-                </div>
-
-                {(m.serviceSuggested || m.reviewedCards?.length > 0) && (
-                  <div className="card card-tight" style={{ marginTop: 6 }}>
-                    <div className="section-title" style={{ margin: 0 }}>
-                      {t('Serviço registrado no board')}
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <SectionTitle>{t('Entregas')}</SectionTitle>
+                      {m.delivered.length === 0 ? (
+                        <p className="mt-1 text-sm text-fg-muted">{t('Nenhuma conclusão registrada nesta semana.')}</p>
+                      ) : (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {m.delivered.map((e) => (
+                            <Chip
+                              key={e.code}
+                              variant="accent"
+                              title={`${e.title}${e.module ? ` · ${e.module}` : ''}`}
+                            >
+                              {e.code}{e.module ? ` · ${e.module}` : ''}
+                            </Chip>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: 11, marginTop: 2 }}>{m.serviceSuggested || '—'}</div>
-                    <button
-                      className="ghost sm"
-                      style={{ marginTop: 4 }}
-                      onClick={() => alterar(m.name, 'service', m.serviceSuggested || '')}
-                    >
-                      {t('Usar no campo Serviço/apoio')}
-                    </button>
-                  </div>
-                )}
-              </div>
 
-              <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {[
-                  ['highlights', t('Como está trabalhando')],
-                  ['service', t('Serviço/apoio (reviews, infra, suporte)')],
-                  ['attention', t('Pontos de atenção (fatos)')],
-                  ['nextStep', t('Próximo passo')],
-                ].map(([campo, rotulo]) => (
-                  <label key={campo} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <span className="section-title" style={{ margin: 0 }}>{rotulo}</span>
-                    <textarea
-                      value={(notas[m.name] || VAZIO)[campo] || ''}
-                      onChange={(e) => alterar(m.name, campo, e.target.value)}
-                      style={{ minHeight: 52, fontSize: 12 }}
-                      placeholder={campo === 'attention' ? t('ex.: PR sem revisor por 3 dias') : ''}
-                    />
-                  </label>
-                ))}
-                <div className="row" style={{ justifyContent: 'flex-end' }}>
-                  <button onClick={() => salvar(m.name)} disabled={salvando === m.name}>
-                    {salvando === m.name ? t('Salvando…') : t('Salvar anotação')}
-                  </button>
-                </div>
-              </div>
+                    <div>
+                      <SectionTitle>{t('Em aberto por coluna')}</SectionTitle>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                        {m.byColumn.length === 0
+                          ? <span className="text-fg-muted">{t('Nada em aberto.')}</span>
+                          : m.byColumn.map((c) => (
+                            <span key={c.name}>
+                              <b className="font-semibold text-fg">{c.count}</b>{' '}
+                              <span className="text-fg-muted">{c.name}</span>
+                            </span>
+                          ))}
+                        {m.overdue > 0 && (
+                          <Badge variant="danger">
+                            {tf('{n} atrasado(s)', { n: m.overdue })}
+                          </Badge>
+                        )}
+                        {m.reviews > 0 && (
+                          <span className="text-xs text-fg-muted">· {tf('{n} revisão(ões)', { n: m.reviews })}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {(m.serviceSuggested || m.reviewedCards?.length > 0) && (
+                      <div className="rounded-md border border-border bg-surface-2 p-3">
+                        <SectionTitle>{t('Serviço registrado no board')}</SectionTitle>
+                        <p className="mt-1 text-sm text-fg">{m.serviceSuggested || '—'}</p>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-2"
+                          onClick={() => alterar(m.name, 'service', m.serviceSuggested || '')}
+                        >
+                          {t('Usar no campo Serviço/apoio')}
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      {campos.map(([campo, rotulo]) => (
+                        <Field key={campo} label={rotulo}>
+                          <Textarea
+                            rows={2}
+                            value={(notas[m.name] || VAZIO)[campo] || ''}
+                            onChange={(e) => alterar(m.name, campo, e.target.value)}
+                            placeholder={campo === 'attention' ? t('ex.: PR sem revisor por 3 dias') : ''}
+                          />
+                        </Field>
+                      ))}
+                      <div className="flex justify-end">
+                        <Button onClick={() => salvar(m.name)} loading={salvando === m.name}>
+                          {salvando === m.name ? t('Salvando…') : t('Salvar anotação')}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
-          ))}
-          {dados.members.length === 0 && (
-            <div className="card">{t('Nenhum membro com cards neste projeto.')}</div>
           )}
-        </div>
+        </section>
       )}
 
       {dados && (
-        <div className="card" style={{ marginTop: 12 }}>
-          <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <div>
-              <h3 style={{ margin: 0 }}>{t('Relatório semanal')}</h3>
-              <div className="muted" style={{ fontSize: 11 }}>
-                {t('Markdown no formato dos acompanhamentos do vault.')}
-                {semNota > 0 && ` · ${tf('{n} membro(s) sem anotação', { n: semNota })}`}
-              </div>
-            </div>
-            <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-              <label className="muted" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer' }}>
-                <input type="checkbox" style={{ width: 'auto' }} checked={anonimo} onChange={(e) => { setAnonimo(e.target.checked); setPrevia('') }} />
-                {t('Anonimizado (Pessoa A/B/C)')}
-              </label>
-              <button className="ghost" onClick={() => verPrevia()}>{t('Pré-visualizar')}</button>
-              <button className="ghost" onClick={copiar}>{t('Copiar')}</button>
-              <button className="ghost" onClick={() => baixar(anonimo)}>{t('Baixar .md')}</button>
+        <Card>
+          <CardHeader
+            title={t('Relatório semanal')}
+            description={`${t('Markdown no formato dos acompanhamentos do vault.')}${semNota > 0 ? ` · ${tf('{n} membro(s) sem anotação', { n: semNota })}` : ''}`}
+          />
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <Checkbox
+              label={t('Anonimizado (Pessoa A/B/C)')}
+              checked={anonimo}
+              onCheckedChange={(checked) => {
+                setAnonimo(checked)
+                setPrevia('')
+              }}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => verPrevia()}>
+                {t('Pré-visualizar')}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={copiar}>
+                {t('Copiar')}
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => baixar(anonimo)}>
+                {t('Baixar .md')}
+              </Button>
             </div>
           </div>
+
           {previa && (
-            <pre style={{ marginTop: 10, maxHeight: 420, overflow: 'auto', background: 'var(--bg)', border: '1px solid var(--border-light)', borderRadius: 8, padding: 10, fontSize: 11.5, whiteSpace: 'pre-wrap' }}>
+            <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-surface-2 p-3 text-xs text-fg">
               {previa}
             </pre>
           )}
-        </div>
+        </Card>
       )}
     </div>
   )

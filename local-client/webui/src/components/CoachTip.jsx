@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCoachConfig, getCoachTip } from '../api'
 import { t } from '../i18n'
+import Icon from './Icon.jsx'
+import { Button } from '../ui/index.js'
 
 // Coach proativo: busca uma dica curta e acionável do agente ao longo do dia
-// (a mesma do desktop) e a exibe num card não intrusivo no canto inferior.
+// (a mesma do desktop) e a exibe num painel não intrusivo no canto inferior.
 export default function CoachTip() {
   const [tip, setTip] = useState(null) // { tip, category }
   const [dismissed, setDismissed] = useState(false)
@@ -58,41 +60,40 @@ export default function CoachTip() {
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        right: 20,
-        bottom: 20,
-        zIndex: 1000,
-        background: 'var(--card, #fff)',
-        border: '1px solid var(--accent, #6366f1)',
-        borderLeft: '4px solid var(--accent, #6366f1)',
-        borderRadius: 10,
-        padding: '10px 14px 12px',
-        boxShadow: '0 6px 20px rgba(20,22,60,0.18)',
-        maxWidth: 360,
-      }}
+      role="status"
+      className="fixed bottom-4 right-4 z-40 flex w-80 max-w-[calc(100vw_-_2rem)] flex-col gap-2.5 rounded-lg border border-accent/30 bg-elevated p-3 shadow-lg"
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <strong>
-          💡 {t('Dica do agente')}
-          {tip.category ? `  ·  ${tip.category}` : ''}
-        </strong>
-        <span style={{ flex: 1 }} />
-        <button className="ghost" onClick={() => setDismissed(true)} title={t('Dispensar')}>
-          ✕
-        </button>
+      <div className="flex items-center gap-2">
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-accent-soft text-accent">
+          <Icon name="sparkles" size={15} />
+        </span>
+        <span className="min-w-0 flex-1 text-sm font-semibold text-fg">
+          {t('Dica do agente')}
+          {tip.category ? <span className="ml-1 font-normal text-fg-muted">· {tip.category}</span> : null}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          aria-label={t('Dispensar')}
+          title={t('Dispensar')}
+          onClick={() => setDismissed(true)}
+        >
+          <Icon name="close" size={14} />
+        </Button>
       </div>
-      <div style={{ fontSize: 13, color: 'var(--muted, #555)', lineHeight: 1.4 }}>{tip.tip}</div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-        <button
-          className="ghost"
+      <p className="text-sm leading-relaxed text-fg-muted">{tip.tip}</p>
+      <div className="flex justify-end">
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => {
             setDismissed(true)
             navigate('/assistente')
           }}
         >
           {t('Abrir Assistente')}
-        </button>
+        </Button>
       </div>
     </div>
   )

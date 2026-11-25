@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { translateText } from '../api'
 import { t } from '../i18n'
+import {
+  Button, Card, PageHeader, SectionTitle, Select, Textarea, Toolbar,
+} from '../ui'
 
 const LANGS = [
   ['pt', 'Português'],
@@ -54,42 +57,88 @@ export default function Traducao() {
     }
   }
 
+  const langLabel = (code) => {
+    const found = LANGS.find(([c]) => c === code)
+    return found ? t(found[1]) : code
+  }
+
+  const sourceLabel = source === 'auto' ? t('Detectar idioma') : langLabel(source)
+  const targetLabel = langLabel(target)
+
   return (
-    <div>
-      <h1 className="page-title">{t('Tradutor')}</h1>
-      <p className="subtitle">{t('Traduza texto entre idiomas (detecção automática da origem).')}</p>
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Tradutor')}
+        description={t('Traduza texto entre idiomas (detecção automática da origem).')}
+      />
 
-      <div className="toolbar" style={{ marginBottom: 10, alignItems: 'center' }}>
-        <select value={source} onChange={(e) => setSource(e.target.value)}>
-          <option value="auto">{t('Detectar idioma')}</option>
-          {LANGS.map(([c, l]) => <option key={c} value={c}>{t(l)}</option>)}
-        </select>
-        <button className="ghost" onClick={swap} title={t('Trocar idiomas')}>⇄</button>
-        <select value={target} onChange={(e) => setTarget(e.target.value)}>
-          {LANGS.map(([c, l]) => <option key={c} value={c}>{t(l)}</option>)}
-        </select>
+      <Toolbar
+        actions={(
+          <>
+            <Button onClick={run} loading={loading}>
+              {loading ? t('Traduzindo...') : t('Traduzir')}
+            </Button>
+            <Button variant="secondary" onClick={copy}>{t('Copiar')}</Button>
+          </>
+        )}
+      >
+        <div className="w-44">
+          <Select
+            value={source}
+            onValueChange={setSource}
+            ariaLabel={sourceLabel}
+            options={[
+              { value: 'auto', label: t('Detectar idioma') },
+              ...LANGS.map(([value, label]) => ({ value, label: t(label) })),
+            ]}
+          />
+        </div>
+
+        <Button
+          variant="secondary"
+          iconOnly
+          aria-label={t('Trocar idiomas')}
+          title={t('Trocar idiomas')}
+          onClick={swap}
+        >
+          ⇄
+        </Button>
+
+        <div className="w-44">
+          <Select
+            value={target}
+            onValueChange={setTarget}
+            ariaLabel={targetLabel}
+            options={LANGS.map(([value, label]) => ({ value, label: t(label) }))}
+          />
+        </div>
+      </Toolbar>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card className="flex flex-col gap-2">
+          <SectionTitle>{sourceLabel}</SectionTitle>
+          <Textarea
+            className="min-h-64 flex-1"
+            placeholder={t('Digite o texto...')}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            aria-label={t('Digite o texto...')}
+          />
+        </Card>
+
+        <Card className="flex flex-col gap-2">
+          <SectionTitle>{targetLabel}</SectionTitle>
+          <Textarea
+            className="min-h-64 flex-1"
+            placeholder={t('Tradução')}
+            value={output}
+            readOnly
+            aria-label={t('Tradução')}
+          />
+        </Card>
       </div>
 
-      <div className="row" style={{ gap: 12, alignItems: 'stretch' }}>
-        <textarea
-          style={{ flex: 1, minHeight: 220 }}
-          placeholder={t('Digite o texto...')}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
-        <textarea
-          style={{ flex: 1, minHeight: 220 }}
-          placeholder={t('Tradução')}
-          value={output}
-          readOnly
-        />
-      </div>
-
-      <div className="row" style={{ gap: 8, marginTop: 10, alignItems: 'center' }}>
-        <button onClick={run} disabled={loading}>{loading ? t('Traduzindo...') : t('Traduzir')}</button>
-        <button className="ghost" onClick={copy}>{t('Copiar')}</button>
-        {status && <span className="muted">{status}</span>}
-      </div>
+      {status && <p className="text-sm text-fg-muted">{status}</p>}
     </div>
   )
 }

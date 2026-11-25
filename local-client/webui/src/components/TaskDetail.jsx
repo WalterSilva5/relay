@@ -12,6 +12,10 @@ import {
 } from '../api'
 import { apiError } from '../api'
 import { t, tf } from '../i18n'
+import Icon from './Icon.jsx'
+import {
+  Avatar, Button, Card, Checkbox, Dialog, Field, Input, SectionTitle, Select, Skeleton, Textarea,
+} from '../ui'
 
 const TYPES = ['FEATURE', 'BUG', 'TECH_DEBT', 'IMPROVEMENT', 'CHORE']
 const PRIOS = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
@@ -28,11 +32,11 @@ export default function TaskDetail({ code, onClose, onChanged }) {
 
   const load = async () => {
     try {
-      const t = await getTask(code)
-      setTask(t)
-      setComments(await getComments(t.id))
-      if (t.projectId) {
-        try { setMembers(await getMembers(t.projectId)) } catch { setMembers([]) }
+      const detail = await getTask(code)
+      setTask(detail)
+      setComments(await getComments(detail.id))
+      if (detail.projectId) {
+        try { setMembers(await getMembers(detail.projectId)) } catch { setMembers([]) }
       }
     } catch (e) { setError(String(e.message || e)) }
   }
@@ -78,114 +82,206 @@ export default function TaskDetail({ code, onClose, onChanged }) {
 
   if (!task) {
     return (
-      <div className="overlay" onClick={onClose}>
-        <div className="modal" onClick={(e) => e.stopPropagation()}>
-          {error ? <div className="banner">{error}</div> : <div className="muted">{t('Carregando...')}</div>}
-        </div>
-      </div>
+      <Dialog
+        open
+        onOpenChange={(open) => { if (!open) onClose() }}
+        title={error ? t('Erro') : t('Carregando...')}
+        size="lg"
+      >
+        {error ? (
+          <p className="text-sm text-danger">{error}</p>
+        ) : (
+          <div className="space-y-3" aria-busy="true">
+            <Skeleton w="w-32" h="h-3" />
+            <Skeleton w="w-full" h="h-6" />
+            <Skeleton w="w-2/3" h="h-4" />
+          </div>
+        )}
+      </Dialog>
     )
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="close-x" onClick={onClose}>✕</button>
-        <div className="muted" style={{ fontSize: 11, fontWeight: 700 }}>{task.code}</div>
-        <h2>{task.title}</h2>
+    <Dialog
+      open
+      onOpenChange={(open) => { if (!open) onClose() }}
+      title={task.title}
+      description={<span className="font-mono">{task.code}</span>}
+      size="lg"
+    >
+      <div className="space-y-5">
+        {error && (
+          <div role="alert" className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+            {error}
+          </div>
+        )}
 
-        {error && <div className="banner">{error}</div>}
-
-        <div className="row" style={{ marginTop: 8 }}>
-          <select value={task.type} onChange={(e) => patch({ type: e.target.value })}>
-            {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select value={task.priority} onChange={(e) => patch({ priority: e.target.value })}>
-            {PRIOS.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label={t('Tipo')} className="min-w-40 flex-1">
+            <Select
+              value={task.type}
+              onValueChange={(value) => patch({ type: value })}
+              options={TYPES.map((type) => ({ value: type, label: type }))}
+            />
+          </Field>
+          <Field label={t('Prioridade')} className="min-w-40 flex-1">
+            <Select
+              value={task.priority}
+              onValueChange={(value) => patch({ priority: value })}
+              options={PRIOS.map((p) => ({ value: p, label: p }))}
+            />
+          </Field>
         </div>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 12, cursor: 'pointer' }}
-          title={t('Card que existe só aqui: o sync do board externo não cria, não atualiza e não apaga.')}>
-          <input type="checkbox" style={{ width: 'auto' }} checked={!!task.isLocal}
-            onChange={(e) => patch({ isLocal: e.target.checked })} />
-          {t('Tarefa local (não sincroniza)')}
-        </label>
+        <div title={t('Card que existe só aqui: o sync do board externo não cria, não atualiza e não apaga.')}>
+          <Checkbox
+            label={t('Tarefa local (não sincroniza)')}
+            checked={!!task.isLocal}
+            onCheckedChange={(value) => patch({ isLocal: !!value })}
+          />
+        </div>
 
-        <div className="section">
-          <h4>{t('Responsável')}</h4>
-          <div className="row" style={{ gap: 8, alignItems: 'center' }}>
-            <select value={task.assignee || ''} onChange={(e) => { const v=e.target.value; if(v==='__new__') setShowNewAssignee(true); else assignMember(v) }} style={{ flex: 1 }}>
-              <option value="">{t('Sem responsável')}</option>
-              {members.map((m) => (<option key={m.id} value={m.name}>{m.name}</option>))}
-              {task.assignee && !members.some((m)=>m.name===task.assignee) && (<option value={task.assignee}>{task.assignee} (legado)</option>)}
-              <option value="__new__">{t('+ Novo responsável...')}</option>
-            </select>
-            {task.assignee && (
-              <span style={{ width: 28, height: 28, borderRadius: 14, background: members.find((m)=>m.name===task.assignee)?.color || 'var(--accent)', color: '#fff', display: 'grid', placeItems: 'center', fontSize: 11, fontWeight: 700 }} title={task.assignee}>
-                {task.assignee.split(' ').slice(0,2).map((p)=>p[0]?.toUpperCase()).join('') || '?'}
-              </span>
-            )}
+        <div className="space-y-2">
+          <SectionTitle>{t('Responsável')}</SectionTitle>
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <Select
+                value={task.assignee || '__none__'}
+                onValueChange={(v) => {
+                  if (v === '__new__') setShowNewAssignee(true)
+                  else if (v === '__none__') assignMember('')
+                  else assignMember(v)
+                }}
+                ariaLabel={t('Responsável')}
+                options={[
+                  { value: '__none__', label: t('Sem responsável') },
+                  ...members.map((m) => ({ value: m.name, label: m.name })),
+                  ...(task.assignee && !members.some((m) => m.name === task.assignee)
+                    ? [{ value: task.assignee, label: `${task.assignee} (legado)` }]
+                    : []),
+                  { value: '__new__', label: t('+ Novo responsável...') },
+                ]}
+              />
+            </div>
+            {task.assignee && <Avatar name={task.assignee} size="md" title={task.assignee} />}
           </div>
+
           {showNewAssignee && (
-            <div className="row" style={{ marginTop: 8 }}>
-              <input placeholder={t('Nome do responsável...')} value={newAssignee} onChange={(e)=>setNewAssignee(e.target.value)} style={{ flex: 1 }} onKeyDown={async (e)=>{ if(e.key==='Enter' && newAssignee.trim()){ await assignMember(newAssignee.trim()); setNewAssignee(''); setShowNewAssignee(false) }}} />
-              <button onClick={async()=>{ if(!newAssignee.trim()) return; await assignMember(newAssignee.trim()); setNewAssignee(''); setShowNewAssignee(false)}}>{t('Atribuir')}</button>
-              <button className="ghost" onClick={()=>setShowNewAssignee(false)}>{t('Cancelar')}</button>
+            <div className="flex flex-wrap items-end gap-2">
+              <Field label={t('Nome do responsável...')} className="min-w-48 flex-1">
+                <Input
+                  value={newAssignee}
+                  onChange={(e) => setNewAssignee(e.target.value)}
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter' && newAssignee.trim()) {
+                      await assignMember(newAssignee.trim())
+                      setNewAssignee('')
+                      setShowNewAssignee(false)
+                    }
+                  }}
+                />
+              </Field>
+              <Button
+                onClick={async () => {
+                  if (!newAssignee.trim()) return
+                  await assignMember(newAssignee.trim())
+                  setNewAssignee('')
+                  setShowNewAssignee(false)
+                }}
+              >
+                {t('Atribuir')}
+              </Button>
+              <Button variant="ghost" onClick={() => setShowNewAssignee(false)}>{t('Cancelar')}</Button>
             </div>
           )}
-          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{t('Facilita filtro e métricas por pessoa.')}</div>
+
+          <p className="text-xs text-fg-muted">{t('Facilita filtro e métricas por pessoa.')}</p>
         </div>
 
-        <div className="section">
-          <h4>{t('Descrição')}</h4>
-          <textarea
-            style={{ width: '100%', minHeight: 90 }}
+        <div className="space-y-2">
+          <SectionTitle>{t('Descrição')}</SectionTitle>
+          <Textarea
+            className="min-h-24"
+            aria-label={t('Descrição')}
             defaultValue={task.description || ''}
             onBlur={(e) => e.target.value !== (task.description || '') && patch({ description: e.target.value })}
           />
         </div>
 
-        <div className="section">
-          <h4>{t('Checklist')}</h4>
-          {(task.checklist || []).map((c) => (
-            <div key={c.id} className={`check-item ${c.checked ? 'done' : ''}`}>
-              <input type="checkbox" checked={c.checked} onChange={() => toggleChecklist(c.id).then(load)} />
-              <span style={{ flex: 1 }}>{c.title}</span>
-              <button className="ghost" style={{ padding: '2px 6px', fontSize: 11 }} onClick={() => deleteChecklist(c.id).then(load)}>✕</button>
-            </div>
-          ))}
-          <div className="row" style={{ marginTop: 6 }}>
-            <input
+        <div className="space-y-2">
+          <SectionTitle>{t('Checklist')}</SectionTitle>
+          <div className="space-y-1">
+            {(task.checklist || []).map((c) => (
+              <div key={c.id} className="flex items-center gap-2 rounded-md border border-border bg-surface px-2 py-1.5">
+                <Checkbox
+                  id={`task-check-${c.id}`}
+                  checked={!!c.checked}
+                  onCheckedChange={() => toggleChecklist(c.id).then(load)}
+                  className="mt-0"
+                />
+                <label
+                  htmlFor={`task-check-${c.id}`}
+                  className={`min-w-0 flex-1 cursor-pointer text-sm ${c.checked ? 'text-fg-subtle line-through' : 'text-fg'}`}
+                >
+                  {c.title}
+                </label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconOnly
+                  aria-label={`${t('Excluir')} ${c.title}`}
+                  title={t('Excluir')}
+                  onClick={() => deleteChecklist(c.id).then(load)}
+                >
+                  <Icon name="close" size={14} />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <Input
               placeholder={t('Novo item...')}
-              style={{ flex: 1 }}
+              aria-label={t('Novo item...')}
+              className="flex-1"
               value={newCheck}
               onChange={(e) => setNewCheck(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && submitCheck()}
             />
-            <button className="ghost" onClick={submitCheck}>+</button>
+            <Button
+              variant="secondary"
+              iconOnly
+              aria-label={t('Adicionar item')}
+              title={t('Adicionar item')}
+              onClick={submitCheck}
+            >
+              <Icon name="plus" size={16} />
+            </Button>
           </div>
         </div>
 
-        <div className="section">
-          <h4>{tf('Comentários ({n})', { n: comments.length })}</h4>
+        <div className="space-y-2">
+          <SectionTitle>{tf('Comentários ({n})', { n: comments.length })}</SectionTitle>
           {comments.map((c) => (
-            <div key={c.id} className="comment">
-              <div className="meta">{c.type} · {c.author || 'local'}</div>
-              <div>{c.body}</div>
-            </div>
+            <Card key={c.id} padding="sm" variant="flat">
+              <div className="text-xs text-fg-muted">{c.type} · {c.author || 'local'}</div>
+              <div className="mt-1 whitespace-pre-wrap text-sm text-fg">{c.body}</div>
+            </Card>
           ))}
-          <div className="row" style={{ marginTop: 6 }}>
-            <input
+
+          <div className="flex items-center gap-1.5">
+            <Input
               placeholder={t('Comentário...')}
-              style={{ flex: 1 }}
+              aria-label={t('Comentário...')}
+              className="flex-1"
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && submitComment()}
             />
-            <button onClick={submitComment}>{t('Enviar')}</button>
+            <Button onClick={submitComment}>{t('Enviar')}</Button>
           </div>
         </div>
       </div>
-    </div>
+    </Dialog>
   )
 }

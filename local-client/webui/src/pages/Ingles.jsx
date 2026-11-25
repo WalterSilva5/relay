@@ -3,6 +3,9 @@ import { englishStart, englishMessage, apiError } from '../api'
 import { englishTranscribe } from '../api-english'
 import { t } from '../i18n'
 import Icon from '../components/Icon'
+import {
+  Button, Card, EmptyState, Field, Input, PageHeader, Select, Toolbar,
+} from '../ui'
 
 const LEVELS = [
   ['BEGINNER', 'Iniciante'],
@@ -127,79 +130,117 @@ export default function Ingles() {
   }
 
   return (
-    <div>
-      <h1 className="page-title">{t('Praticar Inglês')}</h1>
-      <p className="subtitle">{t('Converse em inglês com a IA no seu nível. Fale ou escreva e receba correções e vocabulário.')}</p>
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Praticar Inglês')}
+        description={t('Converse em inglês com a IA no seu nível. Fale ou escreva e receba correções e vocabulário.')}
+      />
 
-      <div className="toolbar" style={{ marginBottom: 10, alignItems: 'center' }}>
-        <label className="muted">{t('Nível:')}</label>
-        <select value={level} onChange={(e) => setLevel(e.target.value)}>
-          {LEVELS.map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
-        </select>
-        <input
-          style={{ flex: 1, minWidth: 160 }}
-          placeholder={t('Tema (opcional): viagem, comida, trabalho...')}
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-        />
-        <button onClick={start} disabled={busy}>{t('Iniciar conversa')}</button>
-      </div>
+      <Toolbar actions={<Button onClick={start} loading={busy}>{t('Iniciar conversa')}</Button>}>
+        <Field label={t('Nível:')} className="w-40">
+          <Select
+            value={level}
+            onValueChange={setLevel}
+            options={LEVELS.map(([value, label]) => ({ value, label: t(label) }))}
+          />
+        </Field>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-        {cards.length === 0 && <div className="muted">{t('Escolha o nível e inicie a conversa.')}</div>}
-        {cards.map((m, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: m.who === 'me' ? 'flex-end' : 'flex-start' }}>
-            <div className="card" style={{ maxWidth: 560, textAlign: 'left' }}>
-              <div>{m.text}</div>
-              {m.correction && (
-                <div className="row" style={{ fontSize: 12, marginTop: 4 }}>
-                  <Icon name="check" size={13} /><span>{m.correction}</span>
-                </div>
-              )}
-              {m.feedback && (
-                <div className="row muted" style={{ fontSize: 12, marginTop: 4 }}>
-                  <Icon name="chat" size={13} /><span>{m.feedback}</span>
-                </div>
-              )}
-              {m.vocab?.length > 0 && (
-                <div className="row muted" style={{ fontSize: 12, marginTop: 4 }}>
-                  <Icon name="book" size={13} />
-                  <span>{m.vocab.map((v) => `${v.word} (${v.respell}) — ${v.meaning}`).join(' · ')}</span>
-                </div>
-              )}
-              {m.suggestion && (
-                <div className="row muted" style={{ fontSize: 12, fontStyle: 'italic', marginTop: 4 }}>
-                  <Icon name="sparkles" size={13} /><span>{m.suggestion}</span>
-                </div>
-              )}
+        <div className="min-w-48 flex-1">
+          <Input
+            placeholder={t('Tema (opcional): viagem, comida, trabalho...')}
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            aria-label={t('Tema (opcional): viagem, comida, trabalho...')}
+          />
+        </div>
+      </Toolbar>
+
+      <Card className="flex flex-col gap-3">
+        <div className="flex max-h-80 min-h-64 flex-col gap-3 overflow-y-auto">
+          {cards.length === 0 && (
+            <EmptyState
+              icon={<Icon name="chat" size={18} />}
+              title={t('Escolha o nível e inicie a conversa.')}
+            />
+          )}
+
+          {cards.map((m, i) => (
+            <div key={i} className={m.who === 'me' ? 'flex justify-end' : 'flex justify-start'}>
+              <div
+                className={`max-w-xl rounded-lg px-3 py-2 text-base ${
+                  m.who === 'me' ? 'bg-accent-soft text-fg' : 'bg-surface-2 text-fg'
+                }`}
+              >
+                <div className="whitespace-pre-wrap break-words">{m.text}</div>
+
+                {m.correction && (
+                  <div className="mt-1 flex items-start gap-1.5 text-sm text-success">
+                    <Icon name="check" size={13} />
+                    <span>{m.correction}</span>
+                  </div>
+                )}
+                {m.feedback && (
+                  <div className="mt-1 flex items-start gap-1.5 text-sm text-fg-muted">
+                    <Icon name="chat" size={13} />
+                    <span>{m.feedback}</span>
+                  </div>
+                )}
+                {m.vocab?.length > 0 && (
+                  <div className="mt-1 flex items-start gap-1.5 text-sm text-fg-muted">
+                    <Icon name="book" size={13} />
+                    <span>{m.vocab.map((v) => `${v.word} (${v.respell}) — ${v.meaning}`).join(' · ')}</span>
+                  </div>
+                )}
+                {m.suggestion && (
+                  <div className="mt-1 flex items-start gap-1.5 text-sm italic text-fg-muted">
+                    <Icon name="sparkles" size={13} />
+                    <span>{m.suggestion}</span>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <div className="toolbar" style={{ alignItems: 'center' }}>
-        <input
-          style={{ flex: 1 }}
-          placeholder={t('Escreva em inglês...')}
-          value={input}
-          disabled={!started || busy}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send()}
-        />
-        <button
-          className="ghost icon"
-          onClick={toggleRecord}
-          disabled={!started || busy || transcribing}
-          title={t('Gravar voz')}
-        ><Icon name={recording ? 'close' : 'mic'} size={16} /></button>
-        <button
-          onClick={sendAudio}
-          disabled={!started || busy || transcribing || !audioBlob}
-          title={t('Enviar áudio para transcrever')}
-        >{transcribing ? '…' : t('Transcrever')}</button>
-        <button onClick={send} disabled={!started || busy}>{t('Enviar')}</button>
-        {status && <span className="muted">{status}</span>}
-      </div>
+        <div className="border-t border-border pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-48 flex-1">
+              <Input
+                placeholder={t('Escreva em inglês...')}
+                value={input}
+                disabled={!started || busy}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && send()}
+                aria-label={t('Escreva em inglês...')}
+              />
+            </div>
+
+            <Button
+              variant="secondary"
+              iconOnly
+              aria-label={t('Gravar voz')}
+              title={t('Gravar voz')}
+              onClick={toggleRecord}
+              disabled={!started || busy || transcribing}
+            >
+              <Icon name={recording ? 'close' : 'mic'} size={16} />
+            </Button>
+
+            <Button
+              variant="secondary"
+              onClick={sendAudio}
+              loading={transcribing}
+              disabled={!started || busy || !audioBlob}
+            >
+              {t('Transcrever')}
+            </Button>
+
+            <Button onClick={send} disabled={!started || busy}>{t('Enviar')}</Button>
+          </div>
+
+          {status && <p className="mt-2 text-sm text-fg-muted">{status}</p>}
+        </div>
+      </Card>
     </div>
   )
 }

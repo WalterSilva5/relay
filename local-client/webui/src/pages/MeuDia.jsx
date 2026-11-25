@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { getDaily, saveDaily, genDailyReport, getDailyActivity } from '../api'
 import { t } from '../i18n'
 import { isoLocal } from '../dateutil.js'
+import Icon from '../components/Icon.jsx'
+import {
+  Button, Card, CardHeader, EmptyState, Input, PageHeader, Textarea, Toolbar, useToast,
+} from '../ui'
 
 function fmtWhen(iso) {
   if (!iso) return ''
@@ -18,6 +22,7 @@ export default function MeuDia() {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState(false)
+  const { toast } = useToast()
 
   function load(d) {
     setError('')
@@ -38,6 +43,7 @@ export default function MeuDia() {
     setError('')
     setSaving(true)
     saveDaily(date, body)
+      .then(() => toast?.({ title: t('Salvo'), description: t('Nota do dia'), tone: 'success' }))
       .catch((e) => setError(String(e.message || e)))
       .finally(() => setSaving(false))
   }
@@ -48,6 +54,7 @@ export default function MeuDia() {
     genDailyReport(date)
       .then((r) => {
         setReport(r?.report || '')
+        toast?.({ title: t('Salvo'), description: t('Relatório do dia'), tone: 'success' })
         load(date)
       })
       .catch((e) => setError(String(e.message || e)))
@@ -55,60 +62,81 @@ export default function MeuDia() {
   }
 
   return (
-    <div>
-      <h1 className="page-title">{t("Meu Dia")}</h1>
-      <p className="subtitle">{t("Anote o que você fez hoje e gere um relatório do dia.")}</p>
-      {error && <div className="banner">{error}</div>}
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Meu Dia')}
+        description={t('Anote o que você fez hoje e gere um relatório do dia.')}
+      />
 
-      <div className="toolbar" style={{ marginBottom: 16 }}>
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </div>
-
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
-          <h2 className="section-title" style={{ margin: 0 }}>{t("Nota do dia")}</h2>
-        </div>
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder={t("Escreva sua nota em markdown...")}
-          rows={14}
-          style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }}
-        />
-        <div className="toolbar" style={{ marginTop: 8 }}>
-          <button onClick={onSave} disabled={saving}>
-            {saving ? t('Salvando...') : t('Salvar')}
-          </button>
-          <button className="ghost" onClick={onGenerate} disabled={generating}>
-            {generating ? t('Gerando...') : t('Gerar relatório do dia')}
-          </button>
-        </div>
-      </div>
-
-      {report && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          <h2 className="section-title">{t("Relatório do dia")}</h2>
-          <div style={{ whiteSpace: 'pre-wrap' }}>{report}</div>
+      {error && (
+        <div role="alert" className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">
+          {error}
         </div>
       )}
 
-      <div className="card">
-        <h2 className="section-title">{t("Atividade do dia")}</h2>
-        {activity.length === 0 && <div className="muted">{t("Nenhuma atividade.")}</div>}
-        {activity.map((a, i) => (
-          <div key={a.id ?? i} className="activity-item">
-            <span className="when">{fmtWhen(a.createdAt)}</span>
-            <span>
-              <b>{a.action}</b>
-              {a.detail ? ` — ${a.detail}` : ''}
-            </span>
+      <Toolbar>
+        <div className="w-full sm:w-40">
+          <Input
+            type="date"
+            value={date}
+            aria-label={t('Data')}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </div>
+      </Toolbar>
+
+      <Card>
+        <CardHeader title={t('Nota do dia')} />
+        <div className="mt-3 space-y-3">
+          <Textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder={t('Escreva sua nota em markdown...')}
+            rows={14}
+            aria-label={t('Nota do dia')}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={onSave} loading={saving}>
+              {saving ? t('Salvando...') : t('Salvar')}
+            </Button>
+            <Button variant="secondary" onClick={onGenerate} loading={generating}>
+              {generating ? t('Gerando...') : t('Gerar relatório do dia')}
+            </Button>
           </div>
-        ))}
-      </div>
+        </div>
+      </Card>
+
+      {report && (
+        <Card>
+          <CardHeader title={t('Relatório do dia')} />
+          <div className="mt-3 whitespace-pre-wrap text-base text-fg">{report}</div>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader title={t('Atividade do dia')} />
+
+        {activity.length === 0 ? (
+          <EmptyState
+            icon={<Icon name="activity" size={20} />}
+            title={t('Nenhuma atividade.')}
+          />
+        ) : (
+          <ul className="mt-3 divide-y divide-border">
+            {activity.map((a, i) => (
+              <li key={a.id ?? i} className="flex items-baseline gap-3 py-2">
+                <span className="w-12 shrink-0 text-xs tabular-nums text-fg-muted">
+                  {fmtWhen(a.createdAt)}
+                </span>
+                <span className="min-w-0 text-sm text-fg">
+                  <span className="font-semibold">{a.action}</span>
+                  {a.detail ? ` — ${a.detail}` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   )
 }

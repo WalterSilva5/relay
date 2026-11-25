@@ -1,6 +1,7 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { Card, PageHeader } from '../ui'
 import { t } from '../i18n'
-import Icon from '../components/Icon'
+import Icon from '../components/Icon.jsx'
 
 const ITEMS = [
   ['/estudos', 'book', 'Estudos', 'Planos, tópicos e assistente de estudo'],
@@ -13,33 +14,31 @@ const ITEMS = [
   ['/traducao', 'globe', 'Tradutor', 'Traduza texto entre idiomas (estilo Google Tradutor)'],
 ]
 
+// Hub de atalhos: o cartão inteiro é um link do router (teclado, foco e nova aba).
 export default function Ferramentas() {
-  const nav = useNavigate()
   return (
-    <div>
-      <h1 className="page-title">{t('Ferramentas')}</h1>
-      <p className="subtitle">{t('Funcionalidades extras — clique para abrir.')}</p>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-          gap: 14,
-          marginTop: 12,
-        }}
-      >
+    <div className="space-y-6">
+      <PageHeader
+        title={t('Ferramentas')}
+        description={t('Funcionalidades extras — clique para abrir.')}
+      />
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {ITEMS.map(([to, icon, label, desc]) => (
-          <div
-            key={to}
-            className="card"
-            style={{ cursor: 'pointer', minHeight: 120 }}
-            onClick={() => nav(to)}
-          >
-            <span className="muted">
-              <Icon name={icon} size={22} />
-            </span>
-            <div style={{ fontWeight: 700, fontSize: 15, marginTop: 8 }}>{t(label)}</div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{t(desc)}</div>
-          </div>
+          <Card key={to} padding="sm" className="transition-colors hover:border-accent">
+            <Link to={to} className="flex h-full flex-col gap-3">
+              <span
+                aria-hidden="true"
+                className="grid h-control-lg w-control-lg place-items-center rounded-md bg-accent-soft text-accent"
+              >
+                <Icon name={icon} size={20} />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-md font-semibold text-fg">{t(label)}</h2>
+                <p className="mt-1 text-sm text-fg-muted">{t(desc)}</p>
+              </div>
+            </Link>
+          </Card>
         ))}
       </div>
     </div>

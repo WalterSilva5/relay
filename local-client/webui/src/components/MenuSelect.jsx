@@ -1,114 +1,124 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import Icon from '../components/Icon.jsx'
 import { t } from '../i18n'
 
-/**
- * Seletor do menu lateral (workspace / projeto).
- *
- * Substitui o `<select>` nativo: mostra ícone (ou a chave do projeto), nome e
- * uma linha de apoio, e abre um popover com a lista. Como é web, o menu pode
- * usar a largura toda em vez de espremer um combo de 200px.
- */
+// Seletor do menu (workspace/projeto) — Tailwind puro, mesma API de antes.
 export default function MenuSelect({
   label, value, options = [], onChange, placeholder,
-  onCreate, createTitle, searchable = true, emptyHint,
+  onCreate, createTitle, searchable = true, emptyHint, icon,
 }) {
-  const [aberto, setAberto] = useState(false)
-  const [busca, setBusca] = useState('')
-  const raiz = useRef(null)
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const root = useRef(null)
 
   useEffect(() => {
-    if (!aberto) return undefined
-    const fora = (e) => {
-      if (raiz.current && !raiz.current.contains(e.target)) setAberto(false)
-    }
-    const esc = (e) => e.key === 'Escape' && setAberto(false)
-    document.addEventListener('mousedown', fora)
-    document.addEventListener('keydown', esc)
+    if (!open) return undefined
+    const onDoc = (e) => { if (root.current && !root.current.contains(e.target)) setOpen(false) }
+    const onEsc = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onEsc)
     return () => {
-      document.removeEventListener('mousedown', fora)
-      document.removeEventListener('keydown', esc)
+      document.removeEventListener('mousedown', onDoc)
+      document.removeEventListener('keydown', onEsc)
     }
-  }, [aberto])
+  }, [open])
 
-  useEffect(() => {
-    if (!aberto) setBusca('')
-  }, [aberto])
+  useEffect(() => { if (!open) setQuery('') }, [open])
 
-  const atual = options.find((o) => String(o.value) === String(value))
-  const termo = busca.trim().toLowerCase()
-  const lista = termo
-    ? options.filter((o) => `${o.label} ${o.hint || ''}`.toLowerCase().includes(termo))
+  const current = options.find((o) => String(o.value) === String(value))
+  const term = query.trim().toLowerCase()
+  const list = term
+    ? options.filter((o) => `${o.label} ${o.hint || ''}`.toLowerCase().includes(term))
     : options
 
-  const escolher = (v) => {
-    setAberto(false)
+  const choose = (v) => {
+    setOpen(false)
     if (String(v) !== String(value)) onChange(v)
   }
 
   return (
-    <div className="msel" ref={raiz}>
-      <div className="msel-top">
-        <span className="msel-label">{label}</span>
+    <div className="relative" ref={root}>
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-xs font-semibold uppercase tracking-wider text-fg-subtle">{label}</span>
         {onCreate && (
-          <button type="button" className="msel-add" onClick={onCreate} title={createTitle}>
-            {/* SVG em vez do caractere "+": fica centralizado e nitido em qualquer fonte */}
-            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-              <path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
+          <button
+            type="button"
+            onClick={onCreate}
+            title={createTitle}
+            aria-label={createTitle || t('Criar')}
+            className="grid size-6 place-items-center rounded-sm border border-border-strong bg-surface text-fg-muted shadow-xs transition hover:border-accent hover:bg-accent-soft hover:text-accent"
+          >
+            <Icon name="plus" size={13} strokeWidth={2} />
           </button>
         )}
       </div>
 
       <button
         type="button"
-        className={`msel-btn${aberto ? ' open' : ''}${atual ? '' : ' empty'}`}
-        onClick={() => setAberto((v) => !v)}
-        aria-expanded={aberto}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={`flex min-h-control-lg w-full items-center gap-2.5 rounded-md border bg-surface px-2.5 py-1.5 text-left shadow-xs transition
+          ${open ? 'border-accent ring-2 ring-accent/20' : 'border-border-strong hover:border-accent/60 hover:shadow-sm'}`}
       >
-        {atual?.icon && <span className="msel-ico">{atual.icon}</span>}
-        {atual?.badge && <span className="msel-badge">{atual.badge}</span>}
-        <span className="msel-txt">
-          <span className="msel-name">{atual?.label || placeholder || t('Selecione')}</span>
-          {atual?.hint && <span className="msel-hint">{atual.hint}</span>}
+        <span className="grid size-7 shrink-0 place-items-center rounded-sm bg-accent-soft text-accent">
+          {icon ? <Icon name={icon} size={15} /> : current?.badge
+            ? <span className="text-[10px] font-bold tracking-wide">{current.badge}</span>
+            : <Icon name="layers" size={15} />}
         </span>
-        <span className="msel-caret" aria-hidden="true">▾</span>
+        <span className="min-w-0 flex-1">
+          <span className={`block truncate text-sm ${current ? 'font-semibold text-fg' : 'font-medium text-fg-muted'}`}>
+            {current?.label || placeholder || t('Selecione')}
+          </span>
+          {current?.hint && <span className="block truncate text-xs text-fg-muted">{current.hint}</span>}
+        </span>
+        <Icon name="chevronLeft" size={13} className="-rotate-90 text-fg-subtle" />
       </button>
 
-      {aberto && (
-        <div className="msel-pop" role="listbox">
+      {open && (
+        <div
+          role="listbox"
+          className="absolute inset-x-0 top-full z-50 mt-1 rounded-md border border-border bg-elevated p-1.5 shadow-lg"
+        >
           {searchable && options.length > 5 && (
             <input
               autoFocus
-              className="msel-search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder={t('Buscar...')}
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
+              className="mb-1 h-control-sm w-full rounded-sm border border-border bg-bg px-2 text-xs text-fg placeholder:text-fg-subtle focus-visible:border-accent focus-visible:outline-none"
             />
           )}
-          <div className="msel-list">
-            {lista.map((o) => {
-              const ativo = String(o.value) === String(value)
+          <div className="max-h-80 overflow-y-auto">
+            {list.map((o) => {
+              const active = String(o.value) === String(value)
               return (
                 <button
                   type="button"
                   key={o.value}
                   role="option"
-                  aria-selected={ativo}
-                  className={`msel-item${ativo ? ' active' : ''}`}
-                  onClick={() => escolher(o.value)}
+                  aria-selected={active}
+                  onClick={() => choose(o.value)}
+                  className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm transition
+                    ${active ? 'bg-accent-soft text-accent' : 'text-fg hover:bg-surface-2'}`}
                 >
-                  {o.icon && <span className="msel-ico">{o.icon}</span>}
-                  {o.badge && <span className="msel-badge">{o.badge}</span>}
-                  <span className="msel-txt">
-                    <span className="msel-name">{o.label}</span>
-                    {o.hint && <span className="msel-hint">{o.hint}</span>}
+                  {o.badge && (
+                    <span className="rounded-sm bg-accent-soft px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-accent">
+                      {o.badge}
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className={`block truncate ${active ? 'font-semibold' : ''}`}>{o.label}</span>
+                    {o.hint && <span className="block truncate text-xs text-fg-muted">{o.hint}</span>}
                   </span>
-                  {ativo && <span className="msel-check">✓</span>}
+                  {active && <Icon name="check" size={14} />}
                 </button>
               )
             })}
-            {lista.length === 0 && (
-              <div className="msel-empty">{emptyHint || t('Nada encontrado')}</div>
+            {list.length === 0 && (
+              <div className="px-2 py-3 text-center text-xs text-fg-muted">
+                {emptyHint || t('Nada encontrado')}
+              </div>
             )}
           </div>
         </div>
