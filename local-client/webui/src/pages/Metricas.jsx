@@ -17,7 +17,8 @@ export default function Metricas() {
   const s = metrics?.summary || {}
   const cards = [
     { lbl: t('Total'), val: s.totalTasks ?? '—' },
-    { lbl: t('Concluídas'), val: s.doneTasks ?? '—' },
+    { lbl: t('Entregues'), val: (s.deliveredTasks ?? s.doneTasks) ?? '—' },
+    { lbl: t('Concluídas (Done)'), val: s.doneTasks ?? '—' },
     { lbl: t('Concluídas 7d'), val: s.completedLast7d ?? '—' },
     { lbl: t('Concluídas 30d'), val: s.completedLast30d ?? '—' },
     { lbl: t('Lead time médio (h)'), val: s.avgLeadTimeHours != null ? Math.round(s.avgLeadTimeHours) : '—' },
@@ -113,7 +114,7 @@ export default function Metricas() {
                   <b>{p.projectKey}</b> · {p.projectName}
                 </span>
                 <span className="muted">
-                  {p.doneTasks}/{p.totalTasks}
+                  {(p.deliveredTasks ?? p.doneTasks)}/{p.totalTasks}
                 </span>
               </div>
             ))}

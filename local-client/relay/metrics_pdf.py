@@ -94,14 +94,15 @@ def collect_metrics(session, project, exclude_ids: set[int] | None = None) -> di
     excluidos = set(exclude_ids or ())
     if excluidos:
         tasks = [t for t in tasks if t.column_id not in excluidos]
-    total = len(tasks)
-    done = sum(1 for t in tasks if t.column_id in done_ids)
-    pct = round(done / total * 100) if total else 0
-    # dois status de primeiro nível: desenvolvimento concluído (Dev Box ou
-    # depois) x finalizado (coluna de conclusão/aceite)
-    from relay.dimensions import dev_done_column as _dev_col_fn
+    from relay.dimensions import dev_done_column as _dev_col_fn, delivered_ids as _entregues_fn
     _col_dev_top = _dev_col_fn(cols)
     dev_ids_top = {c.id for c in cols if _col_dev_top is not None and c.order >= _col_dev_top.order} or set(done_ids)
+    entregues_ids = _entregues_fn(cols, done_ids)
+    total = len(tasks)
+    done = sum(1 for t in tasks if t.column_id in entregues_ids)
+    pct = round(done / total * 100) if total else 0
+    # dois status de primeiro nível: desenvolvimento concluído (Dev Box ou
+    # depois) x finalizado (entregue = Done ou teste/aceite)
     developed = sum(1 for t in tasks if t.column_id in dev_ids_top)
     developed_pct = round(developed / total * 100) if total else 0
 
@@ -133,7 +134,7 @@ def collect_metrics(session, project, exclude_ids: set[int] | None = None) -> di
         pessoas.setdefault(t.assignee or "", []).append(t)
     por_pessoa = []
     for nome, lst in pessoas.items():
-        feitas = sum(1 for t in lst if t.column_id in done_ids)
+        feitas = sum(1 for t in lst if t.column_id in entregues_ids)
         dev_feitas = sum(1 for t in lst if t.column_id in dev_ids)
         por_pessoa.append({
             "nome": nome or "Sem responsável",
@@ -158,7 +159,7 @@ def collect_metrics(session, project, exclude_ids: set[int] | None = None) -> di
         lst = [t for t in tasks if any(e.id == ep.id for e in t.epics)]
         if not lst:
             continue
-        feitas = sum(1 for t in lst if t.column_id in done_ids)
+        feitas = sum(1 for t in lst if t.column_id in entregues_ids)
         por_epico.append({
             "nome": ep.name,
             "color": ep.color or PIE_COLORS[len(por_epico) % len(PIE_COLORS)],
@@ -180,7 +181,7 @@ def collect_metrics(session, project, exclude_ids: set[int] | None = None) -> di
         if not n:
             continue
         lst = [t for t in tasks if any(x.name == lb.name for x in t.labels)]
-        feitas = sum(1 for t in lst if t.column_id in done_ids)
+        feitas = sum(1 for t in lst if t.column_id in entregues_ids)
         por_modulo.append({
             "nome": lb.name,
             "color": lb.color or ACCENT,
@@ -552,7 +553,7 @@ def build_metrics_pdf(session, project, exclude_ids: set[int] | None = None) -> 
                      cor=GREEN if dev_pct == 100 else ACCENT))
     flow.append(Spacer(1, 2 * mm))
     flow.append(Paragraph(
-        f"Finalizado (aceite): {m['done']}/{m['total']} · {m['pct']}%",
+        f"Finalizado (teste ou aceite): {m['done']}/{m['total']} · {m['pct']}%",
         st["small"],
     ))
     flow.append(_bar(m["pct"], width=174 * mm, height=9,
@@ -659,7 +660,7 @@ def build_metrics_pdf(session, project, exclude_ids: set[int] | None = None) -> 
             pct_dev = x.get("developedPct", x["pct"])
             feito_dev = x.get("developed", x["done"])
             cor = GREEN if pct_dev == 100 else (AMBER if pct_dev > 0 else colors.HexColor("#CBD5E1"))
-            aceitos = "" if x["done"] == feito_dev else f" · {x['done']} aceitos"
+            aceitos = "" if x["done"] == feito_dev else f" · {x['done']} finalizados"
             linhas.append([
                 Paragraph(f"<b>{x['label']}</b>", st["body"]),
                 _bar(pct_dev, width=largura, cor=cor),
@@ -838,14 +839,14 @@ def build_metrics_pdf(session, project, exclude_ids: set[int] | None = None) -> 
     ]))
     flow.append(t)
 
-    # ---------- por responsável (barras: dev concluído; aceitos como detalhe) ----------
+    # ---------- por responsável (barras: dev concluído; finalizados como detalhe) ----------
     if not sem_pessoa:
         _titulo(flow, "Por responsável", st)
         _linhas_pessoa = []
         for p in m["por_pessoa"][:12]:
             dev_f = p.get("developed", p["done"])
             dev_p = p.get("developedPct", p["pct"])
-            nome_p = p["nome"] + (f" · {p['done']} aceitos" if p["done"] != dev_f else "")
+            nome_p = p["nome"] + (f" · {p['done']} finalizados" if p["done"] != dev_f else "")
             _linhas_pessoa.append((nome_p, dev_f, p["total"], dev_p))
         flow.append(_tabela_barra(
             _linhas_pessoa,

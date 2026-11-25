@@ -170,6 +170,29 @@ def dev_done_ids_by_project(columns) -> dict:
     return {pid: dev_done_ids(cols) for pid, cols in por_projeto.items()}
 
 
+# Colunas que contam como "entregue" (vão para o % Finalizado) além da
+# conclusão formal: estágios de teste/aceite. Normalizado igual ao Dev Box,
+# então vale para boards em PT ou EN ("In Test", "Em teste", ...).
+DELIVERED_STAGE_NAMES = frozenset({
+    "intest", "emteste", "intestes", "emtestes",
+    "verified", "verificado", "verificada",
+    "accepted", "aceito", "aceita",
+})
+
+
+def delivered_ids(columns, done_ids) -> set:
+    """Ids das colunas que contam como entregues: conclusão formal + teste/aceite.
+
+    Ponto de verdade do "% Finalizado": tudo que já passou pelo
+    desenvolvimento E pelo teste conta como entrega, mesmo sem o aceite final.
+    """
+    entregues = set(done_ids or ())
+    for c in columns or []:
+        if _normalizar(getattr(c, "name", "")) in DELIVERED_STAGE_NAMES:
+            entregues.add(c.id)
+    return entregues
+
+
 def is_overdue(task, dev_ids, hoje=None) -> bool:
     """Vencida = prazo no passado E desenvolvimento ainda não concluído.
 
@@ -192,7 +215,8 @@ def aggregate_dimensions(tasks, done_ids, columns=None) -> dict:
     - `modules`: somente grupos com cartões, cada um com as sub-entregas
       observadas; sem metas, contagens planejadas ou total de endpoints
     - cada módulo traz **duas leituras de cartões**: `developed` (Dev Box ou
-      depois = desenvolvimento concluído) e `done` (coluna de conclusão/aceite)
+      depois = desenvolvimento concluído) e `done` (entregue = Done ou
+      estágio de teste/aceite: In Test, Verified, Accepted)
     - `sprints`, `platforms`, `process`, `other`: dimensões independentes
     - `unlabeled`: cartões sem nenhuma label de módulo (honestidade da métrica)
     """
@@ -239,14 +263,16 @@ def aggregate_dimensions(tasks, done_ids, columns=None) -> dict:
             else:
                 outras.setdefault(info["code"], set()).add(t.id)
 
+    entregues_ids = delivered_ids(columns, done_ids)
+
     def _item(code: str, ids: set, rotulo: str | None = None) -> dict:
-        done = sum(1 for t in tasks if t.id in ids and t.column_id in done_ids)
+        done = sum(1 for t in tasks if t.id in ids and t.column_id in entregues_ids)
         developed = sum(1 for t in tasks if t.id in ids and t.column_id in desenvolvidos_ids)
         return {
             "name": code,
             "label": rotulo or code,
             "total": len(ids),
-            # `done` = aceito (coluna de conclusão); `developed` = dev concluído
+            # `done` = entregue (Done ou teste/aceite); `developed` = dev concluído
             "done": done,
             "pct": _pct(done, len(ids)),
             "developed": developed,
@@ -321,7 +347,7 @@ def aggregate_dimensions(tasks, done_ids, columns=None) -> dict:
             "total": total_cards - len(com_modulo),
             "done": sum(
                 1 for t in tasks
-                if t.id not in com_modulo and t.column_id in done_ids
+                if t.id not in com_modulo and t.column_id in entregues_ids
             ),
         },
         "with_module": len(com_modulo),

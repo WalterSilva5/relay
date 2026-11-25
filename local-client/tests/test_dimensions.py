@@ -247,3 +247,73 @@ def test_sem_dev_box_cai_na_coluna_de_conclusao():
     assert d["developmentColumn"] is None
     assert config["developed"] == 1
     assert config["developedPct"] == config["pct"] == 50
+
+
+# --------------------------------------------------------------------------
+# "Entregue" = Done + estágios de teste/aceite (In Test, Verified, Accepted)
+# --------------------------------------------------------------------------
+
+def test_entregue_inclui_estagios_de_teste():
+    """In Test/Verified/Accepted contam como entregue no % Finalizado."""
+    from relay.dimensions import delivered_ids
+
+    cols = [
+        _Col(1, "To do", 0),
+        _Col(3, "Dev Box", 6),
+        _Col(4, "In Test", 7),
+        _Col(5, "Verified", 8),
+        _Col(6, "Accepted", 9),
+        _Col(7, "Rework", 10),
+        _Col(8, "Done", 11, done=True),
+    ]
+    assert delivered_ids(cols, {8}) == {4, 5, 6, 8}
+
+
+def test_entregue_ignora_rework():
+    """Rework (voltou do teste) NÃO conta como entregue."""
+    from relay.dimensions import delivered_ids
+
+    cols = [_Col(1, "Doing", 0), _Col(2, "In Test", 1), _Col(3, "Rework", 2)]
+    assert delivered_ids(cols, set()) == {2}
+
+
+def test_modulo_usa_entregue_no_done():
+    cols = COLS_FLUXO + [_Col(6, "Verified", 9)]
+    tasks = [
+        _tarefa(1, 4),   # In Test -> entregue
+        _tarefa(2, 6),   # Verified -> entregue
+        _tarefa(3, 3),   # Dev Box -> só desenvolvido
+        _tarefa(4, 2),   # Dev Review
+    ]
+    d = aggregate_dimensions(tasks, done_ids={5}, columns=cols)
+    config = next(m for m in d["modules"] if m["name"] == "config")
+    assert config["total"] == 4
+    assert config["done"] == 2 and config["pct"] == 50     # entregues
+    assert config["developed"] == 3 and config["developedPct"] == 75
+
+
+def test_member_stats_conta_entregue(tmp_path):
+    from relay.db.models import (
+        BoardColumn, Member, Project, Task, get_session, member_stats,
+    )
+    s = get_session()
+    try:
+        p = Project(name="Ent", key="ENT")
+        s.add(p); s.flush()
+        cols = {}
+        for nome, ordem, done in [("Doing", 0, False), ("In Test", 1, False),
+                                  ("Done", 2, True)]:
+            c = BoardColumn(project_id=p.id, name=nome, order=ordem, is_done=done)
+            s.add(c); s.flush(); cols[nome] = c
+        s.add(Member(project_id=p.id, name="Dev"))
+        s.add(Task(project_id=p.id, column_id=cols["In Test"].id, number=1,
+                   title="em teste", assignee="Dev"))
+        s.add(Task(project_id=p.id, column_id=cols["Doing"].id, number=2,
+                   title="fazendo", assignee="Dev"))
+        s.commit()
+        st = {x["member"].name: x for x in member_stats(s, p.id)}["Dev"]
+        assert st["total"] == 2
+        assert st["done"] == 1          # In Test conta como entregue
+        assert st["pct"] == 50
+    finally:
+        s.close()

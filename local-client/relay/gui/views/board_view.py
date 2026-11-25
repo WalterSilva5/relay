@@ -1771,7 +1771,9 @@ class BoardMetricsAccordion(QFrame):
 
             # — coleta de dados —
             cols = s.query(BoardColumn).filter(BoardColumn.project_id == self.project_id).order_by(BoardColumn.order).all()
+            from relay.dimensions import delivered_ids as _entregues_fn
             done_col_ids = {c.id for c in cols if c.is_done}
+            entregues_ids = _entregues_fn(cols, done_col_ids)
             tasks_all = s.query(Task).filter(
                 Task.project_id == self.project_id,
                 Task.deleted_at == None,  # noqa: E711
@@ -1781,7 +1783,7 @@ class BoardMetricsAccordion(QFrame):
             locais = [tk for tk in tasks_all if tk.is_local]
             tasks_metric = [tk for tk in tasks_all if not tk.is_local]
             total = len(tasks_metric)
-            done = sum(1 for tk in tasks_metric if tk.column_id in done_col_ids)
+            done = sum(1 for tk in tasks_metric if tk.column_id in entregues_ids)
             pct = int(done / total * 100) if total else 0
             # dois status de primeiro nível: dev concluído x totalmente entregue
             from relay.dimensions import dev_done_column as _dev_col_desk
@@ -1854,7 +1856,7 @@ class BoardMetricsAccordion(QFrame):
             barra.setStyleSheet(f"QProgressBar {{ background: {t.bg_badge}; }} QProgressBar::chunk {{ background: {t.accent if dev_pct==100 else '#4f46e5'}; }}")
             prog_row.addWidget(barra, 1)
             entr_lbl = QLabel(_t("Finalizado"))
-            entr_lbl.setToolTip(_t("Cards na coluna de conclusão (aceite)"))
+            entr_lbl.setToolTip(_t("Cards entregues: concluídos e em teste/aceite"))
             entr_lbl.setStyleSheet(f"color: {t.text_muted}; font-size: 11px; font-weight: 600; border: none;")
             prog_row.addWidget(entr_lbl)
             barra2 = QProgressBar()
@@ -2156,14 +2158,14 @@ class BoardMetricsAccordion(QFrame):
                 resp_data = []
                 for name, tot in cnt.most_common(6):
                     q = [tk for tk in tasks_metric if tk.assignee == name]
-                    done_r = sum(1 for tk in q if tk.column_id in done_col_ids)
+                    done_r = sum(1 for tk in q if tk.column_id in entregues_ids)
                     dev_r = sum(1 for tk in q if tk.column_id in _dev_ids)
                     pct_r = int(dev_r / tot * 100) if tot else 0
                     resp_data.append((name, done_r, dev_r, tot, pct_r, False))
                 # Sem responsável
                 if unassigned:
                     tot_u = len(unassigned)
-                    done_u = sum(1 for tk in unassigned if tk.column_id in done_col_ids)
+                    done_u = sum(1 for tk in unassigned if tk.column_id in entregues_ids)
                     dev_u = sum(1 for tk in unassigned if tk.column_id in _dev_ids)
                     pct_u = int(dev_u / tot_u * 100) if tot_u else 0
                     resp_data.append((_t("Sem responsável"), done_u, dev_u, tot_u, pct_u, True))

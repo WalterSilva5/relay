@@ -389,23 +389,25 @@ def get_or_create_member(session, project_id: int, name: str):
 
 
 def member_stats(session, project_id: int) -> list[dict]:
-    """Métricas por responsável: total, dev concluído, aceitos, % e vencidos em aberto.
+    """Métricas por responsável: total, dev concluído, entregues, % e vencidos em aberto.
 
     Duas leituras, como nos módulos: `developed` (Dev Box ou depois = dev
-    concluído) é o progresso do responsável; `done` conta só o aceite
-    (coluna de conclusão).
+    concluído) é o progresso do responsável; `done` conta os entregues
+    (Done ou estágio de teste/aceite: In Test, Verified, Accepted).
     """
     from datetime import datetime
     cols = session.query(BoardColumn).filter(
         BoardColumn.project_id == project_id).order_by(BoardColumn.order).all()
     done_ids = {c.id for c in cols if c.is_done}
     try:
-        from relay.dimensions import dev_done_column
+        from relay.dimensions import dev_done_column, delivered_ids
         coluna_dev = dev_done_column(cols)
         dev_ids = {c.id for c in cols if c.order >= coluna_dev.order} \
             if coluna_dev is not None else set(done_ids)
+        entregues_ids = delivered_ids(cols, done_ids)
     except Exception:  # noqa: BLE001
         dev_ids = set(done_ids)
+        entregues_ids = set(done_ids)
     stats = []
     for m in project_members(session, project_id):
         base = session.query(Task).filter(
@@ -416,7 +418,7 @@ def member_stats(session, project_id: int) -> list[dict]:
         )
         total = base.count()
         all_tasks = base.all()
-        done = sum(1 for t in all_tasks if t.column_id in done_ids)
+        done = sum(1 for t in all_tasks if t.column_id in entregues_ids)
         developed = sum(1 for t in all_tasks if t.column_id in dev_ids)
         # vencida = prazo no passado e dev ainda não concluído (Dev Box em
         # diante já cumpriu o compromisso de desenvolvimento)
