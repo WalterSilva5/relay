@@ -8,36 +8,36 @@
 
 @theme {
   /* ---- marca ---- */
-  --color-accent: #5b5bd6;
-  --color-accent-hover: #4d4dc4;
-  --color-accent-soft: #eeeefb;
-  --color-accent-soft-2: #e3e3f9;
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-soft: #e9eeff;
+  --color-accent-soft-2: #dbe4ff;
   --color-accent-contrast: #ffffff;
 
   /* ---- superfícies ---- */
-  --color-bg: #f7f8fb;
+  --color-bg: #f5f7fa;
   --color-surface: #ffffff;
-  --color-surface-2: #fbfbfe;
+  --color-surface-2: #f8fafc;
   --color-elevated: #ffffff;
-  --color-sidebar: #f9fafd;
-  --color-column: #f1f2f7;
+  --color-sidebar: #f1f4f9;
+  --color-column: #edf1f6;
 
   /* ---- traços ---- */
-  --color-border: #e4e7ee;
-  --color-border-strong: #d5d9e3;
+  --color-border: #e2e6ed;
+  --color-border-strong: #cdd3de;
 
   /* ---- texto ---- */
-  --color-fg: #14161c;
-  --color-fg-muted: #6d7486;
-  --color-fg-subtle: #8b93a7;
+  --color-fg: #111317;
+  --color-fg-muted: #5b6373;
+  --color-fg-subtle: #697183;
 
   /* ---- semânticas ---- */
-  --color-success: #16a34a;
-  --color-success-soft: #e8f7ee;
-  --color-warning: #c2740a;
-  --color-warning-soft: #fdf3e2;
-  --color-danger: #d92d20;
-  --color-danger-soft: #fdeceb;
+  --color-success: #15803d;
+  --color-success-soft: #ecfdf3;
+  --color-warning: #b45309;
+  --color-warning-soft: #fff7e6;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fef2f2;
 
   /* ---- tipografia (escala fechada) ---- */
   --text-xs: 11px;
