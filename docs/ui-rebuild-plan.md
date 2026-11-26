@@ -220,9 +220,9 @@ Depois da entrega inicial, quatro ajustes fecharam a experiência do Electron:
   “Registro” fica com Reuniões/Reviews/Reviews de PR/Assistente; “Conhecimento”
   começa por Base/Memória/Biblioteca/Estudos. Cada item virou botão com borda
   (`border-strong`), fundo de superfície e hover/ativo em accent.
-- **Paleta clara:** accent indigo `#4f46e5`, sidebar `#f1f4f9`, fundo `#f5f7fa`,
-  bordas `#e2e6ed`/`#cdd3de` e texto subtle `#697183` (contraste AA). O tema
-  escuro foi preservado.
+- **Paleta clara:** azul corporativo `#1d4ed8`, sidebar `#e8eef6`, fundo `#eef2f7`,
+  bordas `#d3dce7`/`#b7c3d2` e texto subtle `#5f6b7d` (contraste AA; mínimo
+  4,81:1). O tema escuro ganhou o equivalente azul-slate (`#60a5fa`).
 - **Board mais leve:** colunas renderizam 20 cards e liberam o restante em
   “Mostrar mais”. Medição no pacote final: **104 cards / 212 selects / ~4 mil nós**
   na entrada (antes: 279/564/9,5 mil). O Electron também recupera renderer

@@ -148,21 +148,21 @@ Os valores vivem em `src/styles/theme.css`; páginas continuam sem hex.
 
 | Papel | Token | Valor |
 |---|---|---|
-| Marca | `--color-accent` | `#4f46e5` |
-| Marca hover | `--color-accent-hover` | `#4338ca` |
-| Marca suave | `--color-accent-soft` | `#e9eeff` |
-| Fundo | `--color-bg` | `#f5f7fa` |
+| Marca | `--color-accent` | `#1d4ed8` |
+| Marca hover | `--color-accent-hover` | `#1e40af` |
+| Marca suave | `--color-accent-soft` | `#dbeafe` |
+| Fundo | `--color-bg` | `#eef2f7` |
 | Superfície | `--color-surface` | `#ffffff` |
-| Sidebar | `--color-sidebar` | `#f1f4f9` |
-| Coluna do board | `--color-column` | `#edf1f6` |
-| Borda | `--color-border` | `#e2e6ed` |
-| Borda forte | `--color-border-strong` | `#cdd3de` |
-| Texto | `--color-fg` | `#111317` |
-| Texto muted | `--color-fg-muted` | `#5b6373` |
-| Texto subtle | `--color-fg-subtle` | `#697183` |
-| Sucesso | `--color-success` | `#15803d` |
+| Sidebar | `--color-sidebar` | `#e8eef6` |
+| Coluna do board | `--color-column` | `#e4ebf3` |
+| Borda | `--color-border` | `#d3dce7` |
+| Borda forte | `--color-border-strong` | `#b7c3d2` |
+| Texto | `--color-fg` | `#0b1220` |
+| Texto muted | `--color-fg-muted` | `#475467` |
+| Texto subtle | `--color-fg-subtle` | `#5f6b7d` |
+| Sucesso | `--color-success` | `#047857` |
 | Atenção | `--color-warning` | `#b45309` |
-| Perigo | `--color-danger` | `#dc2626` |
+| Perigo | `--color-danger` | `#b91c1c` |
 
 O tema escuro é definido no bloco `:where([data-theme='dark'])` do mesmo arquivo.
 Ao mudar a paleta, rode `npm run build`, `./electron/sync-webui.sh`, recapture os

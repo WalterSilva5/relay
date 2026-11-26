@@ -11,7 +11,7 @@ representam mais a UI principal.
   (1440×900, tema claro, projeto MIG) e já são usados em `README.md` e
   `README.en.md`.
 - A captura reflete o design system v2: menu com **Board primeiro**, itens com
-  borda, paleta clara em indigo/slate e contraste AA.
+  borda, paleta azul corporativa de alto contraste.
 - O Electron limpa o cache da UI a cada boot; se uma janela antiga continuar
   aberta, feche pela bandeja (**Sair**) e abra de novo antes de capturar.
 

@@ -327,7 +327,7 @@ A API roda em `http://127.0.0.1:9777/api` sem autenticação. Endpoints principa
 
 ## Capturas de tela
 
-Capturas reais do app Electron (shell + web UI), 1440×900, tema claro, projeto MIG (VAR 3.0), em **26/11/2026** — design system v2, menu com Board primeiro, itens com borda e paleta indigo/slate:
+Capturas reais do app Electron (shell + web UI), 1440×900, tema claro, projeto MIG (VAR 3.0), em **26/11/2026** — design system v2, menu com Board primeiro, itens com borda e paleta azul corporativa de alto contraste:
 
 ![Dashboard](docs/prints/dashboard.png)
 ![Board kanban](docs/prints/board.png)
