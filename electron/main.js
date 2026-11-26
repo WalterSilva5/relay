@@ -221,7 +221,7 @@ function recoverRenderer(reason) {
   try { win.reload(); } catch (e) { log('falha ao recarregar:', e.message); }
 }
 
-function createWindow() {
+async function createWindow() {
   const route = parseRoute();
   win = new BrowserWindow({
     width: 1400,
@@ -233,6 +233,15 @@ function createWindow() {
     },
   });
   if (route) log('rota inicial:', route);
+  // O bundle é servido localmente; limpar o cache evita abrir uma UI antiga
+  // depois de atualizar o webui-dist (o service worker do PWA é removido junto).
+  try {
+    await win.webContents.session.clearCache();
+    await win.webContents.session.clearStorageData({ storages: ['serviceworkers', 'cachestorage'] });
+    log('cache da UI limpo na inicialização');
+  } catch (e) {
+    log('falha ao limpar cache da UI:', e.message);
+  }
   win.loadURL(urlFor(route));
   win.webContents.on('render-process-gone', (_event, details) => {
     log('renderer encerrado:', details.reason, details.exitCode);
@@ -372,7 +381,7 @@ if (!gotLock) {
       app.quit();
       return;
     }
-    createWindow();
+    createWindow().catch((e) => log('falha ao criar janela:', e?.message || e));
     try {
       createTray();
     } catch (e) {

@@ -65,8 +65,8 @@ function NavItem({ to, label, icon, rail, badge, onClick }) {
           'group relative flex h-9 items-center gap-2.5 rounded-md border px-2 text-base font-medium transition',
           rail ? 'justify-center px-0' : '',
           isActive
-            ? 'border-accent/50 bg-accent-soft text-accent shadow-xs'
-            : 'border-border/80 bg-surface/60 text-fg-muted hover:border-border-strong hover:bg-surface hover:text-fg hover:shadow-xs',
+            ? 'border-accent bg-accent-soft text-accent shadow-sm'
+            : 'border-border-strong bg-surface text-fg-muted shadow-xs hover:border-accent/50 hover:bg-surface-2 hover:text-fg',
         ].join(' ')
       }
     >
@@ -160,7 +160,7 @@ export default function Sidebar({ rail, onToggleRail, onNavigate, children }) {
           <a
             href="relay://vault"
             title={t('Cofre KeePass no desktop')}
-            className={`group flex h-9 items-center gap-2.5 rounded-md border border-border/80 bg-surface/60 px-2 text-base font-medium text-fg-muted transition hover:border-border-strong hover:bg-surface hover:text-fg hover:shadow-xs ${rail ? 'justify-center px-0' : ''}`}
+            className={`group flex h-9 items-center gap-2.5 rounded-md border border-border-strong bg-surface px-2 text-base font-medium text-fg-muted shadow-xs transition hover:border-accent/50 hover:bg-surface-2 hover:text-fg ${rail ? 'justify-center px-0' : ''}`}
           >
             <span className="text-fg-subtle group-hover:text-fg-muted"><Icon name="lock" size={17} /></span>
             {!rail && (
