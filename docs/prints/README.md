@@ -56,7 +56,8 @@ cd local-client && ./run-web.sh   # http://127.0.0.1:9777/
 ## Status (25/11/2026)
 
 Capturados do app Electron empacotado (1440×900, tema claro, projeto MIG) e já
-usados no README: `dashboard.png`, `board.png`, `metricas.png`,
+usados no README — **recapturados em 26/11/2026** após a reordenação do menu
+(Board primeiro, itens com borda): `dashboard.png`, `board.png`, `metricas.png`,
 `reviews-pr.png`, `reunioes.png`.
 
 **Recapturados após a reconstrução da UI** (design system v2: Tailwind v4 +

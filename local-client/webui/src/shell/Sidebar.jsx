@@ -8,10 +8,11 @@ const GROUPS = [
   {
     label: 'Trabalho',
     items: [
+      ['/board', 'Board', 'board'],
       ['/dashboard', 'Dashboard', 'dashboard'],
       ['/meu-dia', 'Meu Dia', 'calendar'],
+      ['/todos', 'TODOs', 'check'],
       ['/projetos', 'Projetos', 'folder'],
-      ['/board', 'Board', 'board'],
       ['/goals', 'Goals', 'target'],
       ['/time', 'Time', 'users'],
       ['/metricas', 'Métricas', 'activity'],
@@ -24,16 +25,15 @@ const GROUPS = [
       ['/reviews', 'Reviews', 'clipboard'],
       ['/reviews-pr', 'Reviews de PR', 'search'],
       ['/assistente', 'Assistente', 'sparkles'],
-      ['/todos', 'TODOs', 'check'],
     ],
   },
   {
     label: 'Conhecimento',
     items: [
-      ['/estudos', 'Estudos', 'book'],
-      ['/biblioteca', 'Biblioteca', 'briefcase'],
       ['/base', 'Base', 'brain'],
       ['/memoria', 'Memória', 'brain'],
+      ['/biblioteca', 'Biblioteca', 'briefcase'],
+      ['/estudos', 'Estudos', 'book'],
       ['/skills', 'Skills', 'sparkles'],
       ['/guia', 'Guia', 'book'],
       ['/ingles', 'Inglês', 'globe'],
@@ -62,11 +62,11 @@ function NavItem({ to, label, icon, rail, badge, onClick }) {
       title={rail ? label : undefined}
       className={({ isActive }) =>
         [
-          'group relative flex h-9 items-center gap-2.5 rounded-md px-2 text-base font-medium transition',
+          'group relative flex h-9 items-center gap-2.5 rounded-md border px-2 text-base font-medium transition',
           rail ? 'justify-center px-0' : '',
           isActive
-            ? 'bg-accent-soft text-accent shadow-xs'
-            : 'text-fg-muted hover:bg-surface hover:text-fg hover:shadow-xs',
+            ? 'border-accent/50 bg-accent-soft text-accent shadow-xs'
+            : 'border-border/80 bg-surface/60 text-fg-muted hover:border-border-strong hover:bg-surface hover:text-fg hover:shadow-xs',
         ].join(' ')
       }
     >
@@ -128,7 +128,7 @@ export default function Sidebar({ rail, onToggleRail, onNavigate, children }) {
       {/* seletores de workspace/projeto */}
       {!rail && children}
 
-      <nav className="mt-3 flex-1 space-y-0.5 overflow-y-auto px-2 pb-3">
+      <nav className="mt-3 flex-1 space-y-1 overflow-y-auto px-2 pb-3">
         {GROUPS.map((g) => (
           <div key={g.label} className="pt-2 first:pt-0">
             {!rail && (
@@ -160,7 +160,7 @@ export default function Sidebar({ rail, onToggleRail, onNavigate, children }) {
           <a
             href="relay://vault"
             title={t('Cofre KeePass no desktop')}
-            className={`group flex h-9 items-center gap-2.5 rounded-md px-2 text-base font-medium text-fg-muted transition hover:bg-surface hover:text-fg hover:shadow-xs ${rail ? 'justify-center px-0' : ''}`}
+            className={`group flex h-9 items-center gap-2.5 rounded-md border border-border/80 bg-surface/60 px-2 text-base font-medium text-fg-muted transition hover:border-border-strong hover:bg-surface hover:text-fg hover:shadow-xs ${rail ? 'justify-center px-0' : ''}`}
           >
             <span className="text-fg-subtle group-hover:text-fg-muted"><Icon name="lock" size={17} /></span>
             {!rail && (
