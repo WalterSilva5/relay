@@ -27,12 +27,18 @@ cd electron
 ./relay-electron.sh --check          # só resolve e imprime o binário
 ```
 
-Para instalar no menu do usuário e registrar `relay://`:
+Para instalar no menu do usuário, registrar `relay://` e iniciar o Electron no login:
 
 ```bash
-./install-desktop.sh
-# remove depois com: ./install-desktop.sh --uninstall
+./install-desktop.sh                 # menu + relay:// + autostart do login
+./install-desktop.sh --no-autostart  # só menu/URL, sem mexer no login
+./install-desktop.sh --uninstall     # remove atalhos e autostart deste repo
 ```
+
+O autostart é gravado em `~/.config/autostart/relay.desktop` apontando para
+`electron/relay-electron.sh` (o mesmo launcher do menu). Se você já tinha o app
+PySide configurado para iniciar no login, rodar o instalador substitui aquela
+entrada — o backup fica em `~/.local/share/relay-desktop-backup/`.
 
 Links `relay://` são traduzidos por `local-client/relay-open.sh`:
 

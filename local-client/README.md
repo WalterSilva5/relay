@@ -273,7 +273,7 @@ Guia de uso reestruturado com 12 seções, incluindo explicações de cada tela,
 
 ### Configurações (Alt+9)
 
-- **Iniciar junto com o computador** (Linux): um toggle que cria/remove um `~/.config/autostart/relay.desktop` para o Relay abrir automaticamente no login (XDG autostart)
+- **Iniciar junto com o computador** (Linux): um toggle que cria/remove um `~/.config/autostart/relay.desktop` para o Relay abrir automaticamente no login (XDG autostart; aponta para o launcher do Electron)
 
 Tela de configurações gerais:
 

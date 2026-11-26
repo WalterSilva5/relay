@@ -273,7 +273,7 @@ Restructured usage guide with 12 sections, including explanations of each screen
 
 ### Settings (Alt+9)
 
-- **Start with the computer** (Linux): a toggle that creates/removes a `~/.config/autostart/relay.desktop` so Relay opens automatically at login (XDG autostart)
+- **Start with the computer** (Linux): a toggle that creates/removes a `~/.config/autostart/relay.desktop` so Relay opens automatically at login (XDG autostart; points to the Electron launcher)
 
 General settings screen:
 

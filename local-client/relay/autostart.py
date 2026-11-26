@@ -33,12 +33,17 @@ def is_enabled() -> bool:
 def _exec_command() -> str:
     """Comando de autostart robusto.
 
-    Prefere o `run.sh` (configura locale UTF-8 + venv, é o launcher mantido),
-    rodado num shell de LOGIN (`bash -lc`) para herdar PATH/locale corretos, com
-    um pequeno atraso para a sessão gráfica (painel/bandeja) ficar pronta antes
-    de abrir a janela — os dois motivos mais comuns de o autostart "não abrir".
+    Prefere o launcher do Electron (UI oficial); se ele não existir, cai no
+    `run.sh` do PySide (legado). Roda num shell de LOGIN (`bash -lc`) para
+    herdar PATH/locale corretos, com um pequeno atraso para a sessão gráfica
+    (painel/bandeja) ficar pronta antes de abrir a janela — os dois motivos
+    mais comuns de o autostart "não abrir".
     """
-    run_sh = Path(__file__).resolve().parents[1] / "run.sh"
+    raiz = Path(__file__).resolve().parents[2]
+    electron = raiz / "electron" / "relay-electron.sh"
+    if electron.exists():
+        return f"bash -lc \"sleep 6; exec '{electron}'\""
+    run_sh = raiz / "local-client" / "run.sh"
     if run_sh.exists():
         return f"bash -lc \"sleep 6; exec '{run_sh}'\""
     py = sys.executable or "python3"
