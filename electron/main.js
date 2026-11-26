@@ -19,6 +19,7 @@ let win = null;
 let tray = null;
 let sidecar = null;
 let quitting = false;
+let rendererReloads = [];
 const logFile = path.join(app.getPath('userData'), 'sidecar.log');
 
 function log(...args) {
@@ -204,6 +205,22 @@ async function toggleRecording() {
 // ---------------------------------------------------------------------------
 // Janela + tray
 // ---------------------------------------------------------------------------
+// Recupera a janela de um renderer morto sem entrar em loop: no máximo dois
+// reloads por minuto. Board muito grande/GC/GPU podem derrubar o renderer e
+// deixar a janela "congelada" (o processo principal continua vivo).
+function recoverRenderer(reason) {
+  if (quitting || !win) return;
+  const now = Date.now();
+  rendererReloads = rendererReloads.filter((t) => now - t < 60000);
+  if (rendererReloads.length >= 2) {
+    log('renderer caiu de novo; reload automático suspenso:', reason);
+    return;
+  }
+  rendererReloads.push(now);
+  log('recarregando janela após queda do renderer:', reason);
+  try { win.reload(); } catch (e) { log('falha ao recarregar:', e.message); }
+}
+
 function createWindow() {
   const route = parseRoute();
   win = new BrowserWindow({
@@ -217,6 +234,21 @@ function createWindow() {
   });
   if (route) log('rota inicial:', route);
   win.loadURL(urlFor(route));
+  win.webContents.on('render-process-gone', (_event, details) => {
+    log('renderer encerrado:', details.reason, details.exitCode);
+    recoverRenderer(details.reason);
+  });
+  win.webContents.on('unresponsive', () => {
+    log('renderer não respondeu (janela ocupada); use Bandeja > Recarregar janela');
+    new Notification({
+      title: 'Relay',
+      body: 'A interface está ocupada. Se demorar, use Bandeja > Recarregar janela.',
+    }).show();
+  });
+  win.webContents.on('responsive', () => log('renderer voltou a responder'));
+  win.webContents.on('did-fail-load', (_event, code, desc, url) => {
+    log('falha ao carregar:', code, desc, url);
+  });
   if (process.env.ELECTRON_DEV) win.webContents.openDevTools({ mode: 'detach' });
   win.on('close', (e) => {
     if (!quitting) {
@@ -243,6 +275,7 @@ function updateTray(recording) {
 function buildTrayMenu(recording = false) {
   const menu = Menu.buildFromTemplate([
     { label: 'Abrir Relay', click: () => { win.show(); win.focus(); } },
+    { label: 'Recarregar janela', click: () => { if (win) win.reload(); } },
     { label: recording ? '■ Parar gravação' : '● Iniciar gravação', click: toggleRecording },
     {
       label: 'Reiniciar motor local',

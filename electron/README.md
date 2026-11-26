@@ -110,6 +110,16 @@ O `extraResources.sidecar/` espera o binário PyInstaller
 - [ ] `desktopCapturer` lista telas (base para captura futura)
 - [ ] Segunda instância foca a primeira em vez de abrir outra
 
+## Recuperação da interface
+
+- Se o renderer cair (`render-process-gone`), a janela recarrega sozinha — no
+  máximo 2 vezes por minuto, para não entrar em loop.
+- Se a interface ficar ocupada (`unresponsive`), o app notifica; a bandeja tem
+  **Recarregar janela**.
+- O Board renderiza um lote inicial por coluna (20 cards) e libera o restante em
+  **Mostrar mais**; isso evita montar centenas de selects de uma vez.
+- Eventos ficam em `~/.config/relay-desktop/sidecar.log` (prefixo `[main]`).
+
 ## Limites conhecidos do spike
 
 - Sem ícone próprio (usa fallback; E3 gera `build/icon.png`).

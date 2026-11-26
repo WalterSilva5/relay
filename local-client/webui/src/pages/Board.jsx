@@ -168,6 +168,11 @@ export default function Board() {
   const [archived, setArchived] = useState([])
   const [showArchived, setShowArchived] = useState(false)
 
+  // Renderização inicial do kanban: colunas com dezenas de cards (ex.: 90)
+  // montavam centenas de Selects de uma vez e travavam a janela em máquinas
+  // mais lentas. Mostra um lote e libera o resto sob demanda.
+  const [expandedCols, setExpandedCols] = useState({})
+
   // Métricas do projeto (acordeão)
   const [goals, setGoals] = useState([])
   const [metricsOpen, setMetricsOpen] = useState(true)
@@ -256,7 +261,10 @@ export default function Board() {
     defaultedRef.current = false
     setSprintFilter('all')
     setView('board')
+    setExpandedCols({})
   }, [projectId])
+
+  useEffect(() => { setExpandedCols({}) }, [sprintFilter])
 
   const loadMetrics = (excluded) => {
     getMetricsDimensions(projectId, excluded).then(setDimensions).catch(() => setDimensions(null))
@@ -851,7 +859,7 @@ export default function Board() {
                           <EmptyState title={t('Vazio')} className="py-4" />
                         )}
 
-                        {col.tasks.map((task) => (
+                        {col.tasks.slice(0, expandedCols[col.id] ? col.tasks.length : 20).map((task) => (
                           <Card
                             key={task.id}
                             padding="sm"
@@ -920,6 +928,17 @@ export default function Board() {
                             </div>
                           </Card>
                         ))}
+
+                        {!expandedCols[col.id] && col.tasks.length > 20 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => setExpandedCols((atual) => ({ ...atual, [col.id]: true }))}
+                          >
+                            {tf('Mostrar mais {n}', { n: col.tasks.length - 20 })}
+                          </Button>
+                        )}
 
                         <div className="mt-auto flex items-center gap-1.5">
                           <Input
