@@ -8,8 +8,8 @@ representam mais a UI principal.
 ## Estado atual (26/11/2026)
 
 - Os 5 prints essenciais foram recapturados do app Electron empacotado
-  (1440×900, tema claro, projeto MIG) e já são usados em `README.md` e
-  `README.en.md`.
+  (1440×900, tema claro, **workspace Exemplo / projeto Portal do Cliente — DEMO**)
+  e já são usados em `README.md` e `README.en.md`.
 - A captura reflete o design system v2: menu com **Board primeiro**, itens com
   borda, paleta azul corporativa de alto contraste.
 - O Electron limpa o cache da UI a cada boot; se uma janela antiga continuar
@@ -22,7 +22,7 @@ representam mais a UI principal.
 | Resolução | **1440×900** (janela do app nesse tamanho; sem barras do sistema) |
 | Tema | claro (dark é opcional, sufixo `-dark`) |
 | Formato | PNG otimizado, mesmo nome do arquivo da tabela abaixo |
-| Conteúdo | projeto de demonstração, sem dados reais/sensíveis (nomes, e-mails, tokens) |
+| Conteúdo | **workspace Exemplo**, projeto **Portal do Cliente (DEMO)**; tarefas, pessoas, reunião e review fictícios, sem dados reais/sensíveis |
 | Onde salvar | `docs/prints/` (este diretório) |
 
 Como abrir o app para capturar:
@@ -39,11 +39,11 @@ cd local-client && ./run-web.sh   # http://127.0.0.1:9777/
 
 | # | Arquivo | Tela / rota | Estado que deve exibir |
 |---|---|---|---|
-| 1 | `dashboard.png` | `/dashboard` | KPIs (tarefas, entregues, lead/cycle time), digest do standup, atividade recente e projetos do workspace. Menu com Board primeiro e itens com borda. |
-| 2 | `board.png` | `/board/<projectId>` | Kanban horizontal com filtros, seletor de sprint, colunas com WIP/contagem, cards com tipo/prioridade/labels, selects de sprint/responsável e o botão **Mostrar mais** nas colunas grandes. |
-| 3 | `metricas.png` | `/metricas` | Cards de total, entregues, concluídas (7/30 dias), lead time e cycle time; throughput semanal; distribuição por tipo/prioridade e por projeto. |
-| 4 | `reviews-pr.png` | `/reviews-pr` | Pasta de destino, criação por URL de PR, filtros e tabela de reviews. O print pode estar no estado vazio (“Nenhum review.”); o fluxo completo abre o formulário abaixo da tabela. |
-| 5 | `reunioes.png` | `/reunioes` | Lista de gravações e detalhe com contexto (projeto ou workshop), botões **Transcrever**/**Analisar reunião**, abas Resumo/Transcrição/Seções/Áudio e ações de exportar/arquivar/excluir. |
+| 1 | `dashboard.png` | `/dashboard` | Workspace Exemplo com KPIs (26 tarefas, 7 entregues, lead/cycle de 144h), digest do standup, atividade recente de tarefas fictícias e o projeto Portal do Cliente. Menu com Board primeiro e itens com borda. |
+| 2 | `board.png` | `/board/<projectId>` | Board do projeto Portal do Cliente (DEMO), sprint 12 ativa, colunas To do/Approved/Refinement/Ready for Dev populadas, cards com prioridade, labels, avatar, sprint, responsável e previsão de entrega. |
+| 3 | `metricas.png` | `/metricas` | KPIs do workspace Exemplo (26 tarefas, 7 entregues, 3 concluídas, lead/cycle de 144h), throughput semanal e distribuição por tipo/prioridade. |
+| 4 | `reviews-pr.png` | `/reviews-pr` | Review fictício do PR #128 (`portal/web`, autoria Ana Souza), com veredito “Aprovar com sugestões” e status Rascunho, além dos cards de pasta de destino e novo review. |
+| 5 | `reunioes.png` | `/reunioes` | Duas reuniões fictícias: “Daily de produto — 25/11” (contexto do projeto Portal do Cliente, com resumo e seções) e “Workshop: descoberta de melhorias” (sem projeto). |
 
 ## Checklist antes de publicar
 
@@ -52,6 +52,17 @@ cd local-client && ./run-web.sh   # http://127.0.0.1:9777/
 - [x] Janela em 1440×900, tema claro, sem notificações ou overlays do sistema.
 - [x] READMEs atualizados para exibir as imagens atuais e remover a nota de “capturas pendentes”.
 - [ ] Imagens antigas da GUI Qt removidas de `local-client/docs/screenshots/` (mantidas por histórico).
+
+## Dados de demonstração
+
+Os prints usam o workspace **Exemplo** (criado localmente fora do repositório) e o
+projeto **Portal do Cliente** (`DEMO`). Ele contém 26 tarefas fictícias em 12
+colunas, duas sprints, labels, quatro pessoas, duas reuniões e um review de PR.
+Nenhum dado real do workspace GAV entra nos prints.
+
+Ao terminar a captura, volte o workspace ativo para **GAV** (`POST
+/api/workspaces/active` com `{"id":"gav"}`) e reinicie o app. O workspace Exemplo
+permanece disponível para recapturas futuras.
 
 ## Como recapturar
 

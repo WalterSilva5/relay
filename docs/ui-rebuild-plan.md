@@ -233,4 +233,5 @@ Depois da entrega inicial, quatro ajustes fecharam a experiência do Electron:
   `linux-unpacked` foram recompilados com o bundle `index-DTUqh1-N.js`.
 
 Prints oficiais recapturados com esse estado em `docs/prints/` (dashboard, board,
-métricas, reuniões e reviews de PR).
+métricas, reuniões e reviews de PR), usando o workspace de demonstração
+**Exemplo** (projeto **Portal do Cliente — DEMO**) para não expor dados do GAV.

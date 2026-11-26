@@ -341,13 +341,13 @@ The API runs at `http://127.0.0.1:9777/api` without authentication. Main endpoin
 
 ## Screenshots
 
-Real Electron app screenshots (shell + web UI), 1440×900, light theme, MIG project, captured on **26/11/2026** — design system v2, Board first in the menu, bordered items, high-contrast corporate blue palette:
+Real Electron app screenshots (shell + web UI), 1440×900, light theme, **Exemplo** workspace (fictional **Portal do Cliente** project, 26 tasks), captured on **26/11/2026** — design system v2, Board first in the menu, bordered items, high-contrast corporate blue palette:
 
-![Dashboard](docs/prints/dashboard.png)
-![Board kanban](docs/prints/board.png)
-![Métricas](docs/prints/metricas.png)
-![Reviews de PR](docs/prints/reviews-pr.png)
-![Reuniões](docs/prints/reunioes.png)
+![Dashboard](docs/prints/dashboard.png?v=20261126)
+![Board kanban](docs/prints/board.png?v=20261126)
+![Métricas](docs/prints/metricas.png?v=20261126)
+![Reviews de PR](docs/prints/reviews-pr.png?v=20261126)
+![Reuniões](docs/prints/reunioes.png?v=20261126)
 
 Legacy Qt GUI screenshots remain in `local-client/docs/screenshots/`
 

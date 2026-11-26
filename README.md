@@ -327,13 +327,13 @@ A API roda em `http://127.0.0.1:9777/api` sem autenticação. Endpoints principa
 
 ## Capturas de tela
 
-Capturas reais do app Electron (shell + web UI), 1440×900, tema claro, projeto MIG (VAR 3.0), em **26/11/2026** — design system v2, menu com Board primeiro, itens com borda e paleta azul corporativa de alto contraste:
+Capturas reais do app Electron (shell + web UI), 1440×900, tema claro, workspace **Exemplo** (projeto fictício **Portal do Cliente**, 26 tarefas), em **26/11/2026** — design system v2, menu com Board primeiro, itens com borda e paleta azul corporativa de alto contraste:
 
-![Dashboard](docs/prints/dashboard.png)
-![Board kanban](docs/prints/board.png)
-![Métricas](docs/prints/metricas.png)
-![Reviews de PR](docs/prints/reviews-pr.png)
-![Reuniões](docs/prints/reunioes.png)
+![Dashboard](docs/prints/dashboard.png?v=20261126)
+![Board kanban](docs/prints/board.png?v=20261126)
+![Métricas](docs/prints/metricas.png?v=20261126)
+![Reviews de PR](docs/prints/reviews-pr.png?v=20261126)
+![Reuniões](docs/prints/reunioes.png?v=20261126)
 
 As capturas antigas da GUI Qt (legado) continuam em `local-client/docs/screenshots/`
 
