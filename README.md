@@ -24,7 +24,7 @@ O produto tem duas camadas (ver [ADR-0001](docs/adr/0001-electron-unificacao.md)
 - **Skills prontas**: 17 skills instaláveis que ensinam agentes a usar o Relay
 - **Workspaces isolados**: cada workspace tem seu próprio banco, permitindo separar projetos pessoais de profissionais
 - **Obsidian sync**: sincroniza notas diárias e tarefas com seu vault do Obsidian
-- **Pomodoro integrado**: timer no Dashboard para sessões de foco
+- **Pomodoro integrado (GUI PySide legada)**: timer no Dashboard para sessões de foco
 
 ## Como rodar hoje
 
@@ -158,10 +158,14 @@ O agente deve:
 Tela principal com notas diárias em markdown, template pre-configurado, geração de relatório automático com resumo de atividades, e sincronização com Obsidian vault. Date picker com calendário popup para navegar entre dias. Inclui dica de prompt para que agentes de IA gerem o resumo via skill.
 
 ### Dashboard
-Hub central organizado em abas: **Visão geral** (Pomodoro, cards de resumo, tarefas vencidas, atividade recente e progresso por projeto), **Métricas**, **TODOs** e **Labels**.
+Visão geral do workspace ativo: KPIs (tarefas, entregues, lead time e cycle time), digest do standup gerado por IA, atividade recente e projetos com acesso rápido ao board. Dados vêm da API (`/api/projects/metrics`, `/api/activity`, `/api/projects`).
+
+> A GUI PySide legada mantém um Dashboard em abas com Pomodoro, Métricas, TODOs e Labels; a UI principal (Electron/web) usa as rotas separadas do menu.
 
 ### Board Kanban
-Board com drag-and-drop, colunas customizáveis por projeto, filtros por tipo/prioridade/responsável, botão quick-move para avançar tarefas, WIP limits e indicador de code review obrigatório. Agentes sempre criam tarefas de revisão (`requiresHuman: true`) para o desenvolvedor validar alterações.
+Board horizontal com colunas customizáveis por projeto, filtros por prioridade/épico/tag/origem/responsável, seletor de sprint, WIP limits, quick-add e botão **Mover →** para avançar tarefas. Colunas grandes mostram um lote inicial de cards e liberam o restante em **Mostrar mais** (evita montar centenas de selects de uma vez). Clicar no card abre o detalhe com descrição, checklist, comentários e dependências. Agentes sempre criam tarefas de revisão (`requiresHuman: true`) para o desenvolvedor validar alterações.
+
+> O drag-and-drop entre colunas existe na GUI PySide legada; na web/Electron o movimento é pelo botão **Mover →**.
 
 ### Reviews
 - **Review de PR** (`/reviews-pr`): monta o documento de review a partir do diff do PR (base `merge-base`, conflito via `merge-tree`) com veredito e checagens (escopo do card, testes, paridade/contrato, multi-tenant, IDs longos). Exporta `.md` e envia para o destino configurado.
@@ -209,7 +213,7 @@ Planos de estudo com roadmap visual, categorias (Linguagem, Framework, Certifica
 Notas/wiki (reusa `Document` type=KB) com backlinks `[[título]]` e Q&A da IA sobre as notas (RAG-lite: recuperação por palavras-chave + resposta com citações). API `/api/kb/notes`, `/api/kb/ask`; tela `/base`.
 
 ### Skills
-Catálogo de 17 skills para agentes de IA. Cada skill é um arquivo SKILL.md que pode ser instalado no diretório `.claude/skills/` do projeto. Botão "Instalar todas" para setup rápido.
+Catálogo de 17 skills para agentes de IA. Cada skill é um arquivo SKILL.md; na web/Electron você visualiza, copia ou baixa o conteúdo, e a instalação em `.claude/skills/` é feita pela GUI PySide legada (botão "Instalar todas") ou manualmente.
 
 ### Instruções
 Guia de uso da aplicação com 12 seções, incluindo explicações de cada tela, fluxo de trabalho, o papel dos agentes e tarefas de revisão.
@@ -217,13 +221,13 @@ Guia de uso da aplicação com 12 seções, incluindo explicações de cada tela
 ### Configurações
 Tela de configurações gerais com:
 - **Provedores de IA**: cadastrar/selecionar provedores compatíveis com OpenAI (LM Studio, Ollama, OpenAI, OpenRouter, Groq, DeepSeek, Mistral, Gemini, Together, opencode), com teste de conexão. Usado pelo Assistente
-- **Pomodoro**: duração da sessão configurável (1-120 min)
-- **Notificações push**: notificações periódicas na área de trabalho com mensagem personalizada, intervalo configurável e ativação/desativação
+- **Pomodoro (PySide)**: duração da sessão configurável (1-120 min)
+- **Notificações push (PySide)**: notificações periódicas na área de trabalho com mensagem personalizada, intervalo configurável e ativação/desativação
 
 ### Recursos gerais
 - Tema dark/light com toggle na sidebar
-- Pomodoro timer configurável no Dashboard
-- Acesso rápido às Transcrições na sidebar (gravar em 1 clique)
+- Pomodoro timer configurável no Dashboard (PySide)
+- Acesso rápido às Transcrições na sidebar (gravar em 1 clique) — PySide
 - Notificações push periódicas com mensagem customizada
 - Busca global de tarefas (Ctrl+K)
 - Workspaces isolados com bancos separados, emojis e cores customizáveis
@@ -323,7 +327,7 @@ A API roda em `http://127.0.0.1:9777/api` sem autenticação. Endpoints principa
 
 ## Capturas de tela
 
-Capturas reais do app Electron (shell + web UI), 1440×900, projeto MIG (VAR 3.0):
+Capturas reais do app Electron (shell + web UI), 1440×900, tema claro, projeto MIG (VAR 3.0), em **26/11/2026** — design system v2, menu com Board primeiro, itens com borda e paleta indigo/slate:
 
 ![Dashboard](docs/prints/dashboard.png)
 ![Board kanban](docs/prints/board.png)
@@ -374,7 +378,7 @@ relay/
 │   ├── adr/0001-electron-unificacao.md
 │   ├── e2-parity-matrix.md
 │   ├── e3-packaging.md
-│   └── prints/                # Plano das capturas de tela
+│   └── prints/                # Capturas atuais do app Electron
 ├── CLAUDE.md                  # Guia para agentes de IA
 └── README.md
 ```

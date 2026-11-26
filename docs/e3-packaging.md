@@ -240,9 +240,10 @@ Pendências do item 2 resolvidas:
 - `linux.syncDesktopName: true` + `desktopName: "Relay"` (associação janela↔taskbar,
   alinha com o `StartupWMClass` existente; warning zerado).
 
-Artefatos (`electron/dist/`, build 24/11, sem display — NÃO testados visualmente):
-- `Relay-0.1.0.AppImage` (290 MB) — sidecar embutido confirmado por extração
-- `relay-desktop_0.1.0_amd64.deb` (265 MB) — contém `relay-server`, `webui-dist`,
+Artefatos (`electron/dist/`, build 26/11, sem display — janela validada por CDP, não por monitor físico):
+- `Relay-0.1.0.AppImage` (292 MB) — sidecar + `webui-dist` novos confirmados por extração
+  (`assets/index-DTUqh1-N.js`)
+- `relay-desktop_0.1.0_amd64.deb` (267 MB) — contém `relay-server`, `webui-dist`,
   ícone 512 e `Relay.desktop`; verificado via `ar`+`tar -tf`
 - `latest-linux.yml` gerado (base do auto-update; feed real = publicar release + `GH_TOKEN`)
 
@@ -313,9 +314,12 @@ ramo `isPackaged`/`sys.frozen` + teste sem Qt que simule o layout empacotado.
   tray + reaproveitamento de órfãos no boot (zumbis viram inofensivos).
   Revalidar SIGTERM/SIGINT em máquina com display antes de declarar pronto.
 - **Instaladores finais rebuildados com todo o código acima**
-  (`Relay-0.1.0.AppImage` 291 MB, `relay-desktop_0.1.0_amd64.deb` 265 MB):
+  (`Relay-0.1.0.AppImage` 292 MB, `relay-desktop_0.1.0_amd64.deb` 267 MB):
   asar verificado por extração — contém spawn direto, reuse, handlers SIGTERM,
   escalada TERM→KILL, tray com ícone (`assets/icon.png` dentro do asar) e
   `desktopName`/`syncDesktopName` (sem warnings no build).
+- **UI nova garantida:** o Electron limpa cache HTTP +
+  `serviceworkers/cachestorage` no boot; o PWA usa `relay-v2`; AppImage e deb
+  contêm o `webui-dist` atual (Board com paginação e menu reordenado).
 - Pendente (só em máquina com vídeo): pixel da janela, clique no tray,
   hotkey física fim a fim, instalador em sistema limpo, feed de auto-update.

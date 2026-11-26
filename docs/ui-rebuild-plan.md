@@ -209,3 +209,28 @@ entrega build verde + screenshots 4 larguras + checklist.
 | F5.1 branch `ui/rebuild` | commits em `main` | preferência do projeto: sem PR e sem branch intermediária |
 | F5.4 SweetAlert | removido das páginas; permanece em `WorkspaceSelector`, `ProjectSelector` e `ProjectDaily` | são prompts de shell/importação; migração exige novo fluxo de formulário e fica para demanda própria |
 | i18n | rótulos novos caem no fallback PT quando o idioma é EN | catálogo `i18n_catalog.js` não foi alterado nesta obra |
+
+---
+
+## 8. Ajustes pós-rebuild (26/11/2026)
+
+Depois da entrega inicial, quatro ajustes fecharam a experiência do Electron:
+
+- **Menu por uso:** “Trabalho” começa por **Board → Dashboard → Meu Dia → TODOs**;
+  “Registro” fica com Reuniões/Reviews/Reviews de PR/Assistente; “Conhecimento”
+  começa por Base/Memória/Biblioteca/Estudos. Cada item virou botão com borda
+  (`border-strong`), fundo de superfície e hover/ativo em accent.
+- **Paleta clara:** accent indigo `#4f46e5`, sidebar `#f1f4f9`, fundo `#f5f7fa`,
+  bordas `#e2e6ed`/`#cdd3de` e texto subtle `#697183` (contraste AA). O tema
+  escuro foi preservado.
+- **Board mais leve:** colunas renderizam 20 cards e liberam o restante em
+  “Mostrar mais”. Medição no pacote final: **104 cards / 212 selects / ~4 mil nós**
+  na entrada (antes: 279/564/9,5 mil). O Electron também recupera renderer
+  morto (`render-process-gone`, máx. 2 reloads/min) e oferece “Recarregar janela”
+  na bandeja.
+- **Fim da UI antiga em cache:** o Electron limpa cache HTTP +
+  `serviceworkers/cachestorage` no boot; o PWA usa `relay-v2`. O AppImage e o
+  `linux-unpacked` foram recompilados com o bundle `index-DTUqh1-N.js`.
+
+Prints oficiais recapturados com esse estado em `docs/prints/` (dashboard, board,
+métricas, reuniões e reviews de PR).

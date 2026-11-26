@@ -141,3 +141,29 @@ o orquestrador fecha a onda.
 - Não crie componentes novos em `src/ui/`; se faltar algo, resolva com o que
   existe e reporte a lacuna.
 - Não remova funcionalidade para “ficar mais bonito”.
+
+## Paleta clara atual (26/11/2026)
+
+Os valores vivem em `src/styles/theme.css`; páginas continuam sem hex.
+
+| Papel | Token | Valor |
+|---|---|---|
+| Marca | `--color-accent` | `#4f46e5` |
+| Marca hover | `--color-accent-hover` | `#4338ca` |
+| Marca suave | `--color-accent-soft` | `#e9eeff` |
+| Fundo | `--color-bg` | `#f5f7fa` |
+| Superfície | `--color-surface` | `#ffffff` |
+| Sidebar | `--color-sidebar` | `#f1f4f9` |
+| Coluna do board | `--color-column` | `#edf1f6` |
+| Borda | `--color-border` | `#e2e6ed` |
+| Borda forte | `--color-border-strong` | `#cdd3de` |
+| Texto | `--color-fg` | `#111317` |
+| Texto muted | `--color-fg-muted` | `#5b6373` |
+| Texto subtle | `--color-fg-subtle` | `#697183` |
+| Sucesso | `--color-success` | `#15803d` |
+| Atenção | `--color-warning` | `#b45309` |
+| Perigo | `--color-danger` | `#dc2626` |
+
+O tema escuro é definido no bloco `:where([data-theme='dark'])` do mesmo arquivo.
+Ao mudar a paleta, rode `npm run build`, `./electron/sync-webui.sh`, recapture os
+prints e valide contraste (texto normal ≥ 4,5:1).

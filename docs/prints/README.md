@@ -1,18 +1,19 @@
 # Prints para os READMEs
 
-Este diretório vai guardar as capturas de tela do app **Electron** (shell + web UI
-React). As imagens usadas hoje nos READMEs são da **GUI Qt antiga**
-(`local-client/docs/screenshots/`, capturadas em jul/2026) e **serão substituídas**.
+Este diretório contém as capturas atuais do app **Electron** (shell + web UI
+React). As imagens antigas da GUI Qt continuam em
+`local-client/docs/screenshots/` apenas como referência histórica — não
+representam mais a UI principal.
 
-## Estado atual
+## Estado atual (26/11/2026)
 
-- Nenhum print novo foi capturado ainda: o ambiente usado no desenvolvimento é
-  headless e as capturas saíram pretas (monitores desligados). O registro está em
-  [`../e3-packaging.md`](../e3-packaging.md).
-- Os READMEs da raiz (`README.md` e `README.en.md`) já apontam para cá e
-  rebaixaram as imagens antigas para um bloco recolhido, marcado como legado.
-- Até a recaptura, as imagens antigas continuam em `local-client/docs/screenshots/`
-  como referência histórica — não representam mais a UI principal.
+- Os 5 prints essenciais foram recapturados do app Electron empacotado
+  (1440×900, tema claro, projeto MIG) e já são usados em `README.md` e
+  `README.en.md`.
+- A captura reflete o design system v2: menu com **Board primeiro**, itens com
+  borda, paleta clara em indigo/slate e contraste AA.
+- O Electron limpa o cache da UI a cada boot; se uma janela antiga continuar
+  aberta, feche pela bandeja (**Sair**) e abra de novo antes de capturar.
 
 ## Padrão de captura
 
@@ -27,11 +28,10 @@ React). As imagens usadas hoje nos READMEs são da **GUI Qt antiga**
 Como abrir o app para capturar:
 
 ```bash
-# caminho principal (Electron)
-cd local-client && ./install.sh
-cd ../electron && npm install && npm run dev
+# caminho principal (Electron) — use o build local atualizado
+RELAY_ELECTRON_ARGS="--remote-debugging-port=9222" ./electron/relay-electron.sh
 
-# alternativa no navegador
+# alternativa no navegador (mesma API/web UI)
 cd local-client && ./run-web.sh   # http://127.0.0.1:9777/
 ```
 
@@ -39,40 +39,36 @@ cd local-client && ./run-web.sh   # http://127.0.0.1:9777/
 
 | # | Arquivo | Tela / rota | Estado que deve exibir |
 |---|---|---|---|
-| 1 | `dashboard.png` | `/dashboard` | Visão geral com Pomodoro, cards de resumo (ativas, concluídas, vencidas, em progresso), tarefas vencidas, atividade recente e progresso por projeto. Popular com 2+ projetos. |
-| 2 | `board.png` | `/board/<projectId>` | Kanban com as colunas Backlog / A fazer / Fazendo / Revisão / Concluído, cards com tipo, prioridade e labels, seletor de sprint visível e pelo menos um card em Revisão com o indicador de code review. |
-| 3 | `metricas.png` | `/metricas` | Cards de total, concluídas (7/30 dias), lead time e cycle time; gráfico de throughput das últimas 8 semanas; breakdown por tipo e prioridade. |
-| 4 | `reviews-pr.png` | `/reviews-pr` | Documento de review de PR preenchido: URL do PR, veredito, checagens marcadas (base/`merge-base`, conflito, testes, paridade, multi-tenant) e o diff resumido, com os botões de exportar/enviar visíveis. |
-| 5 | `reunioes.png` | `/reunioes` | Fluxo **Destino → 1 Preparar → 2 Gravar → 3 Resultado** com o copiloto ao vivo: abas Plano · Dicas · Ações · Decisões · Perguntas preenchidas e a transcrição ao lado. |
+| 1 | `dashboard.png` | `/dashboard` | KPIs (tarefas, entregues, lead/cycle time), digest do standup, atividade recente e projetos do workspace. Menu com Board primeiro e itens com borda. |
+| 2 | `board.png` | `/board/<projectId>` | Kanban horizontal com filtros, seletor de sprint, colunas com WIP/contagem, cards com tipo/prioridade/labels, selects de sprint/responsável e o botão **Mostrar mais** nas colunas grandes. |
+| 3 | `metricas.png` | `/metricas` | Cards de total, entregues, concluídas (7/30 dias), lead time e cycle time; throughput semanal; distribuição por tipo/prioridade e por projeto. |
+| 4 | `reviews-pr.png` | `/reviews-pr` | Pasta de destino, criação por URL de PR, filtros e tabela de reviews. O print pode estar no estado vazio (“Nenhum review.”); o fluxo completo abre o formulário abaixo da tabela. |
+| 5 | `reunioes.png` | `/reunioes` | Lista de gravações e detalhe com contexto (projeto ou workshop), botões **Transcrever**/**Analisar reunião**, abas Resumo/Transcrição/Seções/Áudio e ações de exportar/arquivar/excluir. |
 
 ## Checklist antes de publicar
 
-- [ ] Os 5 arquivos existem em `docs/prints/` com os nomes da tabela.
-- [ ] Nenhum dado sensível visível (projeto/workspace de demonstração).
-- [ ] Janela em 1440×900, tema claro, sem notificações ou overlays do sistema.
-- [ ] READMEs atualizados para exibir as novas imagens e remover a nota de "capturas pendentes".
-- [ ] Imagens antigas da GUI Qt removidas de `local-client/docs/screenshots/` (ou mantidas apenas se ainda forem úteis para histórico).
+- [x] Os 5 arquivos existem em `docs/prints/` com os nomes da tabela.
+- [x] Nenhum dado sensível visível (projeto/workspace de demonstração).
+- [x] Janela em 1440×900, tema claro, sem notificações ou overlays do sistema.
+- [x] READMEs atualizados para exibir as imagens atuais e remover a nota de “capturas pendentes”.
+- [ ] Imagens antigas da GUI Qt removidas de `local-client/docs/screenshots/` (mantidas por histórico).
 
-## Status (25/11/2026)
-
-Capturados do app Electron empacotado (1440×900, tema claro, projeto MIG) e já
-usados no README — **recapturados em 26/11/2026** após a reordenação do menu
-(Board primeiro, itens com borda) e o ajuste da paleta clara
-(accent indigo, sidebar mais separada e contraste AA): `dashboard.png`, `board.png`, `metricas.png`,
-`reviews-pr.png`, `reunioes.png`.
-
-**Recapturados após a reconstrução da UI** (design system v2: Tailwind v4 +
-primitivos em `src/ui`, shell novo e `/design`). Os prints anteriores eram do
-design antigo.
-
-Como recapturar sem monitor ligado:
+## Como recapturar
 
 ```bash
+# 1. build da web UI e sincronização com o pacote Electron
+cd local-client/webui && npm run build && cd ../..
+./electron/sync-webui.sh
+
+# 2. app com CDP, prints em 1440×900
 RELAY_ELECTRON_ARGS="--remote-debugging-port=9222" ./electron/relay-electron.sh
-python3 local-client/webui/scripts/ui-shot.py /dashboard,/board,/metricas,/reunioes,/reviews-pr /tmp/ui-prints 1440 6
+python3 local-client/webui/scripts/ui-shot.py \
+  /dashboard,/board,/metricas,/reunioes,/reviews-pr /tmp/ui-prints 1440 6
 cp /tmp/ui-prints/1440/*.png docs/prints/
 ```
 
 O script usa CDP (`Page.captureScreenshot`) após navegar para cada rota. Em
 janela oculta, finalize as transições CSS com
-`document.getAnimations().forEach(a => a.finish())` antes do print.
+`document.getAnimations().forEach(a => a.finish())` antes do print. Se o app
+estiver empacotado, rode `./electron/sync-webui.sh` antes de abrir; o Electron
+também limpa o cache HTTP/service worker no boot.

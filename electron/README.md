@@ -118,6 +118,9 @@ O `extraResources.sidecar/` espera o binário PyInstaller
   **Recarregar janela**.
 - O Board renderiza um lote inicial por coluna (20 cards) e libera o restante em
   **Mostrar mais**; isso evita montar centenas de selects de uma vez.
+- A cada boot o Electron limpa o cache HTTP e `serviceworkers/cachestorage`;
+  o PWA usa `relay-v2`. Isso evita abrir uma UI antiga depois de atualizar o
+  `webui-dist`.
 - Eventos ficam em `~/.config/relay-desktop/sidecar.log` (prefixo `[main]`).
 
 ## Limites conhecidos do spike

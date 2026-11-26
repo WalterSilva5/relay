@@ -4,7 +4,7 @@
 
 Desktop application for project management, work journaling, and study tracking — an **Electron** shell around the **React** web UI (`local-client/webui`), with a **Python sidecar** (FastAPI + SQLite + AI + transcription) and an embedded REST API for integration with AI agents.
 
-> 📷 Screenshots will be recaptured in the Electron app. The plan and the 5 essential shots are in [docs/prints/README.md](docs/prints/README.md); the old Qt GUI images remain in `local-client/docs/screenshots/`.
+> 📷 Screenshots are from the Electron app (shell + web UI), captured on 26/11/2026 at 1440×900 — see [Screenshots](#screenshots). The old Qt GUI images remain in `local-client/docs/screenshots/` for historical reference.
 
 ## What it is
 
@@ -24,7 +24,7 @@ The product has two layers (see [ADR-0001](docs/adr/0001-electron-unificacao.md)
 - **Ready-made skills**: 17 installable skills that teach agents how to use Relay
 - **Isolated workspaces**: each workspace has its own database, letting you separate personal from professional projects
 - **Obsidian sync**: synchronizes daily notes and tasks with your Obsidian vault
-- **Integrated Pomodoro**: timer on the Dashboard for focus sessions
+- **Integrated Pomodoro (legacy PySide GUI)**: timer on the Dashboard for focus sessions
 
 ## How to run it today
 
@@ -157,7 +157,9 @@ The agent should:
 Main screen with daily notes in markdown, a pre-configured template, automatic report generation with an activity summary, and synchronization with an Obsidian vault. Date picker with a popup calendar for navigating between days. Includes a prompt hint so AI agents can generate the summary via a skill.
 
 ### Dashboard
-Central hub organized into tabs: **Overview** (Pomodoro, summary cards, overdue tasks, recent activity, and progress by project), **Metrics**, **TODOs**, and **Labels**.
+Overview of the active workspace: KPIs (tasks, delivered, lead time, and cycle time), AI standup digest, recent activity, and projects with quick access to the board. Data comes from the API (`/api/projects/metrics`, `/api/activity`, `/api/projects`).
+
+> The legacy PySide GUI keeps a tabbed Dashboard with Pomodoro, Metrics, TODOs, and Labels; the primary Electron/web UI uses the separate routes in the menu.
 
 ### Kanban Board
 Board with drag-and-drop, columns customizable per project, filters by type/priority/assignee, a quick-move button to advance tasks, WIP limits, and a mandatory code review indicator. Agents always create review tasks (`requiresHuman: true`) so the developer can validate changes.
@@ -221,7 +223,7 @@ General settings screen with:
 
 ### General features
 - Dark/light theme with a toggle in the sidebar
-- Configurable Pomodoro timer on the Dashboard
+- Configurable Pomodoro timer on the Dashboard (PySide)
 - Quick access to Transcriptions in the sidebar (record in 1 click)
 - Periodic push notifications with a custom message
 - Global task search (Ctrl+K)
@@ -339,7 +341,7 @@ The API runs at `http://127.0.0.1:9777/api` without authentication. Main endpoin
 
 ## Screenshots
 
-Real Electron app screenshots (shell + web UI), 1440×900, MIG project:
+Real Electron app screenshots (shell + web UI), 1440×900, light theme, MIG project, captured on **26/11/2026** — design system v2, Board first in the menu, bordered items, indigo/slate palette:
 
 ![Dashboard](docs/prints/dashboard.png)
 ![Board kanban](docs/prints/board.png)
@@ -390,7 +392,7 @@ relay/
 │   ├── adr/0001-electron-unificacao.md
 │   ├── e2-parity-matrix.md
 │   ├── e3-packaging.md
-│   └── prints/                # Screenshot plan
+│   └── prints/                # Current Electron screenshots
 ├── CLAUDE.md                  # Guide for AI agents
 └── README.md
 ```
